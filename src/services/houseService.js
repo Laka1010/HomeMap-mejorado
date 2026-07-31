@@ -89,6 +89,15 @@ export const houseService = {
     if (error) throw error;
   },
 
+  /** Transfiere la propiedad de la casa a otro miembro; solo el admin actual puede llamarlo. */
+  async transferOwnership(houseId, newOwnerUserId) {
+    const { error } = await supabase.rpc("transfer_house_ownership", {
+      p_house_id: houseId,
+      p_new_owner_user_id: newOwnerUserId,
+    });
+    if (error) throw error;
+  },
+
   /** Renombra una casa; solo el admin puede llamarlo. */
   async renameHouse(houseId, name) {
     const { data, error } = await supabase.rpc("rename_house", {

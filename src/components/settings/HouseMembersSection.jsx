@@ -17,6 +17,7 @@ export function HouseMembersSection({
   currentUserRole,
   onChangeRole,
   onRemoveMember,
+  onMemberClick,
   showIcon = false,
 }) {
   const { t } = useTranslation();
@@ -33,6 +34,7 @@ export function HouseMembersSection({
       id,
       name: m.name || m.email || t("membersModule.roleMember"),
       role: m.role,
+      joinedAt: m.joined_at,
       isYou: m.isYou ?? (currentUserId ? id === currentUserId : false),
     };
   });
@@ -60,8 +62,16 @@ export function HouseMembersSection({
       <div className="hm-members-list">
         {rows.map((member) => {
           const canManage = isAdmin && !member.isYou && member.role !== "admin";
+          const clickable = isAdmin && !!onMemberClick;
           return (
-            <div key={member.id} className="hm-member-item">
+            <div
+              key={member.id}
+              className="hm-member-item"
+              onClick={clickable ? () => onMemberClick({ user_id: member.id, name: member.name, role: member.role, joined_at: member.joinedAt }) : undefined}
+              style={clickable ? { cursor: "pointer" } : undefined}
+              role={clickable ? "button" : undefined}
+              tabIndex={clickable ? 0 : undefined}
+            >
               <div className="hm-member-avatar">{member.name.charAt(0).toUpperCase()}</div>
               <div className="hm-member-info">
                 <div className="hm-member-name">
@@ -77,7 +87,7 @@ export function HouseMembersSection({
                 </div>
               </div>
               {canManage && (
-                <div className="hm-member-actions">
+                <div className="hm-member-actions" onClick={(e) => e.stopPropagation()}>
                   <select
                     className="hm-input hm-role-select"
                     value={member.role}

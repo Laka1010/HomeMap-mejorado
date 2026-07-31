@@ -18,6 +18,7 @@ export function HouseSettingsScreen({
   onChangeCurrency,
   onChangeMemberRole,
   onRemoveMember,
+  onMemberClick,
   categories,
   onChangeCategories,
   taskRetentionDays,
@@ -72,6 +73,7 @@ export function HouseSettingsScreen({
             currentUserRole={myRole}
             onChangeRole={onChangeMemberRole}
             onRemoveMember={onRemoveMember}
+            onMemberClick={onMemberClick}
             showIcon
           />
 

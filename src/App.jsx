@@ -16,6 +16,7 @@ import { formatCurrencyValue } from "./utils/currencyUtils";
 // bajo demanda (mismo componente y props, sin cambio de comportamiento).
 const HouseSettingsScreen = lazy(() => import("./components/settings/HouseSettingsScreen").then((m) => ({ default: m.HouseSettingsScreen })));
 const AccountHub = lazy(() => import("./components/settings/AccountHub").then((m) => ({ default: m.AccountHub })));
+const MemberDetailScreen = lazy(() => import("./components/settings/MemberDetailScreen").then((m) => ({ default: m.MemberDetailScreen })));
 import { CategoriesSection } from "./components/settings/CategoriesSection";
 import { AppHeader } from "./components/AppHeader";
 import { NotificationSection } from "./components/settings/NotificationSection";
@@ -2003,8 +2004,8 @@ function Compras({ state, dispatch, openModal, deleteShoppingList, addShopping, 
 /* -------------------------------------------------------------------- */
 /* TAREAS                                                                 */
 /* -------------------------------------------------------------------- */
-function Tareas({ state, dispatch, openModal, onAddToShopping }) {
-  return <TasksModule state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={onAddToShopping} />;
+function Tareas({ state, dispatch, openModal, onAddToShopping, onTaskCompleted }) {
+  return <TasksModule state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={onAddToShopping} onTaskCompleted={onTaskCompleted} />;
 }
 
 /* -------------------------------------------------------------------- */
@@ -2271,6 +2272,13 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const [notice, setNotice] = useState(null);
   const [prefersDark, setPrefersDark] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null); // {title, message, onConfirm, onCancel}
+  /**
+   * Se guarda aparte del `modal` normal (no como otro `modal.type`) para que
+   * la pantalla de información del miembro se apile encima de "Configuración
+   * de la casa" en vez de sustituirla — al cerrarla, la lista de miembros
+   * sigue abierta detrás, tal como se dejó.
+   */
+  const [viewingMember, setViewingMember] = useState(null);
   const [currencyLoading, setCurrencyLoading] = useState(false);
   /**
    * BillsSection/EconomyOverview/MovementsSection cargan sus datos en un
@@ -2397,6 +2405,44 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       console.error("Error removing member:", error);
       showNotice(error?.message || t("toast.memberRemoveError"));
     }
+  };
+
+  /** Pide confirmación antes de eliminar, a diferencia del botón rápido de HouseMembersSection: esta acción vive en la pantalla de información del miembro, un sitio más deliberado. */
+  const confirmRemoveMemberFromDetail = (member) => {
+    setConfirmDialog({
+      title: t("memberDetail.confirmRemoveTitle"),
+      message: t("memberDetail.confirmRemoveMessage", { name: member.name }),
+      isDangerous: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setViewingMember(null);
+        await handleRemoveHouseMember(member.user_id);
+      },
+      onCancel: () => setConfirmDialog(null),
+    });
+  };
+
+  const handleTransferOwnership = (member) => {
+    setConfirmDialog({
+      title: t("memberDetail.confirmTransferTitle"),
+      message: t("memberDetail.confirmTransferMessage", { name: member.name }),
+      isDangerous: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        if (!activeHome?.id) return;
+        try {
+          await houseService.transferOwnership(activeHome.id, member.user_id);
+          await refreshHouseMembers();
+          await refreshHomes();
+          showNotice(t("memberDetail.transferSuccess", { name: member.name }));
+          setViewingMember(null);
+        } catch (error) {
+          console.error("Error transferring house ownership:", error);
+          showNotice(error?.message || t("memberDetail.transferError"));
+        }
+      },
+      onCancel: () => setConfirmDialog(null),
+    });
   };
 
   const handleChangeCurrency = async (currencyCode) => {
@@ -2881,7 +2927,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const addRoom = (room) => {
     dispatch((s) => ({ ...s, rooms: [...s.rooms, room] }));
     showNotice(t("toast.roomCreated", { name: room.name }));
-    logActivity(t("activity.roomCreated", { name: user?.name, room: room.name }));
+    logActivity(t("activity.roomCreated", { name: user?.name, room: room.name }), { entityType: "room", entityId: room.id });
     window.dispatchEvent(new CustomEvent("homemap:onboarding-complete", { detail: { id: "createRoom" } }));
     const continueTo = modal?.payload?.__continueTo;
     if (continueTo) {
@@ -2920,7 +2966,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     const nextObject = { ...o, ...normalized };
     dispatch((s) => ({ ...s, objects: [...s.objects, nextObject] }));
     showNotice(t("toast.objectSaved", { name: o.name }));
-    logActivity(t("activity.objectAdded", { name: user?.name, item: o.name }));
+    logActivity(t("activity.objectAdded", { name: user?.name, item: o.name }), { entityType: "object", entityId: o.id });
     window.dispatchEvent(new CustomEvent("homemap:onboarding-complete", { detail: { id: "addObject" } }));
     closeModal();
     homeContentService.createObject(currentHome.id, nextObject).catch((error) => {
@@ -3204,6 +3250,16 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       console.error("Error saving task:", error);
       showNotice(t("toast.taskSaveError"));
     });
+  };
+
+  /**
+   * Solo registra actividad (sin toast ni cambio visible): TasksModule ya
+   * hace su propio toggle optimista de estado/completedAt, esto únicamente
+   * añade el rastro para poder contar "tareas completadas" por miembro en
+   * la pantalla de información del miembro.
+   */
+  const logTaskCompleted = (task) => {
+    logActivity(t("activity.taskCompleted", { name: user?.name, task: task?.title }), { entityType: "taskCompleted", entityId: task?.id });
   };
   const editTask = (taskId, patch) => {
     dispatch((s) => ({
@@ -3543,7 +3599,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               <div key={organizationTab} className="hm-fade-in" style={{ minWidth: 0 }}>
                 <Suspense fallback={null}>
                   {organizationTab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}
-                  {organizationTab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={addShoppingFromTask} />}
+                  {organizationTab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={addShoppingFromTask} onTaskCompleted={logTaskCompleted} />}
                   {organizationTab === "notas" && <Notas state={state} dispatch={dispatch} openModal={openModal} />}
                   {organizationTab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} />}
                 </Suspense>
@@ -3565,7 +3621,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             {route.tab === "cajas" && <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />}
             <Suspense fallback={null}>
               {route.tab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}
-              {route.tab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={addShoppingFromTask} />}
+              {route.tab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={addShoppingFromTask} onTaskCompleted={logTaskCompleted} />}
               {route.tab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} />}
             </Suspense>
 
@@ -3624,12 +3680,27 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onChangeCurrency={handleChangeCurrency}
             onChangeMemberRole={handleChangeMemberRole}
             onRemoveMember={handleRemoveHouseMember}
+            onMemberClick={setViewingMember}
             categories={state.categories}
             onChangeCategories={updateCategories}
             taskRetentionDays={Number(state?.settings?.taskRetentionDays) || DEFAULT_TASK_RETENTION_DAYS}
             onChangeTaskRetention={setTaskRetentionDays}
             onClose={closeModal}
             isCurrencyLoading={currencyLoading}
+          />
+        </Suspense>
+      )}
+      {viewingMember && (
+        <Suspense fallback={null}>
+          <MemberDetailScreen
+            member={viewingMember}
+            houseId={(activeHome || currentHome)?.id}
+            viewerRole={currentHome?.myRole}
+            viewerUserId={user?.id}
+            onChangeRole={(memberId, role) => handleChangeMemberRole(memberId, role).then(() => setViewingMember((m) => (m ? { ...m, role } : m)))}
+            onTransferOwnership={handleTransferOwnership}
+            onRemoveMember={confirmRemoveMemberFromDetail}
+            onClose={() => setViewingMember(null)}
           />
         </Suspense>
       )}

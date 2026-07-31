@@ -5,7 +5,7 @@ import { FavoriteStar } from "../../components/FavoriteStar";
 import { taskService } from "../../services/taskService";
 import { useTranslation } from "../../i18n";
 
-export function TasksModule({ state, dispatch, openModal, onAddToShopping }) {
+export function TasksModule({ state, dispatch, openModal, onAddToShopping, onTaskCompleted }) {
   const { t } = useTranslation();
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const priorityLabel = (priority) => (priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : t("tasksModule.priorityNormal"));
@@ -22,6 +22,7 @@ export function TasksModule({ state, dispatch, openModal, onAddToShopping }) {
     taskService.updateTask(taskId, { status: nextStatus, completedAt }).catch((error) => {
       console.error("Error updating task:", error);
     });
+    if (nextStatus === "done" && task) onTaskCompleted?.(task);
   };
 
   const toggleFavorite = (taskId) => {
