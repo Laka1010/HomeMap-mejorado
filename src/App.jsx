@@ -1651,13 +1651,6 @@ function ObjectDetail({ state, objectId, onBack, onDelete, dispatch, onMove, onU
 /* -------------------------------------------------------------------- */
 /* DASHBOARD                                                             */
 /* -------------------------------------------------------------------- */
-function getGreetingKey() {
-  const h = new Date().getHours();
-  if (h < 12) return "header.morning";
-  if (h < 20) return "header.afternoon";
-  return "header.night";
-}
-
 function Dashboard({ state, goTo, canSeeEconomy, currentHome, houseMembers, notifications }) {
   return (
     <DashboardModule

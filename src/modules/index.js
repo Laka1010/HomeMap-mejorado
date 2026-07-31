@@ -5,5 +5,4 @@ export * from "./shopping/ShoppingHistory";
 export * from "./tasks/TasksModule";
 export * from "./notes/NotesModule";
 export * from "./calendar/CalendarModule";
-export * from "./members/MembersModule";
 export { EconomyModule } from "./economy/EconomyModule";

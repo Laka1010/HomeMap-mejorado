@@ -20,18 +20,7 @@ export const CURRENCIES = {
 export const DEFAULT_CURRENCY = "EUR";
 
 /**
- * Get currency details. Throws if code is invalid.
- */
-export function getCurrency(code) {
-  const currency = CURRENCIES[code];
-  if (!currency) {
-    throw new Error(`Unknown currency code: ${code}`);
-  }
-  return { code, ...currency };
-}
-
-/**
- * Same as getCurrency but never throws — falls back to the default currency.
+ * Currency lookup that never throws — falls back to the default currency.
  * Used by the formatters, which run inside renders: an unknown code coming from
  * the database must degrade to EUR, not blank the screen.
  */
