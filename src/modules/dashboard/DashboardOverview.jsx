@@ -19,7 +19,7 @@ export function DashboardOverview({ state, goTo, canSeeEconomy = true, currentHo
   const { bills, monthIncome, monthExpenses, prevMonthExpenses, loaded } = useDashboardEconomy(currentHome?.id, canSeeEconomy);
 
   const greeting = t("header.greeting", { greeting: t(getGreetingKey()), name: state.profile.userName });
-  const dateAndHome = [formatLongDate(locale), currentHome?.name].filter(Boolean).join(" · ");
+  const dateAndHome = formatLongDate(locale);
 
   const widgetProps = { tasks, bills, shoppingItems, shoppingLists, activity, members: houseMembers, notifications, canSeeEconomy, monthIncome, monthExpenses, prevMonthExpenses, economyLoaded: loaded, loaded, goTo };
 
