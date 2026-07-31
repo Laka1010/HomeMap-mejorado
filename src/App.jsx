@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment, lazy, Suspense } from "react";
 import {
   Home, Search, Package, ShoppingCart, Settings, Plus, Camera, MapPin,
   ChevronRight, X, Sun, Moon, Sofa, UtensilsCrossed, BedDouble, Bath,
@@ -12,8 +12,10 @@ import {
 import { I18nProvider, useTranslation } from "./i18n";
 import { CurrencyProvider, useCurrency } from "./currency";
 import { formatCurrencyValue } from "./utils/currencyUtils";
-import { HouseSettingsScreen } from "./components/settings/HouseSettingsScreen";
-import { AccountHub } from "./components/settings/AccountHub";
+// Pantallas de ajustes: solo se montan al abrir su modal, así que se cargan
+// bajo demanda (mismo componente y props, sin cambio de comportamiento).
+const HouseSettingsScreen = lazy(() => import("./components/settings/HouseSettingsScreen").then((m) => ({ default: m.HouseSettingsScreen })));
+const AccountHub = lazy(() => import("./components/settings/AccountHub").then((m) => ({ default: m.AccountHub })));
 import { CategoriesSection } from "./components/settings/CategoriesSection";
 import { AppHeader } from "./components/AppHeader";
 import { NotificationSection } from "./components/settings/NotificationSection";
@@ -41,7 +43,17 @@ import { categoriesService } from "./services/categoriesService";
 import { activityService } from "./services/activityService";
 import { economyService } from "./modules/economy/services/economyService";
 import { applyTemplate } from "./modules/homeTemplates/applyTemplate";
-import { Dashboard as DashboardModule, DashboardOverview, ShoppingModule, TasksModule, NotesModule, CalendarModule, EconomyModule, ShoppingHistory } from "./modules";
+import { Dashboard as DashboardModule, DashboardOverview } from "./modules";
+
+// Estas pantallas solo se montan cuando el usuario navega a su pestaña, así
+// que se cargan bajo demanda para reducir el bundle inicial (no cambia el
+// comportamiento: siguen siendo el mismo componente con las mismas props).
+const ShoppingModule = lazy(() => import("./modules/shopping/ShoppingModule").then((m) => ({ default: m.ShoppingModule })));
+const ShoppingHistory = lazy(() => import("./modules/shopping/ShoppingHistory").then((m) => ({ default: m.ShoppingHistory })));
+const TasksModule = lazy(() => import("./modules/tasks/TasksModule").then((m) => ({ default: m.TasksModule })));
+const NotesModule = lazy(() => import("./modules/notes/NotesModule").then((m) => ({ default: m.NotesModule })));
+const CalendarModule = lazy(() => import("./modules/calendar/CalendarModule").then((m) => ({ default: m.CalendarModule })));
+const EconomyModule = lazy(() => import("./modules/economy/EconomyModule").then((m) => ({ default: m.EconomyModule })));
 import { suggestShoppingItemsFromTask } from "./modules/shopping/taskSuggestions";
 import { computeFrequentProducts } from "./modules/shopping/frequentProducts";
 import { uploadReceiptImage } from "./services/receiptService";
@@ -3502,15 +3514,17 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               // espacios en Compras/Tareas/Notas podría ensanchar toda la pantalla en
               // vez de truncarse.
               <div key={organizationTab} className="hm-fade-in" style={{ minWidth: 0 }}>
-                {organizationTab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}
-                {organizationTab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={addShoppingFromTask} />}
-                {organizationTab === "notas" && <Notas state={state} dispatch={dispatch} openModal={openModal} />}
-                {organizationTab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} />}
+                <Suspense fallback={null}>
+                  {organizationTab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}
+                  {organizationTab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={addShoppingFromTask} />}
+                  {organizationTab === "notas" && <Notas state={state} dispatch={dispatch} openModal={openModal} />}
+                  {organizationTab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} />}
+                </Suspense>
               </div>
             )}
-             
+
             {/* 💰 ECONOMÍA - Bills and Finance (solo admin/adult; RLS lo aplica también en el servidor) */}
-            {route.tab === "economia" && canSeeEconomy && <EconomyModule state={state} dispatch={dispatch} openModal={openModal} currentHome={currentHome} user={user} />}
+            {route.tab === "economia" && canSeeEconomy && <Suspense fallback={null}><EconomyModule state={state} dispatch={dispatch} openModal={openModal} currentHome={currentHome} user={user} /></Suspense>}
             {route.tab === "economia" && !canSeeEconomy && (
               <div className="hm-card hm-card--p24 hm-card--center">
                 <ShieldCheck size={26} style={{ color: "var(--accent)", marginBottom: 10 }} />
@@ -3522,9 +3536,11 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             {/* BACKWARDS COMPATIBILITY - Old routes still work */}
             {route.tab === "micasa" && <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />}
             {route.tab === "cajas" && <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />}
-            {route.tab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}
-            {route.tab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={addShoppingFromTask} />}
-            {route.tab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} />}
+            <Suspense fallback={null}>
+              {route.tab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}
+              {route.tab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={addShoppingFromTask} />}
+              {route.tab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} />}
+            </Suspense>
 
             {/* Object Detail */}
             {route.tab === "objectDetail" && <ObjectDetail state={state} objectId={route.objectId} onBack={() => setRoute({ tab: prevTab || "inicio" })} onDelete={deleteObject} onMove={moveObject} onUpdateObject={updateObject} dispatch={dispatch} houseId={currentHome?.id} />}
@@ -3540,49 +3556,53 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       </div>
 
       {modal?.type === "accountHub" && (
-        <AccountHub
-          state={state}
-          currentHome={activeHome || currentHome}
-          houseMembers={houseMembers}
-          user={user}
-          onUpdateProfile={updateProfile}
-          onRenameHouse={handleRenameHouse}
-          onChangePassword={handleChangePassword}
-          onLogout={handleLogout}
-          onDeleteAccount={handleDeleteAccount}
-          onImportData={handleImportData}
-          onExportData={handleExportData}
-          isExporting={isExporting}
-          locale={locale}
-          theme={themeMode}
-          notifications={state.settings.notifications}
-          currency={activeHome?.currency_code || "EUR"}
-          onChangeLanguage={(nextLocale) => updateProfile({ language: nextLocale })}
-          onChangeTheme={(nextTheme) => updateProfile({ theme: nextTheme })}
-          onToggleNotificationCategory={toggleNotificationCategory}
-          onChangeNotificationLevel={setNotificationLevel}
-          onChangeCurrency={handleChangeCurrency}
-          isCurrencyLoading={currencyLoading}
-          build={APP_BUILD}
-          openModal={openModal}
-          onClose={closeModal}
-          version={APP_VERSION}
-        />
+        <Suspense fallback={null}>
+          <AccountHub
+            state={state}
+            currentHome={activeHome || currentHome}
+            houseMembers={houseMembers}
+            user={user}
+            onUpdateProfile={updateProfile}
+            onRenameHouse={handleRenameHouse}
+            onChangePassword={handleChangePassword}
+            onLogout={handleLogout}
+            onDeleteAccount={handleDeleteAccount}
+            onImportData={handleImportData}
+            onExportData={handleExportData}
+            isExporting={isExporting}
+            locale={locale}
+            theme={themeMode}
+            notifications={state.settings.notifications}
+            currency={activeHome?.currency_code || "EUR"}
+            onChangeLanguage={(nextLocale) => updateProfile({ language: nextLocale })}
+            onChangeTheme={(nextTheme) => updateProfile({ theme: nextTheme })}
+            onToggleNotificationCategory={toggleNotificationCategory}
+            onChangeNotificationLevel={setNotificationLevel}
+            onChangeCurrency={handleChangeCurrency}
+            isCurrencyLoading={currencyLoading}
+            build={APP_BUILD}
+            openModal={openModal}
+            onClose={closeModal}
+            version={APP_VERSION}
+          />
+        </Suspense>
       )}
       {modal?.type === "houseSettings" && (
-        <HouseSettingsScreen
-          house={activeHome || currentHome}
-          members={houseMembers}
-          currentUserId={user?.id}
-          currency={activeHome?.currency_code || "EUR"}
-          onChangeCurrency={handleChangeCurrency}
-          onChangeMemberRole={handleChangeMemberRole}
-          onRemoveMember={handleRemoveHouseMember}
-          categories={state.categories}
-          onChangeCategories={updateCategories}
-          onClose={closeModal}
-          isCurrencyLoading={currencyLoading}
-        />
+        <Suspense fallback={null}>
+          <HouseSettingsScreen
+            house={activeHome || currentHome}
+            members={houseMembers}
+            currentUserId={user?.id}
+            currency={activeHome?.currency_code || "EUR"}
+            onChangeCurrency={handleChangeCurrency}
+            onChangeMemberRole={handleChangeMemberRole}
+            onRemoveMember={handleRemoveHouseMember}
+            categories={state.categories}
+            onChangeCategories={updateCategories}
+            onClose={closeModal}
+            isCurrencyLoading={currencyLoading}
+          />
+        </Suspense>
       )}
       {modal?.type === "notifications" && (
         <NotificationsModal
@@ -3798,11 +3818,13 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
       {modal?.type === "shoppingHistory" && (
         <Modal title={t("quickAdd.purchaseHistoryTitle")} onClose={closeModal} wide>
-          <ShoppingHistory
-            purchases={(state.shoppingPurchases || []).filter((p) => !modal.payload?.listId || p.listId === modal.payload.listId)}
-            onRepeat={(purchase) => repeatShoppingPurchase(purchase, modal.payload?.listId)}
-            onDelete={deleteShoppingPurchase}
-          />
+          <Suspense fallback={null}>
+            <ShoppingHistory
+              purchases={(state.shoppingPurchases || []).filter((p) => !modal.payload?.listId || p.listId === modal.payload.listId)}
+              onRepeat={(purchase) => repeatShoppingPurchase(purchase, modal.payload?.listId)}
+              onDelete={deleteShoppingPurchase}
+            />
+          </Suspense>
         </Modal>
       )}
 
