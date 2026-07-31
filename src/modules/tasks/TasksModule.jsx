@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { CalendarDays, Check, ClipboardList, Edit3, Plus, ShoppingCart, Star, Timer } from "lucide-react";
+import { CalendarDays, Check, ClipboardList, Edit3, Plus, ShoppingCart, Star } from "lucide-react";
 import { ModuleCard } from "../core/ModuleCard";
 import { FavoriteStar } from "../../components/FavoriteStar";
-import { taskService, DEFAULT_TASK_RETENTION_DAYS } from "../../services/taskService";
+import { taskService } from "../../services/taskService";
 import { useTranslation } from "../../i18n";
 
 export function TasksModule({ state, dispatch, openModal, onAddToShopping }) {
@@ -11,14 +11,6 @@ export function TasksModule({ state, dispatch, openModal, onAddToShopping }) {
   const priorityLabel = (priority) => (priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : t("tasksModule.priorityNormal"));
   const tasks = Array.isArray(state.tasks) ? state.tasks : [];
   const shoppingItems = Array.isArray(state.shoppingItems) ? state.shoppingItems : [];
-  const retentionDays = Number(state.settings?.taskRetentionDays) || DEFAULT_TASK_RETENTION_DAYS;
-  const setRetentionDays = (value) => {
-    const days = Math.max(1, Math.round(Number(value)) || DEFAULT_TASK_RETENTION_DAYS);
-    dispatch((current) => ({
-      ...current,
-      settings: { ...current.settings, taskRetentionDays: days },
-    }));
-  };
   const toggleTask = (taskId) => {
     const task = tasks.find((t) => t.id === taskId);
     const nextStatus = task?.status === "done" ? "pending" : "done";
@@ -56,18 +48,6 @@ export function TasksModule({ state, dispatch, openModal, onAddToShopping }) {
           <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{t("tasksModule.title")}</h1>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <div className="hm-card-flat" style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 10px" }}>
-            <Timer size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
-            <span style={{ fontSize: 12.5, color: "var(--ink-soft)", whiteSpace: "nowrap" }}>{t("tasksModule.autoDeleteLabel")}</span>
-            <input
-              className="hm-input"
-              type="number"
-              min={1}
-              style={{ width: 56, padding: "4px 6px" }}
-              value={retentionDays}
-              onChange={(e) => setRetentionDays(e.target.value)}
-            />
-          </div>
           <button
             className={favoritesOnly ? "hm-btn hm-btn-primary" : "hm-btn hm-btn-soft"}
             onClick={() => setFavoritesOnly((v) => !v)}

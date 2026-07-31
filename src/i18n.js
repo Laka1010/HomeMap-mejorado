@@ -261,6 +261,7 @@ const translations = {
       readOnlyNotice: "Solo el administrador puede cambiar la configuración de la casa.",
       membersHintAdmin: "Cambia el rol de un miembro o quítalo del hogar.",
       membersHintReadOnly: "Personas que forman parte de este hogar.",
+      taskRetentionHint: "Días que se conserva una tarea marcada como hecha antes de borrarse sola.",
     },
     accountHub: {
       editProfile: "Editar perfil",
@@ -1574,6 +1575,7 @@ lucas.mesas.10@gmail.com`,
       readOnlyNotice: "Only the admin can change the home settings.",
       membersHintAdmin: "Change a member's role or remove them from the home.",
       membersHintReadOnly: "People who belong to this home.",
+      taskRetentionHint: "Days a task marked as done stays around before it deletes itself.",
     },
     accountHub: {
       editProfile: "Edit profile",

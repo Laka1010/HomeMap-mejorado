@@ -3,6 +3,7 @@ import { useTranslation } from "../../i18n";
 import { CurrencySection } from "./CurrencySection";
 import { HouseMembersSection } from "./HouseMembersSection";
 import { CategoriesSection } from "./CategoriesSection";
+import { TaskRetentionSection } from "./TaskRetentionSection";
 
 /**
  * Configuración de la casa: ajustes que pertenecen al hogar y no al usuario
@@ -19,6 +20,8 @@ export function HouseSettingsScreen({
   onRemoveMember,
   categories,
   onChangeCategories,
+  taskRetentionDays,
+  onChangeTaskRetention,
   onClose,
   isCurrencyLoading,
 }) {
@@ -73,6 +76,8 @@ export function HouseSettingsScreen({
           />
 
           <CategoriesSection categories={categories} onChange={onChangeCategories} />
+
+          <TaskRetentionSection days={taskRetentionDays} onChange={onChangeTaskRetention} isAdmin={isAdmin} />
         </div>
       </div>
     </div>

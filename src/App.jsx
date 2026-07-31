@@ -3185,6 +3185,14 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     });
   };
 
+  const setTaskRetentionDays = (value) => {
+    const days = Math.max(1, Math.round(Number(value)) || DEFAULT_TASK_RETENTION_DAYS);
+    dispatch((current) => ({
+      ...current,
+      settings: { ...current.settings, taskRetentionDays: days },
+    }));
+  };
+
   /* -------------------- New add handlers for Action Center -------------------- */
   const addTask = (taskData) => {
     const next = { id: "task-" + uid(), status: "pending", ...taskData };
@@ -3618,6 +3626,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onRemoveMember={handleRemoveHouseMember}
             categories={state.categories}
             onChangeCategories={updateCategories}
+            taskRetentionDays={Number(state?.settings?.taskRetentionDays) || DEFAULT_TASK_RETENTION_DAYS}
+            onChangeTaskRetention={setTaskRetentionDays}
             onClose={closeModal}
             isCurrencyLoading={currencyLoading}
           />
