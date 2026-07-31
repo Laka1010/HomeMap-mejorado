@@ -35,30 +35,28 @@ export function CategoriesSection({ categories = [], onChange }) {
   };
 
   return (
-    <section className="hm-card hm-card--p20" style={{ display: "grid", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 40, height: 40, minWidth: 40, minHeight: 40, flexShrink: 0, borderRadius: 14, background: "var(--accent-soft)", display: "grid", placeItems: "center", color: "var(--accent)" }}>
-          <Tag size={20} />
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent-soft)", display: "grid", placeItems: "center", color: "var(--accent)", fontSize: 16 }}>
+          <Tag size={16} />
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{t("settings.categoriesTitle") || "Categorías"}</h2>
-          <p style={{ marginTop: 6, color: "var(--ink-soft)", fontSize: 13 }}>{t("settings.categoriesDescription") || "Personaliza las categorías disponibles para tus objetos y compras."}</p>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>{t("settings.categoriesTitle") || "Categorías"}</div>
+          <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 2 }}>{t("settings.categoriesDescription") || "Personaliza las categorías disponibles para tus objetos y compras."}</div>
         </div>
       </div>
 
       <div style={{ display: "grid", gap: 8 }}>
         {local.map((cat, idx) => (
-          <div key={idx} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <div style={{ flex: 1 }}>
+          <div key={idx} className="hm-card hm-card--p16" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               {editingIndex === idx ? (
-                <input className="hm-input" value={cat} onChange={(e) => handleEdit(idx, e.target.value)} />
+                <input className="hm-input" value={cat} onChange={(e) => handleEdit(idx, e.target.value)} autoFocus />
               ) : (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontWeight: 600 }}>{cat}</div>
-                </div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{cat}</div>
               )}
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
               {editingIndex === idx ? (
                 <button className="hm-btn hm-btn-primary hm-btn--compact" onClick={() => setEditingIndex(-1)}><Check size={14} /></button>
               ) : (
@@ -69,11 +67,11 @@ export function CategoriesSection({ categories = [], onChange }) {
           </div>
         ))}
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="hm-card hm-card--p16" style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <input className="hm-input" placeholder={t("settings.newCategoryPlaceholder") || "Nueva categoría"} value={newName} onChange={(e) => setNewName(e.target.value)} />
           <button className="hm-btn hm-btn-primary hm-btn--compact" onClick={handleAdd}><Plus size={14} /> {t("shopping.add")}</button>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
