@@ -1,4 +1,19 @@
 /**
+ * Formatea una fecha como YYYY-MM-DD usando sus componentes locales
+ * (año/mes/día del objeto Date), NO `toISOString().split("T")[0]`: ese
+ * método convierte a UTC antes de recortar la hora, así que en zonas
+ * horarias adelantadas a UTC (Madrid, etc.) la medianoche local del último
+ * día del mes cae en el día anterior en UTC — el filtro de fin de mes
+ * excluía el día 31 (o el que tocase) por ese desfase de un día.
+ */
+export function toLocalDateString(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Tiempo relativo con granularidad de minutos/horas, para el centro de
  * actividad (a diferencia del `timeAgo` de App.jsx, que solo distingue por
  * días y no sirve para notificaciones recién creadas).

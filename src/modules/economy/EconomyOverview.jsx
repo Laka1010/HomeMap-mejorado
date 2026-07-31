@@ -3,6 +3,8 @@ import { ChevronRight, Gift, Sparkles, Tag, Calendar } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
+import { normalizeText } from "../../utils/textMatch";
+import { toLocalDateString } from "../../utils/dates";
 import { GoalsSection } from "./GoalsSection";
 
 const ENTRY_ICONS = {
@@ -44,15 +46,15 @@ export function EconomyOverview({ currentHome, openModal, goToPage, activity, us
         .from("economy_income")
         .select("amount, name, category, date")
         .eq("house_id", houseId)
-        .gte("date", monthStart.toISOString().split("T")[0])
-        .lte("date", monthEnd.toISOString().split("T")[0]);
+        .gte("date", toLocalDateString(monthStart))
+        .lte("date", toLocalDateString(monthEnd));
 
       const { data: expensesData } = await supabase
         .from("economy_expenses")
         .select("amount, name, category, date")
         .eq("house_id", houseId)
-        .gte("date", monthStart.toISOString().split("T")[0])
-        .lte("date", monthEnd.toISOString().split("T")[0]);
+        .gte("date", toLocalDateString(monthStart))
+        .lte("date", toLocalDateString(monthEnd));
 
       const { data: billsData } = await supabase
         .from("economy_bills")
@@ -107,7 +109,7 @@ export function EconomyOverview({ currentHome, openModal, goToPage, activity, us
   const isSaving = balance >= 0;
   const expenseCategoryTotals = {};
   entries.filter((e) => e.kind === "expense").forEach((e) => {
-    const cat = e.category || "Otros";
+    const cat = normalizeText(e.category || "Otros");
     expenseCategoryTotals[cat] = (expenseCategoryTotals[cat] || 0) + parseFloat(e.amount || 0);
   });
   const maxScale = Math.max(ingresos, gastos, 1);

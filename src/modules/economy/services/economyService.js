@@ -1,4 +1,5 @@
 import { supabase } from "../../../supabaseClient";
+import { toLocalDateString } from "../../../utils/dates";
 
 /**
  * Servicio de Economía - Capa de acceso a datos de economía del hogar
@@ -31,8 +32,8 @@ export const economyService = {
       .from("economy_income")
       .select("amount")
       .eq("house_id", houseId)
-      .gte("date", monthStart.toISOString().split("T")[0])
-      .lte("date", monthEnd.toISOString().split("T")[0]);
+      .gte("date", toLocalDateString(monthStart))
+      .lte("date", toLocalDateString(monthEnd));
 
     if (error) console.error("Error fetching income:", error);
     return data?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
@@ -53,8 +54,8 @@ export const economyService = {
       .from("economy_expenses")
       .select("amount")
       .eq("house_id", houseId)
-      .gte("date", monthStart.toISOString().split("T")[0])
-      .lte("date", monthEnd.toISOString().split("T")[0]);
+      .gte("date", toLocalDateString(monthStart))
+      .lte("date", toLocalDateString(monthEnd));
 
     if (error) console.error("Error fetching expenses:", error);
     return data?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
@@ -74,8 +75,8 @@ export const economyService = {
       .from("economy_expenses")
       .select("amount, category")
       .eq("house_id", houseId)
-      .gte("date", monthStart.toISOString().split("T")[0])
-      .lte("date", monthEnd.toISOString().split("T")[0]);
+      .gte("date", toLocalDateString(monthStart))
+      .lte("date", toLocalDateString(monthEnd));
 
     if (error) console.error("Error fetching expenses by category:", error);
 
@@ -209,7 +210,7 @@ export const economyService = {
   async markBillAsPaid(billId) {
     return this.updateBill(billId, {
       status: "paid",
-      paid_date: new Date().toISOString().split("T")[0],
+      paid_date: toLocalDateString(new Date()),
     });
   },
 

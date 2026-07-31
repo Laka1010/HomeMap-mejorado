@@ -3,6 +3,7 @@ import { Plus, Target, Trash2 } from "lucide-react";
 import { economyGoalsService } from "./services/economyGoalsService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
+import { normalizeText } from "../../utils/textMatch";
 
 /**
  * Objetivos económicos: límite de gasto por categoría o ahorro objetivo.
@@ -71,7 +72,7 @@ export function GoalsSection({ houseId, userId, expenseCategoryTotals, balance }
             <GoalRow
               key={goal.id}
               goal={goal}
-              current={goal.type === "spending_limit" ? (expenseCategoryTotals[goal.name] || 0) : Math.max(0, balance)}
+              current={goal.type === "spending_limit" ? (expenseCategoryTotals[normalizeText(goal.name)] || 0) : Math.max(0, balance)}
               onDelete={() => handleDelete(goal.id)}
               formatCurrency={formatCurrency}
               t={t}
