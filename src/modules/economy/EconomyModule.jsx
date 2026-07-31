@@ -5,7 +5,7 @@ import MovementsSection from "./MovementsSection";
 import StatisticsSection from "./StatisticsSection";
 import { useTranslation } from "../../i18n";
 
-export function EconomyModule({ state, dispatch, openModal, currentHome, user }) {
+export function EconomyModule({ state, dispatch, openModal, currentHome, user, refreshToken }) {
   const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState("overview");
   const [movementsType, setMovementsType] = useState("expenses");
@@ -68,7 +68,7 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user })
 
       {/* Contenido por página */}
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "16px 0" }}>
-        <div key={currentPage} className="hm-fade-in">
+        <div key={`${currentPage}:${refreshToken}`} className="hm-fade-in">
           {currentPage === "overview" && (
             <EconomyOverview currentHome={currentHome} openModal={openModal} goToPage={goToPage} activity={state?.activity} user={user} />
           )}

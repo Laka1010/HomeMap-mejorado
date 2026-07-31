@@ -4,6 +4,7 @@ import { economyGoalsService } from "./services/economyGoalsService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { normalizeText } from "../../utils/textMatch";
+import { EXPENSE_CATEGORIES } from "./economyCategories";
 
 /**
  * Objetivos económicos: límite de gasto por categoría o ahorro objetivo.
@@ -120,7 +121,7 @@ function GoalRow({ goal, current, onDelete, formatCurrency, t }) {
 function AddGoalModal({ onCreate, onClose }) {
   const { t } = useTranslation();
   const [type, setType] = useState("spending_limit");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -128,14 +129,13 @@ function AddGoalModal({ onCreate, onClose }) {
   const handleSubmit = async () => {
     const targetAmount = parseFloat(amount);
     if (!targetAmount || targetAmount <= 0) return;
-    if (type === "spending_limit" && !category.trim()) return;
 
     setSaving(true);
     setError("");
     try {
       await onCreate({
         type,
-        name: type === "spending_limit" ? category.trim() : t("goals.savingsName"),
+        name: type === "spending_limit" ? category : t("goals.savingsName"),
         targetAmount,
       });
     } catch (err) {
@@ -174,8 +174,9 @@ function AddGoalModal({ onCreate, onClose }) {
           {type === "spending_limit" && (
             <>
               <label className="hm-label">{t("goals.categoryLabel")}</label>
-              <input className="hm-input" placeholder={t("goals.categoryPlaceholder")} value={category} onChange={(e) => setCategory(e.target.value)} />
-              <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "6px 0 0" }}>{t("goals.categoryHint")}</p>
+              <select className="hm-input" value={category} onChange={(e) => setCategory(e.target.value)}>
+                {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </>
           )}
 

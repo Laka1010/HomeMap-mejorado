@@ -63,6 +63,7 @@ import { NotificationCenter } from "./components/NotificationCenter";
 import { evaluateNotifications } from "./notifications/engine";
 import { buildNotificationActionHandlers } from "./notifications/notificationActions";
 import { PRIORITY_LEVELS } from "./modules/shopping/shoppingMeta";
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "./modules/economy/economyCategories";
 import { normalizeText, fuzzyMatch, fuzzyMatchAny } from "./utils/textMatch";
 import { ActionCenter } from "./components/ActionCenter";
 import { GlobalSearchModal } from "./modules/search/GlobalSearchModal";
@@ -994,8 +995,10 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
   const [category, setCategory] = useState("");
   const isExpense = type === "expense";
 
+  const categoryOptions = isExpense ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+
   const submit = () => {
-    const payload = { name: name.trim(), amount: parseFloat(amount) || 0, category: category.trim() || "Otros" };
+    const payload = { name: name.trim(), amount: parseFloat(amount) || 0, category: category || categoryOptions[0] };
     if (isExpense) onSaveExpense(payload);
     else onSaveIncome(payload);
   };
@@ -1005,7 +1008,7 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
       <div style={{ display: "flex", background: "var(--surface-alt)", borderRadius: 999, padding: 4, marginBottom: 16 }}>
         <button
           type="button"
-          onClick={() => setType("expense")}
+          onClick={() => { setType("expense"); setCategory(""); }}
           style={{
             flex: 1, padding: "10px 0", borderRadius: 999, border: "none", cursor: "pointer",
             fontWeight: 700, fontSize: 14,
@@ -1018,7 +1021,7 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
         </button>
         <button
           type="button"
-          onClick={() => setType("income")}
+          onClick={() => { setType("income"); setCategory(""); }}
           style={{
             flex: 1, padding: "10px 0", borderRadius: 999, border: "none", cursor: "pointer",
             fontWeight: 700, fontSize: 14,
@@ -1036,7 +1039,9 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
       <label className="hm-label" style={{ marginTop: 14 }}>{t("addMovement.amountLabel")}</label>
       <input className="hm-input" type="number" step="0.01" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
       <label className="hm-label" style={{ marginTop: 14 }}>{t("addMovement.categoryLabel")}</label>
-      <input className="hm-input" placeholder={isExpense ? t("addMovement.categoryPlaceholderExpense") : t("addMovement.categoryPlaceholderIncome")} value={category} onChange={(e) => setCategory(e.target.value)} />
+      <select className="hm-input" value={category || categoryOptions[0]} onChange={(e) => setCategory(e.target.value)}>
+        {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+      </select>
 
       <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" disabled={!name.trim()} onClick={submit}>
         {isExpense ? t("addMovement.registerExpense") : t("addMovement.registerIncome")}
@@ -2267,6 +2272,17 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const [prefersDark, setPrefersDark] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null); // {title, message, onConfirm, onCancel}
   const [currencyLoading, setCurrencyLoading] = useState(false);
+  /**
+   * BillsSection/EconomyOverview/MovementsSection cargan sus datos en un
+   * useEffect propio que solo depende de currentHome.id: si se crea una
+   * factura/gasto/ingreso desde el modal rápido del botón flotante (fuera
+   * del árbol de esas pantallas) esas pantallas no se enteran y se quedan
+   * mostrando la lista vieja aunque el alta se haya guardado bien ("no
+   * puedo añadir facturas" era esto: sí se guardaban, pero no aparecían).
+   * Subir esta versión y pasarla a EconomyModule fuerza un remount de la
+   * pestaña de Economía activa, que vuelve a pedir los datos.
+   */
+  const [economyVersion, setEconomyVersion] = useState(0);
   const noticeTimerRef = useRef(null);
 
   useEffect(() => {
@@ -3195,6 +3211,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   };
 
   const addBill = (b) => {
+    setEconomyVersion((v) => v + 1);
     // Se genera aquí (en vez de dejar que la DB use su default) para poder
     // enlazar ya mismo esta entrada de actividad con la factura, antes de
     // que exista la fila — así una notificación futura de esa factura
@@ -3218,6 +3235,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   };
 
   const addExpense = (e) => {
+    setEconomyVersion((v) => v + 1);
     showNotice(t("toast.expenseRegistered", { name: e.name || (e.amount ? formatAmount(e.amount) : '') }));
     closeModal();
     economyService.createExpense({
@@ -3234,6 +3252,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   };
 
   const addIncome = (inc) => {
+    setEconomyVersion((v) => v + 1);
     showNotice(t("toast.incomeRegistered", { name: inc.name || (inc.amount ? formatAmount(inc.amount) : '') }));
     closeModal();
     economyService.createIncome({
@@ -3524,7 +3543,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             )}
 
             {/* 💰 ECONOMÍA - Bills and Finance (solo admin/adult; RLS lo aplica también en el servidor) */}
-            {route.tab === "economia" && canSeeEconomy && <Suspense fallback={null}><EconomyModule state={state} dispatch={dispatch} openModal={openModal} currentHome={currentHome} user={user} /></Suspense>}
+            {route.tab === "economia" && canSeeEconomy && <Suspense fallback={null}><EconomyModule state={state} dispatch={dispatch} openModal={openModal} currentHome={currentHome} user={user} refreshToken={economyVersion} /></Suspense>}
             {route.tab === "economia" && !canSeeEconomy && (
               <div className="hm-card hm-card--p24 hm-card--center">
                 <ShieldCheck size={26} style={{ color: "var(--accent)", marginBottom: 10 }} />
@@ -3873,7 +3892,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.amountLabel")}</label>
           <input className="hm-input" type="number" placeholder="0.00" id="ac-exp-amount" defaultValue={modal.payload?.amount || ""} />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.categoryLabel")}</label>
-          <input className="hm-input" placeholder={t("quickAdd.categoryExpensePlaceholder")} id="ac-exp-cat" defaultValue={modal.payload?.category || ""} />
+          <select className="hm-input" id="ac-exp-cat" defaultValue={EXPENSE_CATEGORIES.includes(modal.payload?.category) ? modal.payload.category : EXPENSE_CATEGORIES[0]}>
+            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
             <button className="hm-btn hm-btn-primary" onClick={() => {
@@ -3893,7 +3914,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.amountLabel")}</label>
           <input className="hm-input" type="number" placeholder="0.00" id="ac-inc-amount" />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.categoryLabel")}</label>
-          <input className="hm-input" placeholder={t("quickAdd.categoryIncomePlaceholder")} id="ac-inc-cat" />
+          <select className="hm-input" id="ac-inc-cat" defaultValue={INCOME_CATEGORIES[0]}>
+            {INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
             <button className="hm-btn hm-btn-primary" onClick={() => {
