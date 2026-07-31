@@ -1,0 +1,9 @@
+{
+  "appId": "com.homemap.app",
+  "appName": "Haven",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx supabase *)",
+      "Bash(npx vite *)",
+      "Bash(node scripts/validate_palette.js \"#2E7D52,#B8790F,#9C3A28\" --mode light)",
+      "Bash(node scripts/validate_palette.js \"#1F5C8F,#2E7D52,#B8790F,#9C3A28\" --mode light)",
+      "Bash(node scripts/validate_palette.js \"#4E8FCB,#5FAE81,#D9A441,#CF6A50\" --mode dark)",
+      "Bash(node scripts/validate_palette.js \"#4E8FCB,#4C9A6E,#C9A227,#CF6A50\" --mode dark)",
+      "mcp__00b59277-9243-4340-9ccf-98580045d178__execute_sql",
+      "Bash(pwd && echo \"---\" && ls \"C:\\\\Users\\\\andre\\\\Claude\\\\homemap-mejorado\" 2>&1 | head -20 && echo \"---desktop---\" && ls \"C:\\\\Users\\\\andre\\\\Desktop\\\\homemap-mejorado\" 2>&1 | head -20)"
+    ]
+  }
+}

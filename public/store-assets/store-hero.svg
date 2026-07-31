@@ -1,0 +1,21 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="720" rx="32" fill="#F6F7F5"/>
+  <rect x="52" y="52" width="1176" height="616" rx="28" fill="white" stroke="#E3E5E0"/>
+  <rect x="102" y="110" width="132" height="132" rx="30" fill="#E7EEE7"/>
+  <path d="M134 205C134 157.6 173.6 118 221 118H233C280.4 118 320 157.6 320 205V207H134V205Z" fill="#5E8C61" fill-opacity="0.78"/>
+  <path d="M186 144C186 130.7 196.7 120 210 120H220C233.3 120 244 130.7 244 144V180H186V144Z" fill="#C98A3E" fill-opacity="0.66"/>
+  <text x="102" y="320" fill="#1F2937" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="700">Haven</text>
+  <text x="102" y="372" fill="#676D67" font-family="Arial, Helvetica, sans-serif" font-size="26">Your home, organized.</text>
+  <text x="102" y="420" fill="#676D67" font-family="Arial, Helvetica, sans-serif" font-size="22">Qué está donde, y cómo encontrarlo en segundos.</text>
+  <rect x="102" y="470" width="180" height="60" rx="16" fill="#5E8C61"/>
+  <text x="142" y="509" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700">App Store</text>
+  <rect x="302" y="470" width="180" height="60" rx="16" fill="#EEF0EC" stroke="#E3E5E0"/>
+  <text x="349" y="509" fill="#1B1D1F" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700">Play</text>
+  <rect x="780" y="120" width="360" height="420" rx="26" fill="#F7F8F6" stroke="#E3E5E0"/>
+  <rect x="816" y="164" width="288" height="332" rx="20" fill="white" stroke="#E3E5E0"/>
+  <rect x="848" y="198" width="224" height="18" rx="9" fill="#5E8C61" fill-opacity="0.18"/>
+  <rect x="848" y="236" width="160" height="14" rx="7" fill="#E3E5E0"/>
+  <rect x="848" y="282" width="224" height="70" rx="14" fill="#E7EEE7"/>
+  <rect x="848" y="372" width="224" height="16" rx="8" fill="#E3E5E0"/>
+  <rect x="848" y="410" width="168" height="16" rx="8" fill="#E3E5E0"/>
+</svg>

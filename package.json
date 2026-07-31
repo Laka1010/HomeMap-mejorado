@@ -1,0 +1,31 @@
+{
+  "name": "haven",
+  "private": true,
+  "version": "1.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:add:android": "npx cap add android",
+    "cap:add:ios": "npx cap add ios",
+    "android:release": "npm run cap:sync && powershell -ExecutionPolicy Bypass -NoProfile -Command \"cd android; .\\gradlew.bat assembleRelease\"",
+    "android:bundle": "npm run cap:sync && powershell -ExecutionPolicy Bypass -NoProfile -Command \"cd android; .\\gradlew.bat bundleRelease\"",
+    "ios:release": "npm run cap:sync && npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.2.1",
+    "@capacitor/cli": "^7.2.1",
+    "@capacitor/core": "^7.2.1",
+    "@capacitor/ios": "^7.2.1",
+    "@supabase/supabase-js": "^2.110.8",
+    "lucide-react": "^0.383.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.1"
+  }
+}

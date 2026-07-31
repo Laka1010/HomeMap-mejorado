@@ -1,0 +1,21 @@
+- [x] Sistema de Autenticación
+    - [x] Crear `src/components/auth/AuthView.jsx`
+    - [x] Implementar estados de Login y Registro
+- [x] Gestión de Casas (Multi-home)
+    - [x] Crear `src/components/home/HomeSelector.jsx`
+    - [x] Crear `src/components/home/ShareHomeModal.jsx`
+    - [x] Implementar lógica de códigos de invitación
+- [x] Refactorización de Estado y Datos
+    - [x] Modificar `App.jsx` para gestionar `currentUser` and `currentHomeId`
+    - [x] Adaptar `useHomeMapState` para persistencia multi-casa
+- [x] Interfaz de Usuario
+    - [x] Añadir selector de casa en la Sidebar
+    - [x] Integrar botón de "Compartir" en Ajustes
+- [x] Corrección de Errores y Mejoras
+    - [x] Corregir paso de props a componente `Ajustes`
+    - [x] Implementar migración de códigos de invitación para casas existentes
+    - [x] Corregir visibilidad de códigos en la interfaz
+- [x] Verificación Final
+    - [x] Probar flujo de registro e inicio de sesión
+    - [x] Probar creación y cambio de casa
+    - [x] Probar unión a casa mediante código
