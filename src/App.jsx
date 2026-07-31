@@ -2394,6 +2394,19 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     }
   };
 
+  const handleChangeMemberEconomyAccess = async (memberId, access) => {
+    if (!activeHome?.id) return;
+    try {
+      await houseService.setMemberEconomyAccess(activeHome.id, memberId, access);
+      await refreshHouseMembers();
+      showNotice(t("toast.economyAccessUpdated"));
+      setViewingMember((m) => (m ? { ...m, economy_override: access } : m));
+    } catch (error) {
+      console.error("Error changing member economy access:", error);
+      showNotice(error?.message || t("toast.economyAccessUpdateError"));
+    }
+  };
+
   const handleRemoveHouseMember = async (memberId) => {
     if (!activeHome?.id) return;
     try {
@@ -3698,6 +3711,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             viewerRole={currentHome?.myRole}
             viewerUserId={user?.id}
             onChangeRole={(memberId, role) => handleChangeMemberRole(memberId, role).then(() => setViewingMember((m) => (m ? { ...m, role } : m)))}
+            onChangeEconomyAccess={handleChangeMemberEconomyAccess}
             onTransferOwnership={handleTransferOwnership}
             onRemoveMember={confirmRemoveMemberFromDetail}
             onClose={() => setViewingMember(null)}

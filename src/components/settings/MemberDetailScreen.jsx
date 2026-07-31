@@ -21,6 +21,7 @@ export function MemberDetailScreen({
   viewerRole,
   viewerUserId,
   onChangeRole,
+  onChangeEconomyAccess,
   onTransferOwnership,
   onRemoveMember,
   onClose,
@@ -31,7 +32,9 @@ export function MemberDetailScreen({
 
   const isSelf = member?.user_id === viewerUserId;
   const viewerIsAdmin = viewerRole === "admin";
-  const canSeeEconomy = member?.role !== "child";
+  const economyOverride = member?.economy_override;
+  const canSeeEconomy = economyOverride ?? (member?.role !== "child");
+  const canEditEconomyAccess = viewerIsAdmin && !isSelf && member?.role !== "admin";
 
   useEffect(() => {
     let cancelled = false;
@@ -73,11 +76,17 @@ export function MemberDetailScreen({
   ];
 
   const permissions = [
-    { label: t("memberDetail.permManageHome"), granted: true },
-    { label: t("memberDetail.permEconomy"), granted: canSeeEconomy },
-    { label: t("memberDetail.permInvite"), granted: true },
-    { label: t("memberDetail.permManageMembers"), granted: member.role === "admin" },
+    { key: "manageHome", label: t("memberDetail.permManageHome"), granted: true },
+    { key: "economy", label: t("memberDetail.permEconomy"), granted: canSeeEconomy },
+    { key: "invite", label: t("memberDetail.permInvite"), granted: true },
+    { key: "manageMembers", label: t("memberDetail.permManageMembers"), granted: member.role === "admin" },
   ];
+
+  const economySelectValue = economyOverride === true ? "granted" : economyOverride === false ? "revoked" : "auto";
+  const handleEconomyAccessChange = (value) => {
+    const access = value === "auto" ? null : value === "granted";
+    onChangeEconomyAccess?.(member.user_id, access);
+  };
 
   const confirmTransfer = () => onTransferOwnership?.(member);
   const confirmRemove = () => onRemoveMember?.(member);
@@ -154,13 +163,28 @@ export function MemberDetailScreen({
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>{t("memberDetail.permissionsTitle")}</div>
             <div className="hm-card hm-card--p16" style={{ display: "grid", gap: 10 }}>
               {permissions.map((perm) => (
-                <div key={perm.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  {perm.granted ? (
-                    <Check size={16} style={{ color: "var(--success)", flexShrink: 0 }} />
-                  ) : (
-                    <X size={16} style={{ color: "var(--ink-soft)", flexShrink: 0 }} />
+                <div key={perm.key} style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {perm.granted ? (
+                      <Check size={16} style={{ color: "var(--success)", flexShrink: 0 }} />
+                    ) : (
+                      <X size={16} style={{ color: "var(--ink-soft)", flexShrink: 0 }} />
+                    )}
+                    <span style={{ fontSize: 13.5, color: perm.granted ? "var(--ink)" : "var(--ink-soft)" }}>{perm.label}</span>
+                  </div>
+                  {perm.key === "economy" && canEditEconomyAccess && (
+                    <select
+                      className="hm-input"
+                      style={{ width: "auto", fontSize: 12.5, padding: "4px 8px" }}
+                      value={economySelectValue}
+                      onChange={(e) => handleEconomyAccessChange(e.target.value)}
+                      aria-label={t("memberDetail.economyAccessAria", { name: member.name })}
+                    >
+                      <option value="auto">{t("memberDetail.economyAccessAuto")}</option>
+                      <option value="granted">{t("memberDetail.economyAccessGranted")}</option>
+                      <option value="revoked">{t("memberDetail.economyAccessRevoked")}</option>
+                    </select>
                   )}
-                  <span style={{ fontSize: 13.5, color: perm.granted ? "var(--ink)" : "var(--ink-soft)" }}>{perm.label}</span>
                 </div>
               ))}
             </div>

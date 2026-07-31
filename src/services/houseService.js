@@ -49,7 +49,7 @@ export const houseService = {
   async getHouseMembers(houseId) {
     const { data: members, error: membersError } = await supabase
       .from("home_members")
-      .select("house_id, user_id, role, joined_at")
+      .select("house_id, user_id, role, joined_at, economy_override")
       .eq("house_id", houseId)
       .order("joined_at", { ascending: true });
     if (membersError) throw membersError;
@@ -76,6 +76,16 @@ export const houseService = {
       p_house_id: houseId,
       p_user_id: userId,
       p_role: role,
+    });
+    if (error) throw error;
+  },
+
+  /** Concede (true), revoca (false) o vuelve a la regla por rol (null) el acceso a Economía de un miembro; solo el admin puede llamarlo. */
+  async setMemberEconomyAccess(houseId, userId, access) {
+    const { error } = await supabase.rpc("set_member_economy_access", {
+      p_house_id: houseId,
+      p_user_id: userId,
+      p_access: access,
     });
     if (error) throw error;
   },
