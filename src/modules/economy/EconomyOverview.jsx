@@ -6,15 +6,17 @@ import { useCurrency } from "../../currency";
 import { normalizeText } from "../../utils/textMatch";
 import { toLocalDateString } from "../../utils/dates";
 import { GoalsSection } from "./GoalsSection";
+import { AccountsSection } from "./AccountsSection";
 
 const ENTRY_ICONS = {
   "Regalos recibidos": Gift,
   "Suscripciones": Sparkles,
 };
 
-export function EconomyOverview({ currentHome, openModal, goToPage, activity, user }) {
+export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToPage, activity, user }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
+  const isHousehold = spaces?.find((s) => s.id === spaceId)?.type === "household";
   const [economics, setEconomics] = useState({
     balance: 0,
     ingresos: 0,
@@ -27,17 +29,16 @@ export function EconomyOverview({ currentHome, openModal, goToPage, activity, us
 
   useEffect(() => {
     loadEconomicsData();
-  }, [currentHome?.id]);
+  }, [spaceId, isHousehold]);
 
   const loadEconomicsData = async () => {
     setLoading(true);
     try {
-      if (!currentHome?.id) {
+      if (!spaceId) {
         setLoading(false);
         return;
       }
 
-      const houseId = currentHome.id;
       const today = new Date();
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
       const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -45,23 +46,27 @@ export function EconomyOverview({ currentHome, openModal, goToPage, activity, us
       const { data: incomeData } = await supabase
         .from("economy_income")
         .select("amount, name, category, date")
-        .eq("house_id", houseId)
+        .eq("financial_space_id", spaceId)
         .gte("date", toLocalDateString(monthStart))
         .lte("date", toLocalDateString(monthEnd));
 
       const { data: expensesData } = await supabase
         .from("economy_expenses")
         .select("amount, name, category, date")
-        .eq("house_id", houseId)
+        .eq("financial_space_id", spaceId)
         .gte("date", toLocalDateString(monthStart))
         .lte("date", toLocalDateString(monthEnd));
 
-      const { data: billsData } = await supabase
-        .from("economy_bills")
-        .select("*")
-        .eq("house_id", houseId)
-        .eq("status", "pending")
-        .order("due_date", { ascending: true });
+      // Las facturas solo existen en Household — nunca se mezclan con las
+      // estadísticas de Personal/Shared.
+      const { data: billsData } = isHousehold
+        ? await supabase
+            .from("economy_bills")
+            .select("*")
+            .eq("financial_space_id", spaceId)
+            .eq("status", "pending")
+            .order("due_date", { ascending: true })
+        : { data: [] };
 
       const totalIngresos = incomeData?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
       const totalGastos = expensesData?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
@@ -160,12 +165,16 @@ export function EconomyOverview({ currentHome, openModal, goToPage, activity, us
         </div>
       </div>
 
-      <GoalsSection
-        houseId={currentHome?.id}
-        userId={user?.id}
-        expenseCategoryTotals={expenseCategoryTotals}
-        balance={balance}
-      />
+      <AccountsSection spaceId={spaceId} spaces={spaces} userId={user?.id} />
+
+      {isHousehold && (
+        <GoalsSection
+          houseId={currentHome?.id}
+          userId={user?.id}
+          expenseCategoryTotals={expenseCategoryTotals}
+          balance={balance}
+        />
+      )}
 
       {/* RECENT ENTRIES */}
       <div className="hm-card" style={{ padding: 18 }}>
@@ -208,40 +217,42 @@ export function EconomyOverview({ currentHome, openModal, goToPage, activity, us
         )}
       </div>
 
-      {/* UPCOMING PAYMENTS */}
-      <div className="hm-card" style={{ padding: 18 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", color: "var(--ink-soft)", textTransform: "uppercase" }}>{t("economy.upcomingPayments")}</div>
-          <button className="hm-btn hm-btn-ghost" style={{ padding: "4px 6px", fontSize: 13, color: "var(--accent)", fontWeight: 700 }} onClick={() => goToPage && goToPage("bills")}>
-            {t("economy.viewAll")} <ChevronRight size={14} />
-          </button>
-        </div>
-
-        {upcomingBills.length === 0 ? (
-          <div style={{ padding: "16px 0", textAlign: "center", color: "var(--ink-soft)", fontSize: 13.5 }}>{t("economy.noPendingBills")}</div>
-        ) : (
-          <div>
-            {upcomingBills.map((bill, idx) => {
-              const daysUntil = getDaysUntilDue(bill.due_date);
-              const overdue = daysUntil < 0;
-              return (
-                <div key={bill.id || idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: idx < upcomingBills.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <div style={{ width: 38, height: 38, borderRadius: "50%", background: overdue ? "var(--danger-soft)" : "var(--surface-alt)", display: "grid", placeItems: "center", flexShrink: 0, color: overdue ? "var(--danger)" : "var(--ink-soft)" }}>
-                    <Calendar size={17} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14.5, fontWeight: 700 }}>{bill.name}</div>
-                    <div style={{ fontSize: 12, color: overdue ? "var(--danger)" : "var(--ink-soft)", marginTop: 1 }}>
-                      {overdue ? t("economy.overdueDays", { days: Math.abs(daysUntil) }) : t("economy.dueInDays", { days: daysUntil })}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 14.5, fontWeight: 700 }}>{formatCurrency(bill.amount)}</div>
-                </div>
-              );
-            })}
+      {/* UPCOMING PAYMENTS — solo existen en Household */}
+      {isHousehold && (
+        <div className="hm-card" style={{ padding: 18 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", color: "var(--ink-soft)", textTransform: "uppercase" }}>{t("economy.upcomingPayments")}</div>
+            <button className="hm-btn hm-btn-ghost" style={{ padding: "4px 6px", fontSize: 13, color: "var(--accent)", fontWeight: 700 }} onClick={() => goToPage && goToPage("bills")}>
+              {t("economy.viewAll")} <ChevronRight size={14} />
+            </button>
           </div>
-        )}
-      </div>
+
+          {upcomingBills.length === 0 ? (
+            <div style={{ padding: "16px 0", textAlign: "center", color: "var(--ink-soft)", fontSize: 13.5 }}>{t("economy.noPendingBills")}</div>
+          ) : (
+            <div>
+              {upcomingBills.map((bill, idx) => {
+                const daysUntil = getDaysUntilDue(bill.due_date);
+                const overdue = daysUntil < 0;
+                return (
+                  <div key={bill.id || idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: idx < upcomingBills.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <div style={{ width: 38, height: 38, borderRadius: "50%", background: overdue ? "var(--danger-soft)" : "var(--surface-alt)", display: "grid", placeItems: "center", flexShrink: 0, color: overdue ? "var(--danger)" : "var(--ink-soft)" }}>
+                      <Calendar size={17} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14.5, fontWeight: 700 }}>{bill.name}</div>
+                      <div style={{ fontSize: 12, color: overdue ? "var(--danger)" : "var(--ink-soft)", marginTop: 1 }}>
+                        {overdue ? t("economy.overdueDays", { days: Math.abs(daysUntil) }) : t("economy.dueInDays", { days: daysUntil })}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 14.5, fontWeight: 700 }}>{formatCurrency(bill.amount)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

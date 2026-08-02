@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import { economyService } from "./services/economyService";
 import { Plus, Calendar, CheckCircle2, Star } from "lucide-react";
 import { FavoriteStar } from "../../components/FavoriteStar";
+import { PayBillModal } from "./PayBillModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 
-export default function BillsSection({ currentHome, openModal, state, dispatch, user }) {
+export default function BillsSection({ currentHome, spaceId, spaces, openModal, state, dispatch, user }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const FREQUENCY_LABELS = {
@@ -26,22 +27,23 @@ export default function BillsSection({ currentHome, openModal, state, dispatch, 
   const [editValues, setEditValues] = useState({});
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [payingBill, setPayingBill] = useState(null);
 
   useEffect(() => {
     loadBills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, currentHome?.id]);
+  }, [filter, spaceId]);
 
   const loadBills = async () => {
-    if (!currentHome?.id) return;
+    if (!spaceId) return;
     setLoading(true);
     try {
       let data = [];
       if (filter === "pending") {
-        data = await economyService.getPendingBills(currentHome.id);
+        data = await economyService.getPendingBillsBySpace(spaceId);
       } else {
         // load all and filter locally for upcoming/paid
-        data = await economyService.getAllBills(currentHome.id);
+        data = await economyService.getAllBillsBySpace(spaceId);
       }
 
       if (filter === "upcoming") {
@@ -95,29 +97,17 @@ export default function BillsSection({ currentHome, openModal, state, dispatch, 
     setActionError("");
   };
 
-  const markAsPaid = async (bill) => {
-    try {
-      await economyService.markBillAsPaid(bill.id);
-      // optimistic update in dispatch if available
-      if (dispatch) {
-        dispatch((s) => ({ ...s, bills: (s.bills || []).map((b) => (b.id === bill.id ? { ...b, status: "paid", paid_date: new Date().toISOString().slice(0,10) } : b)) }));
-      }
-      // Reflect the payment as an expense so it counts in the economy summary/movements.
-      if (currentHome?.id && user?.id) {
-        economyService.createExpense({
-          house_id: currentHome.id,
-          created_by: user.id,
-          name: bill.name,
-          amount: bill.amount,
-          category: bill.category || "Otros",
-        }).catch((err) => console.error("Error registrando el gasto de la factura:", err));
-      }
-      await loadBills();
-      closeDetail();
-    } catch (err) {
-      console.error(err);
-      setActionError(t("bills.markPaidError"));
+  // El pago en sí (elegir cuenta o contribución) lo gestiona PayBillModal
+  // llamando a economyService.payBillFromAccount/payBillViaContribution
+  // (un único RPC atómico: crea el gasto y marca la factura pagada). Aquí
+  // solo se refresca la lista y el estado optimista al terminar.
+  const handleBillPaid = async () => {
+    if (dispatch && payingBill) {
+      dispatch((s) => ({ ...s, bills: (s.bills || []).map((b) => (b.id === payingBill.id ? { ...b, status: "paid", paid_date: new Date().toISOString().slice(0, 10) } : b)) }));
     }
+    setPayingBill(null);
+    await loadBills();
+    closeDetail();
   };
 
   const toggleFavorite = async (bill) => {
@@ -249,7 +239,7 @@ export default function BillsSection({ currentHome, openModal, state, dispatch, 
                 <div style={{ fontSize: 14.5, fontWeight: 700, whiteSpace: "nowrap" }}>{formatCurrency(bill.amount)}</div>
                 {bill.status === "pending" && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); markAsPaid(bill); }}
+                    onClick={(e) => { e.stopPropagation(); setPayingBill(bill); }}
                     style={{ background: "none", border: "none", color: "var(--accent)", fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", padding: 0 }}
                   >
                     {t("bills.markPaid")}
@@ -314,7 +304,7 @@ export default function BillsSection({ currentHome, openModal, state, dispatch, 
                   {!confirmingDelete ? (
                     <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                       {selectedBill.status === "pending" && (
-                        <button className="hm-btn hm-btn-primary" onClick={() => markAsPaid(selectedBill)}>{t("bills.markAsPaidButton")}</button>
+                        <button className="hm-btn hm-btn-primary" onClick={() => setPayingBill(selectedBill)}>{t("bills.markAsPaidButton")}</button>
                       )}
                       <button className="hm-btn hm-btn-soft" onClick={() => setIsEditing(true)}>{t("bills.edit")}</button>
                       <button className="hm-btn hm-btn-ghost" onClick={() => { setActionError(""); setConfirmingDelete(true); }} style={{ color: 'var(--danger)' }}>{t("bills.delete")}</button>
@@ -365,6 +355,16 @@ export default function BillsSection({ currentHome, openModal, state, dispatch, 
             </div>
           </div>
         </div>
+      )}
+
+      {payingBill && (
+        <PayBillModal
+          bill={payingBill}
+          spaceId={spaceId}
+          spaces={spaces}
+          onClose={() => setPayingBill(null)}
+          onPaid={handleBillPaid}
+        />
       )}
     </div>
   );

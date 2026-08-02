@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { PiggyBank, TrendingDown, Receipt, CheckCircle2, Clock, AlertTriangle, OctagonAlert } from "lucide-react";
+import { PiggyBank, TrendingDown, Receipt, CheckCircle2, Clock, AlertTriangle, OctagonAlert, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { economyService } from "./services/economyService";
+import { accountsService } from "./services/accountsService";
+import { transfersService } from "./services/transfersService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 
@@ -21,33 +23,51 @@ function lastNMonths(n) {
   return months;
 }
 
-export default function StatisticsSection({ currentHome }) {
+export default function StatisticsSection({ spaceId }) {
   const { t } = useTranslation();
   const { formatRounded: formatCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
   const [income, setIncome] = useState([]);
   const [bills, setBills] = useState([]);
+  const [contributions, setContributions] = useState({ received: 0, sent: 0 });
 
+  // Siempre filtrado por el Space activo (nunca por house_id directamente)
+  // — así Personal/Shared/Household nunca mezclan cifras entre sí. Las
+  // facturas solo existen en Household; para Personal/Shared esta consulta
+  // simplemente vuelve vacía.
   useEffect(() => {
     let cancelled = false;
-    if (!currentHome?.id) return;
+    if (!spaceId) return;
     setLoading(true);
     Promise.all([
-      economyService.getAllExpenses(currentHome.id, 500),
-      economyService.getAllIncome(currentHome.id, 500),
-      economyService.getAllBills(currentHome.id),
+      economyService.getAllExpensesBySpace(spaceId, 500),
+      economyService.getAllIncomeBySpace(spaceId, 500),
+      economyService.getAllBillsBySpace(spaceId),
+      accountsService.listAccounts(spaceId),
+      transfersService.listTransfersForSpace(spaceId),
     ])
-      .then(([exp, inc, bl]) => {
+      .then(([exp, inc, bl, accounts, transfers]) => {
         if (cancelled) return;
         setExpenses(exp || []);
         setIncome(inc || []);
         setBills(bl || []);
+
+        // Las contribuciones nunca se suman a ingresos/gastos (evita
+        // contarlas dos veces: ya viven en su propio ledger) — se muestran
+        // como una cifra aparte, separando lo que este Space ha recibido de
+        // otros Spaces de lo que ha aportado a otros.
+        const ownAccountIds = new Set((accounts || []).map((a) => a.id));
+        const contributionRows = (transfers || []).filter((tr) => tr.kind === "contribution");
+        setContributions({
+          received: contributionRows.filter((tr) => ownAccountIds.has(tr.to_account_id)).reduce((sum, tr) => sum + parseFloat(tr.amount || 0), 0),
+          sent: contributionRows.filter((tr) => ownAccountIds.has(tr.from_account_id)).reduce((sum, tr) => sum + parseFloat(tr.amount || 0), 0),
+        });
       })
       .catch((err) => console.error("Error loading statistics:", err))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [currentHome?.id]);
+  }, [spaceId]);
 
   const months = useMemo(() => lastNMonths(6), []);
   const currentMonthKey = months[months.length - 1]?.key;
@@ -104,7 +124,7 @@ export default function StatisticsSection({ currentHome }) {
     return <div style={{ textAlign: "center", padding: 32, color: "var(--ink-soft)" }}>{t("statistics.loading")}</div>;
   }
 
-  const hasAnyData = expenses.length > 0 || income.length > 0 || bills.length > 0;
+  const hasAnyData = expenses.length > 0 || income.length > 0 || bills.length > 0 || contributions.received > 0 || contributions.sent > 0;
   if (!hasAnyData) {
     return (
       <div style={{ textAlign: "center", padding: 32, color: "var(--ink-soft)" }}>
@@ -225,6 +245,28 @@ export default function StatisticsSection({ currentHome }) {
           </>
         )}
       </div>
+
+      {/* Contribuciones — ledger aparte, nunca sumado a ingresos/gastos */}
+      {(contributions.received > 0 || contributions.sent > 0) && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+          {contributions.received > 0 && (
+            <div className="hm-card" style={{ padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--ink-soft)", fontSize: 12, fontWeight: 700 }}>
+                <ArrowDownCircle size={15} style={{ color: "var(--success)" }} /> {t("statistics.contributionsReceivedLabel")}
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, marginTop: 6, color: "var(--success)" }}>{formatCurrency(contributions.received)}</div>
+            </div>
+          )}
+          {contributions.sent > 0 && (
+            <div className="hm-card" style={{ padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--ink-soft)", fontSize: 12, fontWeight: 700 }}>
+                <ArrowUpCircle size={15} style={{ color: "var(--accent)" }} /> {t("statistics.contributionsSentLabel")}
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, marginTop: 6 }}>{formatCurrency(contributions.sent)}</div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

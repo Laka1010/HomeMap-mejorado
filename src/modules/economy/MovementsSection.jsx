@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, TrendingUp, TrendingDown } from "lucide-react";
 import { economyService } from "./services/economyService";
+import { accountsService } from "./services/accountsService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "./economyCategories";
 
-export default function MovementsSection({ currentHome, openModal, initialType = "expenses" }) {
+export default function MovementsSection({ currentHome, spaceId, user, initialType = "expenses" }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const [type, setType] = useState(initialType);
   const [period, setPeriod] = useState("thisMonth"); // thisMonth | lastMonth | all
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -26,10 +30,15 @@ export default function MovementsSection({ currentHome, openModal, initialType =
   useEffect(() => {
     loadItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, period, currentHome?.id]);
+  }, [type, period, spaceId]);
+
+  useEffect(() => {
+    if (!spaceId) return;
+    accountsService.listAccounts(spaceId).then((list) => setAccounts(list.filter((a) => a.status === "active"))).catch(() => {});
+  }, [spaceId]);
 
   const loadItems = async () => {
-    if (!currentHome?.id) return;
+    if (!spaceId) return;
     // Al cambiar de tipo (gastos/ingresos) los items antiguos ya no aplican
     // (icono/color/signo dependen de `type`), así que se limpian antes de
     // pedir los nuevos. Al cambiar solo de periodo, se dejan visibles
@@ -42,8 +51,8 @@ export default function MovementsSection({ currentHome, openModal, initialType =
     setLoading(true);
     try {
       const data = type === "expenses"
-        ? await economyService.getAllExpenses(currentHome.id, 200)
-        : await economyService.getAllIncome(currentHome.id, 200);
+        ? await economyService.getAllExpensesBySpace(spaceId, 200)
+        : await economyService.getAllIncomeBySpace(spaceId, 200);
 
       const filtered = filterByPeriod(data || [], period);
       setItems(filtered);
@@ -72,7 +81,7 @@ export default function MovementsSection({ currentHome, openModal, initialType =
 
   const openDetail = (item) => {
     setSelected(item);
-    setEditValues({ name: item.name, amount: item.amount, category: item.category, date: item.date, notes: item.notes });
+    setEditValues({ name: item.name, amount: item.amount, category: item.category, date: item.date, notes: item.notes, account_id: item.account_id });
     setIsEditing(false);
     setConfirmingDelete(false);
     setActionError("");
@@ -95,6 +104,7 @@ export default function MovementsSection({ currentHome, openModal, initialType =
       category: editValues.category,
       date: editValues.date,
       notes: editValues.notes,
+      account_id: editValues.account_id,
     };
     try {
       if (type === "expenses") await economyService.updateExpense(selected.id, updates);
@@ -167,7 +177,7 @@ export default function MovementsSection({ currentHome, openModal, initialType =
         </div>
         <button
           className="hm-btn hm-btn-primary hm-btn--compact"
-          onClick={() => openModal && openModal(type === "expenses" ? "addExpense" : "addIncome")}
+          onClick={() => setShowAdd(true)}
         >
           <Plus size={15} /> {t("movements.add")}
         </button>
@@ -278,6 +288,15 @@ export default function MovementsSection({ currentHome, openModal, initialType =
                   <label className="hm-label">{t("movements.categoryLabel")}</label>
                   <input className="hm-input" value={editValues.category || ""} onChange={(e) => setEditValues({ ...editValues, category: e.target.value })} />
 
+                  {accounts.length > 0 && (
+                    <>
+                      <label className="hm-label">{t("accounts.title")}</label>
+                      <select className="hm-input" value={editValues.account_id || ""} onChange={(e) => setEditValues({ ...editValues, account_id: e.target.value })}>
+                        {accounts.map((a) => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
+                      </select>
+                    </>
+                  )}
+
                   <label className="hm-label">{t("movements.notesLabel")}</label>
                   <textarea className="hm-input" value={editValues.notes || ""} onChange={(e) => setEditValues({ ...editValues, notes: e.target.value })} />
 
@@ -291,6 +310,102 @@ export default function MovementsSection({ currentHome, openModal, initialType =
           </div>
         </div>
       )}
+
+      {showAdd && (
+        <AddMovementModal
+          type={type}
+          spaceId={spaceId}
+          userId={user?.id}
+          accounts={accounts}
+          onClose={() => setShowAdd(false)}
+          onCreated={() => { setShowAdd(false); loadItems(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated }) {
+  const { t } = useTranslation();
+  const categories = type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState(categories[0]);
+  const [accountId, setAccountId] = useState(accounts.find((a) => a.is_default)?.id || accounts[0]?.id || "");
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    const parsedAmount = parseFloat(amount);
+    if (!name.trim() || !parsedAmount || parsedAmount <= 0) return;
+
+    setSaving(true);
+    setError("");
+    const payload = {
+      financial_space_id: spaceId,
+      account_id: accountId || undefined,
+      created_by: userId,
+      performed_by: userId,
+      name: name.trim(),
+      amount: parsedAmount,
+      category,
+      notes: notes.trim() || null,
+    };
+
+    try {
+      if (type === "expenses") await economyService.createExpense(payload);
+      else await economyService.createIncome(payload);
+      onCreated();
+    } catch (err) {
+      console.error("Error creating movement:", err);
+      setError(t("movements.updateError"));
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="hm-modal-overlay" onClick={onClose}>
+      <div className="hm-modal hm-scroll" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+        <div className="hm-modal-handle" />
+        <div className="hm-modal-header">
+          <button className="hm-modal-close" onClick={onClose} aria-label={t("movements.cancel")}>✕</button>
+          <h3 className="hm-display hm-modal-title">{t("movements.add")}</h3>
+        </div>
+        <div className="hm-modal-body">
+          <label className="hm-label">{t("movements.nameLabel")}</label>
+          <input className="hm-input" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+
+          <label className="hm-label" style={{ marginTop: 14 }}>{t("movements.amountLabel")}</label>
+          <input type="number" className="hm-input" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+
+          <label className="hm-label" style={{ marginTop: 14 }}>{t("movements.categoryLabel")}</label>
+          <select className="hm-input" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+
+          {accounts.length > 0 && (
+            <>
+              <label className="hm-label" style={{ marginTop: 14 }}>{t("accounts.title")}</label>
+              <select className="hm-input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                {accounts.map((a) => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
+              </select>
+            </>
+          )}
+
+          <label className="hm-label" style={{ marginTop: 14 }}>{t("movements.notesLabel")}</label>
+          <textarea className="hm-input" value={notes} onChange={(e) => setNotes(e.target.value)} />
+
+          {error && <p style={{ fontSize: 12.5, color: "var(--danger)", margin: "10px 0 0" }}>{error}</p>}
+
+          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+            <button className="hm-btn hm-btn-soft" onClick={onClose}>{t("movements.cancel")}</button>
+            <button className="hm-btn hm-btn-primary" onClick={handleSubmit} disabled={saving || !name.trim() || !amount}>
+              {t("movements.save")}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

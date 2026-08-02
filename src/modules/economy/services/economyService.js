@@ -170,6 +170,67 @@ export const economyService = {
     return data || [];
   },
 
+  // ==========================================================================
+  // Variantes por Financial Space — usadas por StatisticsSection/MovementsSection
+  // /BillsSection dentro del módulo Economía, donde el usuario puede estar
+  // viendo Personal/Shared, no solo Household. Los métodos *ByHouseId de
+  // arriba se mantienen intactos (con su mismo contrato house_id) porque los
+  // consumen también useDashboardEconomy, CalendarModule, useGlobalSearch y
+  // notifications/engine — esos sí deben seguir siendo siempre el Household,
+  // nunca el Space que el usuario tenga seleccionado en el switcher.
+  // ==========================================================================
+
+  /** @param {string} spaceId @returns {Promise<Array>} */
+  async getAllBillsBySpace(spaceId) {
+    const { data, error } = await supabase
+      .from("economy_bills")
+      .select("*")
+      .eq("financial_space_id", spaceId)
+      .order("due_date", { ascending: true });
+
+    if (error) console.error("Error fetching bills by space:", error);
+    return data || [];
+  },
+
+  /** @param {string} spaceId @returns {Promise<Array>} */
+  async getPendingBillsBySpace(spaceId) {
+    const { data, error } = await supabase
+      .from("economy_bills")
+      .select("*")
+      .eq("financial_space_id", spaceId)
+      .eq("status", "pending")
+      .order("due_date", { ascending: true });
+
+    if (error) console.error("Error fetching pending bills by space:", error);
+    return data || [];
+  },
+
+  /** @param {string} spaceId @param {number} limit @returns {Promise<Array>} */
+  async getAllExpensesBySpace(spaceId, limit = 50) {
+    const { data, error } = await supabase
+      .from("economy_expenses")
+      .select("*")
+      .eq("financial_space_id", spaceId)
+      .order("date", { ascending: false })
+      .limit(limit);
+
+    if (error) console.error("Error fetching expenses by space:", error);
+    return data || [];
+  },
+
+  /** @param {string} spaceId @param {number} limit @returns {Promise<Array>} */
+  async getAllIncomeBySpace(spaceId, limit = 50) {
+    const { data, error } = await supabase
+      .from("economy_income")
+      .select("*")
+      .eq("financial_space_id", spaceId)
+      .order("date", { ascending: false })
+      .limit(limit);
+
+    if (error) console.error("Error fetching income by space:", error);
+    return data || [];
+  },
+
   /**
    * Crea una nueva factura
    * @param {Object} bill - Datos de la factura
@@ -321,5 +382,39 @@ export const economyService = {
 
     if (error) console.error("Error deleting income:", error);
     return !error;
+  },
+
+  /**
+   * Paga una factura desde una cuenta del propio Household (crea el gasto y
+   * marca la factura pagada de forma atómica en la base de datos).
+   * A diferencia del resto de este servicio, este método SÍ lanza en error
+   * (contrato `throw`, no `console.error` + null) — es código nuevo, no se
+   * arrastra el bug ya conocido del resto de `economyService`.
+   * @param {string} billId
+   * @param {string} accountId - Debe pertenecer al mismo Financial Space que la factura
+   */
+  async payBillFromAccount(billId, accountId) {
+    const { data, error } = await supabase.rpc("pay_bill_from_account", {
+      p_bill_id: billId,
+      p_account_id: accountId,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * Paga una factura del Household mediante una contribución inmediata desde
+   * cualquier cuenta accesible del usuario (Personal, Shared o del propio
+   * Household). Contrato `throw`, ver nota de `payBillFromAccount`.
+   * @param {string} billId
+   * @param {string} fromAccountId
+   */
+  async payBillViaContribution(billId, fromAccountId) {
+    const { data, error } = await supabase.rpc("pay_bill_via_contribution", {
+      p_bill_id: billId,
+      p_from_account_id: fromAccountId,
+    });
+    if (error) throw error;
+    return data;
   },
 };
