@@ -60,4 +60,17 @@ export const accountsService = {
   async reactivateAccount(accountId) {
     return this.updateAccount(accountId, { status: "active" });
   },
+
+  /**
+   * Borrado real (no archivado): la cuenta desaparece y, por el
+   * `on delete cascade` de la migración, también sus gastos/ingresos y
+   * transferencias asociadas — es una acción destructiva e irreversible,
+   * de ahí la confirmación explícita en `AccountModal`. La cuenta por
+   * defecto de un Space no se puede borrar por aquí (ver comprobación en
+   * `AccountModal`, que ni siquiera muestra el botón para ella).
+   */
+  async deleteAccount(accountId) {
+    const { error } = await supabase.from("financial_accounts").delete().eq("id", accountId);
+    if (error) throw error;
+  },
 };

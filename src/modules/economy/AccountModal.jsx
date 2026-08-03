@@ -21,7 +21,7 @@ const COLOR_SWATCHES = ["#6366F1", "#22C55E", "#EC4899", "#F59E0B", "#06B6D4", "
  * solo al crear, saldo inicial — el saldo real ya no se edita a mano una vez
  * creada la cuenta, lo mantienen los triggers de la base de datos.
  */
-export function AccountModal({ spaceId, userId, account, onClose, onSaved }) {
+export function AccountModal({ spaceId, userId, account, onClose, onSaved, onDeleted }) {
   const { t } = useTranslation();
   const isEdit = !!account;
   const [name, setName] = useState(account?.name || "");
@@ -32,6 +32,9 @@ export function AccountModal({ spaceId, userId, account, onClose, onSaved }) {
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const currency = getCurrenciesList().find((c) => c.code === currencyCode);
 
@@ -64,6 +67,19 @@ export function AccountModal({ spaceId, userId, account, onClose, onSaved }) {
     } catch (err) {
       setError(t(isEdit ? "accounts.updateError" : "accounts.createError"));
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await accountsService.deleteAccount(account.id);
+      onDeleted ? onDeleted() : onSaved(null);
+    } catch (err) {
+      setDeleteError(t("accounts.deleteError"));
+      setDeleting(false);
+      setConfirmingDelete(false);
     }
   };
 
@@ -160,6 +176,32 @@ export function AccountModal({ spaceId, userId, account, onClose, onSaved }) {
               {t("accounts.save")}
             </button>
           </div>
+
+          {isEdit && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+              {account.is_default ? (
+                <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: 0 }}>{t("accounts.cannotDeleteDefault")}</p>
+              ) : !confirmingDelete ? (
+                <button
+                  className="hm-btn hm-btn-ghost"
+                  style={{ color: "var(--danger)" }}
+                  onClick={() => { setDeleteError(""); setConfirmingDelete(true); }}
+                >
+                  {t("accounts.delete")}
+                </button>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--danger-soft)", padding: 12, borderRadius: 12 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{t("accounts.confirmDelete")} {t("accounts.cannotUndo")}</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="hm-btn hm-btn-soft" onClick={() => setConfirmingDelete(false)}>{t("accounts.cancel")}</button>
+                    <button className="hm-btn hm-btn--danger" onClick={handleDelete} disabled={deleting}>{t("accounts.confirmYesDelete")}</button>
+                  </div>
+                </div>
+              )}
+
+              {deleteError && <p style={{ fontSize: 12.5, color: "var(--danger)", margin: "10px 0 0" }}>{deleteError}</p>}
+            </div>
+          )}
         </div>
       </div>
 
