@@ -32,8 +32,13 @@ export function MemberDetailScreen({
 
   const isSelf = member?.user_id === viewerUserId;
   const viewerIsAdmin = viewerRole === "admin";
-  const economyOverride = member?.economy_override;
-  const canSeeEconomy = economyOverride ?? (member?.role !== "child");
+  // economy_role: null = automático (según rol de casa), 'none' = sin acceso
+  // explícito, 'contributor'/'manager' = acceso explícito a ese nivel. Ver
+  // get_workspace_role() en la base de datos — este selector solo cubre el
+  // caso de uso real (dar/quitar Economía a un miembro concreto), no expone
+  // 'viewer'/'owner' porque no hay una acción de producto para ellos aquí.
+  const economyRole = member?.economy_role;
+  const canSeeEconomy = economyRole === "none" ? false : economyRole ? true : member?.role !== "child";
   const canEditEconomyAccess = viewerIsAdmin && !isSelf && member?.role !== "admin";
 
   useEffect(() => {
@@ -82,10 +87,9 @@ export function MemberDetailScreen({
     { key: "manageMembers", label: t("memberDetail.permManageMembers"), granted: member.role === "admin" },
   ];
 
-  const economySelectValue = economyOverride === true ? "granted" : economyOverride === false ? "revoked" : "auto";
+  const economySelectValue = economyRole || "auto";
   const handleEconomyAccessChange = (value) => {
-    const access = value === "auto" ? null : value === "granted";
-    onChangeEconomyAccess?.(member.user_id, access);
+    onChangeEconomyAccess?.(member.user_id, value === "auto" ? null : value);
   };
 
   const confirmTransfer = () => onTransferOwnership?.(member);
@@ -181,8 +185,9 @@ export function MemberDetailScreen({
                       aria-label={t("memberDetail.economyAccessAria", { name: member.name })}
                     >
                       <option value="auto">{t("memberDetail.economyAccessAuto")}</option>
-                      <option value="granted">{t("memberDetail.economyAccessGranted")}</option>
-                      <option value="revoked">{t("memberDetail.economyAccessRevoked")}</option>
+                      <option value="none">{t("memberDetail.economyAccessRevoked")}</option>
+                      <option value="contributor">{t("memberDetail.economyAccessContributor")}</option>
+                      <option value="manager">{t("memberDetail.economyAccessManager")}</option>
                     </select>
                   )}
                 </div>

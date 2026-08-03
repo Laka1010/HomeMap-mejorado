@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft } from "lucide-react";
 import { EconomyOverview } from "./EconomyOverview";
-import { EconomyDashboard } from "./EconomyDashboard";
+import { AccountsSection } from "./AccountsSection";
 import BillsSection from "./BillsSection";
 import MovementsSection from "./MovementsSection";
 import StatisticsSection from "./StatisticsSection";
@@ -9,12 +8,18 @@ import { SpaceSwitcher } from "./SpaceSwitcher";
 import { financialSpacesService } from "./services/financialSpacesService";
 import { useTranslation } from "../../i18n";
 
+/**
+ * Un único conjunto de pantallas (Resumen/Cuentas/Movimientos/Facturas/
+ * Estadísticas) para cualquier Workspace — Personal, Household o uno
+ * compartido (Lucas & Emma, Viaje...). El selector de arriba (SpaceSwitcher)
+ * decide QUÉ Workspace se ve; nunca cuáles pantallas existen — eso ya no
+ * depende de `type` (ver revisión de arquitectura: antes "Facturas" se
+ * ocultaba fuera de Household, lo cual no tenía sentido — Netflix, Spotify o
+ * el gimnasio son facturas personales tan legítimas como la luz del hogar).
+ */
 export function EconomyModule({ state, dispatch, openModal, currentHome, user, refreshToken }) {
   const { t } = useTranslation();
-  // El Dashboard (My Money / Shared Spaces / Household a la vez) es ahora el
-  // aterrizaje real del módulo — el switcher + tabs de siempre pasan a ser
-  // la vista de "entrar" a un Space concreto, ver handleEnterSpace más abajo.
-  const [currentPage, setCurrentPage] = useState("dashboard");
+  const [currentPage, setCurrentPage] = useState("overview");
   const [movementsType, setMovementsType] = useState("expenses");
   const [spaces, setSpaces] = useState([]);
   const [currentSpaceId, setCurrentSpaceId] = useState(null);
@@ -37,15 +42,6 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
     return () => { cancelled = true; };
   }, [currentHome?.id, refreshToken]);
 
-  const currentSpace = spaces.find((s) => s.id === currentSpaceId);
-  const isHousehold = currentSpace?.type === "household";
-
-  // Facturas solo existen en Household — si el switcher se mueve a otro
-  // Space mientras esa pestaña está activa, vuelve a Resumen.
-  useEffect(() => {
-    if (currentPage === "bills" && !isHousehold) setCurrentPage("overview");
-  }, [isHousehold, currentPage]);
-
   const goToPage = (page, opts) => {
     if (opts?.movementsType) setMovementsType(opts.movementsType);
     setCurrentPage(page);
@@ -56,15 +52,10 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
     setCurrentSpaceId(space.id);
   };
 
-  // Entrar a un Space concreto desde una tarjeta del Dashboard.
-  const handleEnterSpace = (spaceId) => {
-    setCurrentSpaceId(spaceId);
-    goToPage("overview");
-  };
-
   const tabs = [
     { key: "overview", label: t("economy.tabOverview") },
-    ...(isHousehold ? [{ key: "bills", label: t("economy.tabBills") }] : []),
+    { key: "accounts", label: t("accounts.title") },
+    { key: "bills", label: t("economy.tabBills") },
     { key: "movements", label: t("economy.tabMovements") },
     { key: "statistics", label: t("economy.tabStatistics") },
   ];
@@ -81,82 +72,53 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
           da el wrapper de ruta compartido en App.jsx (para que todas las
           pestañas tengan el mismo margen lateral que esta). */}
       <div style={{ padding: "16px 0", borderBottom: "1px solid var(--border)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: currentPage === "dashboard" ? 0 : 16 }}>
-          {currentPage !== "dashboard" && (
-            <button
-              onClick={() => goToPage("dashboard")}
-              aria-label={t("economyDashboard.back")}
-              style={{
-                width: 36, height: 36, borderRadius: "50%", border: "none", background: "var(--surface-alt)",
-                display: "grid", placeItems: "center", color: "var(--ink)", cursor: "pointer", flexShrink: 0,
-              }}
-            >
-              <ArrowLeft size={18} />
-            </button>
-          )}
-          <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>
-            {t("nav.economia")}
-          </h1>
+        <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 16px 0" }}>
+          {t("nav.economia")}
+        </h1>
+
+        <div style={{ marginBottom: 16 }}>
+          <SpaceSwitcher
+            spaces={spaces}
+            houseId={currentHome?.id}
+            activeSpaceId={currentSpaceId}
+            onChange={setCurrentSpaceId}
+            onSpaceCreated={handleSpaceCreated}
+          />
         </div>
 
-        {currentPage !== "dashboard" && (
-          <>
-            <div style={{ marginTop: 16, marginBottom: 16 }}>
-              <SpaceSwitcher
-                spaces={spaces}
-                houseId={currentHome?.id}
-                activeSpaceId={currentSpaceId}
-                onChange={setCurrentSpaceId}
-                onSpaceCreated={handleSpaceCreated}
-              />
-            </div>
-
-            {/* Tabs de navegación — grid fijo de 2 columnas (nunca auto-fit):
-                con minmax(100px,1fr) el número de columnas que caben a ancho de
-                móvil está justo en el límite entre 2 y 3, así que una variación
-                mínima del ancho del contenedor (p. ej. la lista de abajo cambiando
-                de alto) hacía que el grid "saltara" de 2x2 a 3+1 y todo se
-                desplazara. Con 2 columnas fijas (independientemente de si hay 3 o
-                4 pestañas, ver `tabs` arriba: Bills solo aparece en Household). */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => goToPage(tab.key)}
-                  style={{
-                    padding: "8px 12px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: currentPage === tab.key ? "var(--accent)" : "var(--surface-alt)",
-                    color: currentPage === tab.key ? "var(--accent-ink)" : "var(--ink)",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    fontSize: 13,
-                    whiteSpace: "nowrap",
-                    textAlign: "center",
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+        {/* Tabs de navegación — grid fijo de 2 columnas (nunca auto-fit):
+            con minmax(100px,1fr) el número de columnas que caben a ancho de
+            móvil está justo en el límite entre 2 y 3, así que una variación
+            mínima del ancho del contenedor (p. ej. la lista de abajo cambiando
+            de alto) hacía que el grid "saltara" de 2x2 a 3+1 y todo se
+            desplazara. Con 2 columnas fijas siempre, sean 4 o 5 pestañas. */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => goToPage(tab.key)}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "none",
+                background: currentPage === tab.key ? "var(--accent)" : "var(--surface-alt)",
+                color: currentPage === tab.key ? "var(--accent-ink)" : "var(--ink)",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: 13,
+                whiteSpace: "nowrap",
+                textAlign: "center",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Contenido por página */}
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "16px 0" }}>
         <div key={`${currentPage}:${currentSpaceId}:${refreshToken}`} className="hm-fade-in">
-          {currentPage === "dashboard" && (
-            <EconomyDashboard
-              currentHome={currentHome}
-              spaces={spaces}
-              user={user}
-              onEnterSpace={handleEnterSpace}
-              onSpaceCreated={handleSpaceCreated}
-            />
-          )}
-
           {currentPage === "overview" && (
             <EconomyOverview
               currentHome={currentHome}
@@ -169,8 +131,12 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
             />
           )}
 
-          {currentPage === "bills" && isHousehold && (
-            <BillsSection currentHome={currentHome} spaceId={currentSpaceId} spaces={spaces} openModal={openModal} state={state} dispatch={dispatch} user={user} />
+          {currentPage === "accounts" && (
+            <AccountsSection spaceId={currentSpaceId} spaces={spaces} userId={user?.id} />
+          )}
+
+          {currentPage === "bills" && (
+            <BillsSection currentHome={currentHome} spaceId={currentSpaceId} spaces={spaces} state={state} dispatch={dispatch} user={user} />
           )}
 
           {currentPage === "movements" && (

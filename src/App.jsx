@@ -2400,7 +2400,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       await houseService.setMemberEconomyAccess(activeHome.id, memberId, access);
       await refreshHouseMembers();
       showNotice(t("toast.economyAccessUpdated"));
-      setViewingMember((m) => (m ? { ...m, economy_override: access } : m));
+      setViewingMember((m) => (m ? { ...m, economy_role: access } : m));
     } catch (error) {
       console.error("Error changing member economy access:", error);
       showNotice(error?.message || t("toast.economyAccessUpdateError"));

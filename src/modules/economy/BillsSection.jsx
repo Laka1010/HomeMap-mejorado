@@ -6,7 +6,7 @@ import { PayBillModal } from "./PayBillModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 
-export default function BillsSection({ currentHome, spaceId, spaces, openModal, state, dispatch, user }) {
+export default function BillsSection({ currentHome, spaceId, spaces, state, dispatch, user }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const FREQUENCY_LABELS = {
@@ -28,6 +28,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, openModal, 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [actionError, setActionError] = useState("");
   const [payingBill, setPayingBill] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
 
   useEffect(() => {
     loadBills();
@@ -184,7 +185,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, openModal, 
             {t("common.favoritesFilter")}
           </button>
         </div>
-        <button className="hm-btn hm-btn-primary hm-btn--compact" onClick={() => openModal && openModal("addBill")}>
+        <button className="hm-btn hm-btn-primary hm-btn--compact" onClick={() => setShowAdd(true)}>
           <Plus size={15} /> {t("bills.add")}
         </button>
       </div>
@@ -366,6 +367,102 @@ export default function BillsSection({ currentHome, spaceId, spaces, openModal, 
           onPaid={handleBillPaid}
         />
       )}
+
+      {showAdd && (
+        <AddBillModal
+          spaceId={spaceId}
+          userId={user?.id}
+          onClose={() => setShowAdd(false)}
+          onCreated={() => { setShowAdd(false); loadBills(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AddBillModal({ spaceId, userId, onClose, onCreated }) {
+  const { t } = useTranslation();
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [category, setCategory] = useState("");
+  const [frequency, setFrequency] = useState("once");
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    const parsedAmount = parseFloat(amount);
+    if (!name.trim() || !parsedAmount || parsedAmount <= 0 || !dueDate) return;
+
+    setSaving(true);
+    setError("");
+    try {
+      const created = await economyService.createBill({
+        financial_space_id: spaceId,
+        created_by: userId,
+        name: name.trim(),
+        amount: parsedAmount,
+        due_date: dueDate,
+        category: category.trim() || "Otros",
+        frequency,
+        notes: notes.trim() || null,
+        status: "pending",
+      });
+      if (created) onCreated();
+      else setError(t("bills.updateError"));
+    } catch (err) {
+      console.error("Error creating bill:", err);
+      setError(t("bills.updateError"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="hm-modal-overlay" onClick={onClose}>
+      <div className="hm-modal hm-scroll" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+        <div className="hm-modal-handle" />
+        <div className="hm-modal-header">
+          <button className="hm-modal-close" onClick={onClose} aria-label={t("bills.cancel")}>✕</button>
+          <h3 className="hm-display hm-modal-title">{t("bills.add")}</h3>
+        </div>
+        <div className="hm-modal-body">
+          <label className="hm-label">{t("bills.nameLabel")}</label>
+          <input className="hm-input" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+
+          <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.amountLabel")}</label>
+          <input type="number" className="hm-input" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+
+          <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.dueDateLabel").replace(":", "")}</label>
+          <input type="date" className="hm-input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+
+          <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.categoryLabel")}</label>
+          <input className="hm-input" value={category} onChange={(e) => setCategory(e.target.value)} />
+
+          <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.repetitionLabel")}</label>
+          <select className="hm-input" value={frequency} onChange={(e) => setFrequency(e.target.value)}>
+            <option value="once">{t("bills.once")}</option>
+            <option value="monthly">{t("bills.monthly")}</option>
+            <option value="quarterly">{t("bills.quarterly")}</option>
+            <option value="semiannual">{t("bills.semiannual")}</option>
+            <option value="every9months">{t("bills.every9months")}</option>
+            <option value="yearly">{t("bills.yearly")}</option>
+          </select>
+
+          <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.notesLabel")}</label>
+          <textarea className="hm-input" value={notes} onChange={(e) => setNotes(e.target.value)} />
+
+          {error && <p style={{ fontSize: 12.5, color: "var(--danger)", margin: "10px 0 0" }}>{error}</p>}
+
+          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+            <button className="hm-btn hm-btn-soft" onClick={onClose}>{t("bills.cancel")}</button>
+            <button className="hm-btn hm-btn-primary" onClick={handleSubmit} disabled={saving || !name.trim() || !amount || !dueDate}>
+              {t("bills.save")}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

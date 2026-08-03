@@ -1,16 +1,15 @@
 /**
- * Reglas deterministas para los "insights" del Dashboard de Economía — sin
- * IA, sin red: recibe exactamente los datos que ya cargaron los 3 bloques
- * (My Money / Shared Spaces / Household) y devuelve como mucho 3 mensajes,
- * ordenados por severidad (danger > warning > info > success), coherente
- * con "sin scroll innecesario" del encargo.
+ * Reglas deterministas para los insights del Overview de un Workspace — sin
+ * IA, sin red: recibe los datos que ese Overview ya tiene cargados (o casi)
+ * y devuelve como mucho 3 mensajes, ordenados por severidad (danger >
+ * warning > info > success). Un único Workspace a la vez — nunca agrega
+ * varios (eso violaría "nunca mezclar datos entre Workspaces").
  *
  * `icon` es un nombre (string), no un componente — este archivo no depende
  * de React ni de lucide-react; `InsightsBar.jsx` hace el mapeo a icono real.
  */
 
 const TONE_ORDER = { danger: 0, warning: 1, info: 2, success: 3 };
-const GOAL_MILESTONES = [100, 80, 65, 50];
 
 function daysBetween(a, b) {
   return Math.ceil((a.getTime() - b.getTime()) / 86400000);
@@ -18,36 +17,26 @@ function daysBetween(a, b) {
 
 /**
  * @param {object} input
- * @param {Array} input.householdPendingBills - facturas pending del Household, [{id, name, amount, due_date}]
- * @param {number} input.householdBalance - saldo de la cuenta por defecto del Household
- * @param {number} input.personalBalance - saldo total de las cuentas de Personal
- * @param {boolean} input.personalContributedThisMonth - true si ya hay alguna contribución de Personal este mes
- * @param {Array} input.savingsGoals - objetivos de ahorro accesibles, [{id, name, pct}]
- * @param {(key: string, vars?: object) => string} input.t - traductor (namespace economyDashboard.insight*)
+ * @param {Array} input.pendingBills - facturas pending de este Workspace, [{id, name, amount, due_date}]
+ * @param {number} input.balance - saldo total de las cuentas activas de este Workspace
+ * @param {(key: string, vars?: object) => string} input.t - traductor (namespace economy.insight*)
  */
-export function computeInsights({
-  householdPendingBills = [],
-  householdBalance = 0,
-  personalBalance = 0,
-  personalContributedThisMonth = true,
-  savingsGoals = [],
-  t,
-}) {
+export function computeInsights({ pendingBills = [], balance = 0, t }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const insights = [];
 
-  const overdue = householdPendingBills.find((b) => b.due_date && new Date(b.due_date) < today);
+  const overdue = pendingBills.find((b) => b.due_date && new Date(b.due_date) < today);
   if (overdue) {
     insights.push({
       id: `bill-overdue-${overdue.id}`,
       tone: "danger",
       icon: "AlertTriangle",
-      text: t("economyDashboard.insightBillOverdue", { name: overdue.name, days: daysBetween(today, new Date(overdue.due_date)) }),
+      text: t("economy.insightBillOverdue", { name: overdue.name, days: daysBetween(today, new Date(overdue.due_date)) }),
     });
   }
 
-  const dueSoon = householdPendingBills.find((b) => {
+  const dueSoon = pendingBills.find((b) => {
     if (!b.due_date) return false;
     const days = daysBetween(new Date(b.due_date), today);
     return days >= 0 && days <= 3;
@@ -57,47 +46,26 @@ export function computeInsights({
       id: `bill-due-soon-${dueSoon.id}`,
       tone: "warning",
       icon: "Clock",
-      text: t("economyDashboard.insightBillDueSoon", { name: dueSoon.name, days: daysBetween(new Date(dueSoon.due_date), today) }),
+      text: t("economy.insightBillDueSoon", { name: dueSoon.name, days: daysBetween(new Date(dueSoon.due_date), today) }),
     });
   }
 
-  const totalPending = householdPendingBills.reduce((sum, b) => sum + parseFloat(b.amount || 0), 0);
-  if (totalPending > 0 && householdBalance < totalPending) {
+  const totalPending = pendingBills.reduce((sum, b) => sum + parseFloat(b.amount || 0), 0);
+  if (totalPending > 0 && balance < totalPending) {
     insights.push({
-      id: "household-cant-cover",
+      id: "balance-cant-cover-bills",
       tone: "warning",
       icon: "AlertCircle",
-      text: t("economyDashboard.insightHouseholdCantCover"),
+      text: t("economy.insightCantCoverBills"),
     });
   }
 
-  if (!personalContributedThisMonth) {
+  if (balance < 0) {
     insights.push({
-      id: "no-contribution-this-month",
-      tone: "info",
-      icon: "HeartHandshake",
-      text: t("economyDashboard.insightNoContributionThisMonth"),
-    });
-  }
-
-  for (const goal of savingsGoals) {
-    const milestone = GOAL_MILESTONES.find((m) => goal.pct >= m);
-    if (milestone) {
-      insights.push({
-        id: `goal-${goal.id}`,
-        tone: "success",
-        icon: "Target",
-        text: t("economyDashboard.insightGoalMilestone", { name: goal.name, pct: milestone }),
-      });
-    }
-  }
-
-  if (personalBalance < 0) {
-    insights.push({
-      id: "personal-balance-negative",
+      id: "balance-negative",
       tone: "danger",
       icon: "TrendingDown",
-      text: t("economyDashboard.insightPersonalNegative"),
+      text: t("economy.insightBalanceNegative"),
     });
   }
 

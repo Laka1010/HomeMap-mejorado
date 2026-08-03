@@ -6,7 +6,9 @@ import { useCurrency } from "../../currency";
 import { normalizeText } from "../../utils/textMatch";
 import { toLocalDateString } from "../../utils/dates";
 import { GoalsSection } from "./GoalsSection";
-import { AccountsSection } from "./AccountsSection";
+import { accountsService } from "./services/accountsService";
+import { computeInsights } from "./insightsEngine";
+import { InsightsBar } from "./InsightsBar";
 
 const ENTRY_ICONS = {
   "Regalos recibidos": Gift,
@@ -25,11 +27,12 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
     importeTotalPendiente: 0,
     proximoVencimiento: null,
   });
+  const [accountsBalance, setAccountsBalance] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadEconomicsData();
-  }, [spaceId, isHousehold]);
+  }, [spaceId]);
 
   const loadEconomicsData = async () => {
     setLoading(true);
@@ -57,16 +60,21 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
         .gte("date", toLocalDateString(monthStart))
         .lte("date", toLocalDateString(monthEnd));
 
-      // Las facturas solo existen en Household — nunca se mezclan con las
-      // estadísticas de Personal/Shared.
-      const { data: billsData } = isHousehold
-        ? await supabase
-            .from("economy_bills")
-            .select("*")
-            .eq("financial_space_id", spaceId)
-            .eq("status", "pending")
-            .order("due_date", { ascending: true })
-        : { data: [] };
+      // Las facturas ya no son exclusivas de Household — cualquier Workspace
+      // (Personal, Household, o uno compartido) puede tener facturas propias
+      // (Netflix, luz, alquiler...), todas con la misma pantalla y consulta.
+      const { data: billsData } = await supabase
+        .from("economy_bills")
+        .select("*")
+        .eq("financial_space_id", spaceId)
+        .eq("status", "pending")
+        .order("due_date", { ascending: true });
+
+      const accounts = await accountsService.listAccounts(spaceId);
+      const totalBalance = accounts
+        .filter((a) => a.status === "active")
+        .reduce((sum, a) => sum + parseFloat(a.balance || 0), 0);
+      setAccountsBalance(totalBalance);
 
       const totalIngresos = incomeData?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
       const totalGastos = expensesData?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
@@ -87,6 +95,7 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
         facturasPendientes: billsData?.length || 0,
         importeTotalPendiente: totalPendiente,
         proximoVencimiento,
+        pendingBills: billsData || [],
         upcomingBills: (billsData || []).slice(0, 2),
         entries,
       });
@@ -110,7 +119,7 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
     );
   }
 
-  const { ingresos, gastos, balance, entries = [], upcomingBills = [] } = economics;
+  const { ingresos, gastos, balance, entries = [], upcomingBills = [], pendingBills = [] } = economics;
   const isSaving = balance >= 0;
   const expenseCategoryTotals = {};
   entries.filter((e) => e.kind === "expense").forEach((e) => {
@@ -121,8 +130,12 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
   const incomeBarPct = Math.min(100, (ingresos / maxScale) * 100);
   const expenseDotPct = Math.min(100, (gastos / maxScale) * 100);
 
+  const insights = computeInsights({ pendingBills, balance: accountsBalance, t });
+
   return (
     <div className="hm-fade-in" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <InsightsBar insights={insights} />
+
       {/* HERO: balance del mes */}
       <div className="hm-card" style={{ padding: 22, background: isSaving ? "var(--success-soft)" : "var(--danger-soft)", textAlign: "center" }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", color: "var(--ink-soft)", textTransform: "uppercase" }}>
@@ -164,8 +177,6 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--danger)", display: "inline-block" }} /> {t("economy.expenses")}</span>
         </div>
       </div>
-
-      <AccountsSection spaceId={spaceId} spaces={spaces} userId={user?.id} />
 
       {isHousehold && (
         <GoalsSection
@@ -217,42 +228,40 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
         )}
       </div>
 
-      {/* UPCOMING PAYMENTS — solo existen en Household */}
-      {isHousehold && (
-        <div className="hm-card" style={{ padding: 18 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", color: "var(--ink-soft)", textTransform: "uppercase" }}>{t("economy.upcomingPayments")}</div>
-            <button className="hm-btn hm-btn-ghost" style={{ padding: "4px 6px", fontSize: 13, color: "var(--accent)", fontWeight: 700 }} onClick={() => goToPage && goToPage("bills")}>
-              {t("economy.viewAll")} <ChevronRight size={14} />
-            </button>
-          </div>
-
-          {upcomingBills.length === 0 ? (
-            <div style={{ padding: "16px 0", textAlign: "center", color: "var(--ink-soft)", fontSize: 13.5 }}>{t("economy.noPendingBills")}</div>
-          ) : (
-            <div>
-              {upcomingBills.map((bill, idx) => {
-                const daysUntil = getDaysUntilDue(bill.due_date);
-                const overdue = daysUntil < 0;
-                return (
-                  <div key={bill.id || idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: idx < upcomingBills.length - 1 ? "1px solid var(--border)" : "none" }}>
-                    <div style={{ width: 38, height: 38, borderRadius: "50%", background: overdue ? "var(--danger-soft)" : "var(--surface-alt)", display: "grid", placeItems: "center", flexShrink: 0, color: overdue ? "var(--danger)" : "var(--ink-soft)" }}>
-                      <Calendar size={17} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14.5, fontWeight: 700 }}>{bill.name}</div>
-                      <div style={{ fontSize: 12, color: overdue ? "var(--danger)" : "var(--ink-soft)", marginTop: 1 }}>
-                        {overdue ? t("economy.overdueDays", { days: Math.abs(daysUntil) }) : t("economy.dueInDays", { days: daysUntil })}
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 14.5, fontWeight: 700 }}>{formatCurrency(bill.amount)}</div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+      {/* UPCOMING PAYMENTS — cualquier Workspace puede tener facturas */}
+      <div className="hm-card" style={{ padding: 18 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", color: "var(--ink-soft)", textTransform: "uppercase" }}>{t("economy.upcomingPayments")}</div>
+          <button className="hm-btn hm-btn-ghost" style={{ padding: "4px 6px", fontSize: 13, color: "var(--accent)", fontWeight: 700 }} onClick={() => goToPage && goToPage("bills")}>
+            {t("economy.viewAll")} <ChevronRight size={14} />
+          </button>
         </div>
-      )}
+
+        {upcomingBills.length === 0 ? (
+          <div style={{ padding: "16px 0", textAlign: "center", color: "var(--ink-soft)", fontSize: 13.5 }}>{t("economy.noPendingBills")}</div>
+        ) : (
+          <div>
+            {upcomingBills.map((bill, idx) => {
+              const daysUntil = getDaysUntilDue(bill.due_date);
+              const overdue = daysUntil < 0;
+              return (
+                <div key={bill.id || idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: idx < upcomingBills.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <div style={{ width: 38, height: 38, borderRadius: "50%", background: overdue ? "var(--danger-soft)" : "var(--surface-alt)", display: "grid", placeItems: "center", flexShrink: 0, color: overdue ? "var(--danger)" : "var(--ink-soft)" }}>
+                    <Calendar size={17} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 700 }}>{bill.name}</div>
+                    <div style={{ fontSize: 12, color: overdue ? "var(--danger)" : "var(--ink-soft)", marginTop: 1 }}>
+                      {overdue ? t("economy.overdueDays", { days: Math.abs(daysUntil) }) : t("economy.dueInDays", { days: daysUntil })}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 14.5, fontWeight: 700 }}>{formatCurrency(bill.amount)}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,70 +1,110 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { ChevronDown, Plus, Check } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { financialSpacesService } from "./services/financialSpacesService";
 
 /**
- * Pill row Personal / Shared... / Household, mismo patrón inline que los
- * filtros de Bills/Movements (no existe un <PillTabs> compartido en la app,
- * ver economía de las demás secciones). `spaces` ya viene filtrada por
- * EconomyModule a los espacios de esta casa (+ el Personal, que no tiene
- * casa). El "+" crea un espacio compartido nuevo (solo pide nombre).
+ * Selector de Workspace: un botón único (icono + nombre + chevron) que abre
+ * una hoja con la lista de Workspaces accesibles, mismo patrón que ya usa
+ * la app para cambiar de casa (`HomeSelector.jsx` / el switcher de la
+ * cabecera) — reutilizamos esa idea en vez de una fila de pills, que deja
+ * de caber bien en cuanto alguien tiene varios Workspaces. Personal /
+ * Household / cualquier Workspace compartido son la misma fila de lista,
+ * sin distinción visual por tipo.
  */
 export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpaceCreated }) {
   const { t } = useTranslation();
+  const [showPicker, setShowPicker] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+
+  const activeSpace = spaces.find((s) => s.id === activeSpaceId);
 
   return (
     <>
-      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
-        {spaces.map((space) => {
-          const active = space.id === activeSpaceId;
-          return (
-            <button
-              key={space.id}
-              onClick={() => onChange(space.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 14px",
-                borderRadius: 999,
-                border: "none",
-                background: active ? "var(--accent)" : "var(--surface-alt)",
-                color: active ? "var(--accent-ink)" : "var(--ink)",
-                cursor: "pointer",
-                fontWeight: 700,
-                fontSize: 13,
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              <span>{space.icon}</span>
-              <span>{space.name}</span>
-            </button>
-          );
-        })}
+      <button
+        className="hm-tap"
+        onClick={() => setShowPicker(true)}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "10px 14px",
+          borderRadius: "var(--radius)",
+          border: "1px solid var(--border)",
+          background: "var(--surface-alt)",
+          cursor: "pointer",
+          textAlign: "left",
+        }}
+      >
+        <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--accent-soft)", display: "grid", placeItems: "center", fontSize: 17, flexShrink: 0 }}>
+          {activeSpace?.icon || "💰"}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {activeSpace?.name || t("spaces.workspaceLabel")}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--ink-soft)" }}>{t("spaces.switchWorkspace")}</div>
+        </div>
+        <ChevronDown size={16} style={{ color: "var(--ink-soft)", flexShrink: 0 }} />
+      </button>
 
-        <button
-          onClick={() => setShowCreate(true)}
-          aria-label={t("spaces.addSharedSpace")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 36,
-            height: 36,
-            borderRadius: "50%",
-            border: "1px dashed var(--border)",
-            background: "transparent",
-            color: "var(--ink-soft)",
-            cursor: "pointer",
-            flexShrink: 0,
-          }}
-        >
-          <Plus size={16} />
-        </button>
-      </div>
+      {showPicker && (
+        <div className="hm-modal-overlay" onClick={() => setShowPicker(false)}>
+          <div className="hm-modal hm-scroll" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+            <div className="hm-modal-handle" />
+            <div className="hm-modal-header">
+              <button className="hm-modal-close" onClick={() => setShowPicker(false)} aria-label={t("spaces.cancel")}>✕</button>
+              <h3 className="hm-display hm-modal-title">{t("spaces.workspaceLabel")}</h3>
+            </div>
+            <div className="hm-modal-body">
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {spaces.map((space) => {
+                  const active = space.id === activeSpaceId;
+                  return (
+                    <button
+                      key={space.id}
+                      onClick={() => { onChange(space.id); setShowPicker(false); }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        padding: 14,
+                        borderRadius: "var(--radius)",
+                        border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
+                        background: active ? "var(--accent-soft)" : "var(--surface)",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        width: "100%",
+                      }}
+                    >
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: active ? "var(--surface)" : "var(--surface-alt)", display: "grid", placeItems: "center", fontSize: 19, flexShrink: 0 }}>
+                        {space.icon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{space.name}</div>
+                      </div>
+                      {active && (
+                        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--accent)", color: "var(--accent-ink)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                          <Check size={14} />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                className="hm-btn hm-btn-soft hm-btn--full"
+                style={{ marginTop: 14 }}
+                onClick={() => { setShowPicker(false); setShowCreate(true); }}
+              >
+                <Plus size={16} /> {t("spaces.addSharedSpace")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCreate && (
         <CreateSharedSpaceModal
