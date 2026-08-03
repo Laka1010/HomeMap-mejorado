@@ -80,7 +80,7 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
   );
 }
 
-function CreateSharedSpaceModal({ houseId, onClose, onCreated }) {
+export function CreateSharedSpaceModal({ houseId, onClose, onCreated }) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
   const [error, setError] = useState("");

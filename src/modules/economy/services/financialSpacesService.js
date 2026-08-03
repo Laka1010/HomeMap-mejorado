@@ -80,15 +80,35 @@ export const financialSpacesService = {
     if (error) throw error;
   },
 
-  /** Miembros de un espacio compartido, con su nombre desde profiles. */
+  /**
+   * Miembros de un espacio compartido, con su nombre desde profiles.
+   * financial_space_members no tiene una FK directa a profiles (ambas
+   * referencian auth.users por separado, igual que home_members — ver
+   * houseService.getHouseMembers), así que se resuelven en dos consultas y
+   * se combinan aquí en vez de usar el embed `profiles:user_id(...)` de
+   * PostgREST, que falla porque no hay relación que inferir.
+   */
   async listSpaceMembers(spaceId) {
-    const { data, error } = await supabase
+    const { data: members, error: membersError } = await supabase
       .from("financial_space_members")
-      .select("user_id, added_at, profiles:user_id(display_name, email)")
+      .select("user_id, added_at")
       .eq("space_id", spaceId)
       .order("added_at", { ascending: true });
-    if (error) throw error;
-    return data || [];
+    if (membersError) throw membersError;
+    if (!members || members.length === 0) return [];
+
+    const userIds = members.map((m) => m.user_id);
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, display_name, email")
+      .in("id", userIds);
+    if (profilesError) throw profilesError;
+
+    const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
+    return members.map((m) => ({
+      ...m,
+      profiles: profileMap.get(m.user_id) || null,
+    }));
   },
 
   async addMember(spaceId, userId) {

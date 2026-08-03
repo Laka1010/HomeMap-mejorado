@@ -9,7 +9,7 @@ import { transfersService } from "./services/transfersService";
  * (`_execute_financial_transfer`), presentada como 2 pestañas porque son 2
  * acciones distintas para quien las usa.
  */
-export function TransferModal({ spaceId, spaces, accounts, onClose, onDone }) {
+export function TransferModal({ spaceId, spaces, accounts, initialToSpaceId, onClose, onDone }) {
   const { t } = useTranslation();
   const otherSpaces = (spaces || []).filter((s) => s.id !== spaceId);
   const canTransfer = accounts.length >= 2;
@@ -17,12 +17,14 @@ export function TransferModal({ spaceId, spaces, accounts, onClose, onDone }) {
 
   // Un Space con una sola cuenta (ej. Personal recién creado) no puede
   // transferir entre cuentas propias — el modo por defecto debe ser el que
-  // sí esté disponible, si no el formulario nunca es alcanzable.
-  const [mode, setMode] = useState(canTransfer ? "transfer" : "contribute");
+  // sí esté disponible, si no el formulario nunca es alcanzable. Si el
+  // llamante pide un destino concreto (ej. el botón "Contribute" del
+  // Dashboard, siempre hacia Household), fuerza modo contribuir directamente.
+  const [mode, setMode] = useState(initialToSpaceId ? "contribute" : (canTransfer ? "transfer" : "contribute"));
 
   const [fromAccountId, setFromAccountId] = useState(accounts?.[0]?.id || "");
   const [toAccountId, setToAccountId] = useState(accounts?.[1]?.id || "");
-  const [toSpaceId, setToSpaceId] = useState(otherSpaces[0]?.id || "");
+  const [toSpaceId, setToSpaceId] = useState(initialToSpaceId || otherSpaces[0]?.id || "");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
