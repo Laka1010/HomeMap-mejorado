@@ -1,5 +1,6 @@
 import { Check, Plus, Star, StickyNote, Trash2 } from "lucide-react";
 import { notesService } from "../../services/notesService";
+import { EmptyState } from "../../components/EmptyState";
 import { useTranslation } from "../../i18n";
 
 export function NotesModule({ state, dispatch, openModal }) {
@@ -56,12 +57,13 @@ export function NotesModule({ state, dispatch, openModal }) {
       </div>
 
       {sorted.length === 0 ? (
-        <div className="hm-card hm-card--p24 hm-card--center">
-          <StickyNote size={26} style={{ color: "var(--accent)", marginBottom: 10 }} />
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("notesModule.emptyTitle")}</div>
-          <div style={{ color: "var(--ink-soft)", fontSize: 13, marginBottom: 14 }}>{t("notesModule.emptySubtitle")}</div>
-          <button className="hm-btn hm-btn-primary" onClick={() => openModal && openModal("addNote")}><Plus size={15} /> {t("notesModule.addNote")}</button>
-        </div>
+        <EmptyState
+          card
+          icon={StickyNote}
+          title={t("notesModule.emptyTitle")}
+          subtitle={t("notesModule.emptySubtitle")}
+          action={<button className="hm-btn hm-btn-primary" onClick={() => openModal && openModal("addNote")}><Plus size={15} /> {t("notesModule.addNote")}</button>}
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {sorted.map((note) => (

@@ -1,4 +1,4 @@
-import { ArrowLeft, Home as HomeIcon, Shield } from "lucide-react";
+import { ArrowLeft, Home as HomeIcon, Shield, Trash2 } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { CurrencySection } from "./CurrencySection";
 import { HouseMembersSection } from "./HouseMembersSection";
@@ -25,6 +25,7 @@ export function HouseSettingsScreen({
   onChangeTaskRetention,
   onClose,
   isCurrencyLoading,
+  onDeleteHouse,
 }) {
   const { t } = useTranslation();
   const myRole = house?.myRole;
@@ -80,6 +81,23 @@ export function HouseSettingsScreen({
           <CategoriesSection categories={categories} onChange={onChangeCategories} />
 
           <TaskRetentionSection days={taskRetentionDays} onChange={onChangeTaskRetention} isAdmin={isAdmin} />
+
+          {isAdmin && (
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12, color: "var(--danger)" }}>
+                {t("houseSettings.dangerZoneTitle")}
+              </div>
+              <div className="hm-card hm-card--p16" style={{ border: "1px solid var(--danger-soft)", display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("houseSettings.deleteHouseHint")}</div>
+                <button
+                  className="hm-btn hm-btn-ghost hm-btn--full hm-text-danger"
+                  onClick={() => onDeleteHouse?.(house)}
+                >
+                  <Trash2 size={15} /> {t("houseSettings.deleteHouseButton")}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { Bell, ChevronDown, Search } from "lucide-react";
 import { useTranslation } from "../i18n";
 
-export function AppHeader({ user, profile, currentHome, onOpenHomeSelector, onOpenNotifications, onOpenAccountHub, onOpenSearch, unreadNotifications = 0, showNotifications = true }) {
+export const AppHeader = memo(function AppHeader({ user, profile, currentHome, onOpenHomeSelector, onOpenNotifications, onOpenAccountHub, onOpenSearch, unreadNotifications = 0, showNotifications = true }) {
   const { t } = useTranslation();
 
   const displayedName = [profile.userName, profile.lastName].filter(Boolean).join(" ") || user?.name || t("common.userFallback");
@@ -21,10 +22,10 @@ export function AppHeader({ user, profile, currentHome, onOpenHomeSelector, onOp
           onClick={onOpenAccountHub}
           className="hm-btn hm-btn-soft"
           style={{
-            width: 42,
-            height: 42,
-            minWidth: 42,
-            minHeight: 42,
+            width: 44,
+            height: 44,
+            minWidth: 44,
+            minHeight: 44,
             borderRadius: "50%",
             padding: 0,
             background: "var(--surface)",
@@ -77,7 +78,7 @@ export function AppHeader({ user, profile, currentHome, onOpenHomeSelector, onOp
         {onOpenSearch && (
           <button
             className="hm-btn hm-btn-soft"
-            style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, padding: 0, borderRadius: "50%", justifyContent: "center", border: "1px solid var(--border)", boxShadow: "0 4px 10px rgba(0,0,0,0.05)" }}
+            style={{ width: 44, height: 44, minWidth: 44, minHeight: 44, padding: 0, borderRadius: "50%", justifyContent: "center", border: "1px solid var(--border)", boxShadow: "0 4px 10px rgba(0,0,0,0.05)" }}
             onClick={onOpenSearch}
             aria-label={t("search.title")}
             title={t("search.title")}
@@ -88,7 +89,7 @@ export function AppHeader({ user, profile, currentHome, onOpenHomeSelector, onOp
         {showNotifications && (
           <button
             className="hm-btn hm-btn-soft"
-            style={{ position: "relative", overflow: "visible", width: 36, height: 36, minWidth: 36, minHeight: 36, padding: 0, borderRadius: "50%", justifyContent: "center", border: "1px solid var(--border)", boxShadow: "0 4px 10px rgba(0,0,0,0.05)" }}
+            style={{ position: "relative", overflow: "visible", width: 44, height: 44, minWidth: 44, minHeight: 44, padding: 0, borderRadius: "50%", justifyContent: "center", border: "1px solid var(--border)", boxShadow: "0 4px 10px rgba(0,0,0,0.05)" }}
             onClick={onOpenNotifications}
             aria-label={t("header.notifications")}
             title={t("header.notifications")}
@@ -112,4 +113,4 @@ export function AppHeader({ user, profile, currentHome, onOpenHomeSelector, onOp
       </div>
     </div>
   );
-}
+});

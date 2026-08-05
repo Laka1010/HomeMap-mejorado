@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Archive, Bell, Check, Clock, History, Trash2 } from "lucide-react";
 import { getCategoryMeta, getPriorityMeta } from "../notifications/meta";
 import { timeAgoShort } from "../utils/dates";
+import { EmptyState } from "./EmptyState";
 import { useTranslation } from "../i18n";
 
 /**
@@ -95,11 +96,7 @@ export function NotificationCenter({ notifications = [], activity = [], onAction
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {isEmpty ? (
-        <div className="hm-card hm-card--p24 hm-card--center">
-          <Bell size={26} style={{ color: "var(--accent)", marginBottom: 10 }} />
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("notificationCenter.allCaughtUpTitle")}</div>
-          <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>{t("notificationCenter.allCaughtUpSubtitle")}</div>
-        </div>
+        <EmptyState card icon={Bell} title={t("notificationCenter.allCaughtUpTitle")} subtitle={t("notificationCenter.allCaughtUpSubtitle")} />
       ) : (
         <>
           {(critical.length > 0 || others.length > 0) && (

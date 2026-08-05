@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "../../i18n";
 import { transfersService } from "./services/transfersService";
+import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 
 /**
  * Transferir (entre 2 cuentas del Space activo) o Contribuir (desde una
@@ -11,6 +12,7 @@ import { transfersService } from "./services/transfersService";
  */
 export function TransferModal({ spaceId, spaces, accounts, initialToSpaceId, onClose, onDone }) {
   const { t } = useTranslation();
+  const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const otherSpaces = (spaces || []).filter((s) => s.id !== spaceId);
   const canTransfer = accounts.length >= 2;
   const canContribute = otherSpaces.length > 0 && accounts.length >= 1;
@@ -68,9 +70,11 @@ export function TransferModal({ spaceId, spaces, accounts, initialToSpaceId, onC
   };
 
   return (
-    <div className="hm-modal-overlay" onClick={onClose}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-        <div className="hm-modal-handle" />
+    <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
+      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+        <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
+          <div className="hm-modal-handle" />
+        </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("transfers.cancel")}>✕</button>
           <h3 className="hm-display hm-modal-title">{t("transfers.title")}</h3>

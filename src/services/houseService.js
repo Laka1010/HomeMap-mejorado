@@ -131,4 +131,15 @@ export const houseService = {
     if (error) throw error;
     return data;
   },
+
+  /**
+   * Elimina la casa por completo (habitaciones, objetos, tareas, compras,
+   * notas, Economía...) — todas las tablas cuelgan de house_id con
+   * `on delete cascade`, así que un solo delete en `houses` limpia todo el
+   * árbol. Irreversible; solo el admin puede llamarlo.
+   */
+  async deleteHouse(houseId) {
+    const { error } = await supabase.rpc("delete_house", { p_house_id: houseId });
+    if (error) throw error;
+  },
 };

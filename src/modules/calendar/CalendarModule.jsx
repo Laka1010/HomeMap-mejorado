@@ -3,6 +3,7 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { economyService } from "../economy/services/economyService";
 import { buildLocalEvents } from "./buildLocalEvents";
 import { toDateKey, formatDayLabel, getWeekDates, addDays, billDueLabel, EVENT_CATEGORY_META } from "./calendarUtils";
+import { EmptyState } from "../../components/EmptyState";
 import { useTranslation } from "../../i18n";
 
 const WEEKDAY_LETTERS = ["L", "M", "X", "J", "V", "S", "D"];
@@ -144,11 +145,7 @@ export function CalendarModule({ state, currentHome, canSeeEconomy = true }) {
 
       <div key={selectedKey} className="hm-fade-in hm-card" style={{ padding: dayEvents.length === 0 ? 24 : 6 }}>
         {dayEvents.length === 0 ? (
-          <div className="hm-empty" style={{ padding: "var(--space-4) var(--space-3)" }}>
-            <div className="hm-empty-icon"><CalendarDays size={26} /></div>
-            <p className="hm-empty-title">{t("calendarModule.emptyTitle")}</p>
-            <p className="hm-empty-subtitle" style={{ marginBottom: 0 }}>{t("calendarModule.emptySubtitle")}</p>
-          </div>
+          <EmptyState icon={CalendarDays} title={t("calendarModule.emptyTitle")} subtitle={t("calendarModule.emptySubtitle")} />
         ) : (
           dayEvents.map((event, idx) => {
             const meta = EVENT_CATEGORY_META[event.type] || EVENT_CATEGORY_META.Tarea;

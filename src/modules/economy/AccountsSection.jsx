@@ -43,11 +43,11 @@ export function AccountsSection({ spaceId, spaces, userId }) {
 
   return (
     <div className="hm-card" style={{ padding: 18 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", color: "var(--ink-soft)", textTransform: "uppercase" }}>
           {t("accounts.title")}
         </div>
-        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           {activeAccounts.length >= 1 && (
             <button className="hm-btn hm-btn-ghost hm-btn--compact" style={{ color: "var(--accent)" }} onClick={() => setShowTransfer(true)}>
               <ArrowLeftRight size={14} /> {t("transfers.title")}

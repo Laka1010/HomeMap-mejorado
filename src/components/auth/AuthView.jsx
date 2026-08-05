@@ -322,9 +322,8 @@ export function AuthView({ onLogin }) {
           border: 3px solid rgba(255,255,255,0.3);
           border-top-color: white;
           border-radius: 50%;
-          animation: spin 0.8s linear infinite;
+          animation: hmSpin 0.8s linear infinite;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
         @media (min-width: 900px) {
           .auth-visual-info { display: block; }

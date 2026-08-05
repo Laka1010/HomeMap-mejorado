@@ -5,6 +5,7 @@ import { accountsService } from "./services/accountsService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "./economyCategories";
+import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 
 export default function MovementsSection({ currentHome, spaceId, user, initialType = "expenses" }) {
   const { t } = useTranslation();
@@ -96,6 +97,8 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
     setActionError("");
   };
 
+  const { handleRef: detailHandleRef, handleMouseDown: detailHandleMouseDown, isSuppressingClick: isDetailSuppressingClick, sheetStyle: detailSheetStyle } = useDragToDismiss(closeDetail);
+
   const saveEdit = async () => {
     if (!selected) return;
     const updates = {
@@ -150,7 +153,7 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Header: toggle + add */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 4, background: "var(--surface-alt)", borderRadius: 999, padding: 4 }}>
           <button
             onClick={() => setType("expenses")}
@@ -234,9 +237,11 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
       </div>
 
       {showDetail && selected && (
-        <div className="hm-modal-overlay" onClick={closeDetail}>
-          <div className="hm-modal hm-scroll" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
-            <div className="hm-modal-handle" />
+        <div className="hm-modal-overlay" onClick={(e) => { if (isDetailSuppressingClick()) return; closeDetail(e); }}>
+          <div className="hm-modal hm-scroll" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, ...detailSheetStyle }}>
+            <div ref={detailHandleRef} className="hm-modal-handle-wrap" onMouseDown={detailHandleMouseDown}>
+              <div className="hm-modal-handle" />
+            </div>
             <div className="hm-modal-header">
               <button className="hm-modal-close" onClick={closeDetail} aria-label="Cerrar">✕</button>
               <h3 className="hm-display hm-modal-title">{selected.name}</h3>
@@ -327,6 +332,7 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
 
 function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated }) {
   const { t } = useTranslation();
+  const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const categories = type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
@@ -365,9 +371,11 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated 
   };
 
   return (
-    <div className="hm-modal-overlay" onClick={onClose}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-        <div className="hm-modal-handle" />
+    <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
+      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+        <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
+          <div className="hm-modal-handle" />
+        </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("movements.cancel")}>✕</button>
           <h3 className="hm-display hm-modal-title">{t("movements.add")}</h3>

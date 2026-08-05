@@ -210,8 +210,8 @@ export function HouseMembersSection({
         }
         .hm-role-select {
           width: auto;
-          min-height: 34px;
-          height: 34px;
+          min-height: 44px;
+          height: 44px;
           padding: 0 8px;
           font-size: 12px;
           flex-shrink: 0;

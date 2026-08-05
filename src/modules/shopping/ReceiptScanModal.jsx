@@ -173,7 +173,6 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
               </div>
             )}
             <div style={{ width: 40, height: 40, borderRadius: "50%", border: "3px solid var(--accent-soft)", borderTopColor: "var(--accent)", animation: "hmSpin 0.9s linear infinite" }} />
-            <style>{`@keyframes hmSpin { to { transform: rotate(360deg); } }`}</style>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
               {RECEIPT_SCAN_STEPS.map((step) => {
                 const done = completedSteps.includes(step);

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown, Plus, Check } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { financialSpacesService } from "./services/financialSpacesService";
+import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 
 /**
  * Selector de Workspace: un botón único (icono + nombre + chevron) que abre
@@ -16,6 +17,8 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
   const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const closePicker = () => setShowPicker(false);
+  const { handleRef: pickerHandleRef, handleMouseDown: pickerHandleMouseDown, isSuppressingClick: isPickerSuppressingClick, sheetStyle: pickerSheetStyle } = useDragToDismiss(closePicker);
 
   const activeSpace = spaces.find((s) => s.id === activeSpaceId);
 
@@ -50,11 +53,13 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
       </button>
 
       {showPicker && (
-        <div className="hm-modal-overlay" onClick={() => setShowPicker(false)}>
-          <div className="hm-modal hm-scroll" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-            <div className="hm-modal-handle" />
+        <div className="hm-modal-overlay" onClick={(e) => { if (isPickerSuppressingClick()) return; closePicker(e); }}>
+          <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...pickerSheetStyle }} onClick={(e) => e.stopPropagation()}>
+            <div ref={pickerHandleRef} className="hm-modal-handle-wrap" onMouseDown={pickerHandleMouseDown}>
+              <div className="hm-modal-handle" />
+            </div>
             <div className="hm-modal-header">
-              <button className="hm-modal-close" onClick={() => setShowPicker(false)} aria-label={t("spaces.cancel")}>✕</button>
+              <button className="hm-modal-close" onClick={closePicker} aria-label={t("spaces.cancel")}>✕</button>
               <h3 className="hm-display hm-modal-title">{t("spaces.workspaceLabel")}</h3>
             </div>
             <div className="hm-modal-body">
@@ -122,6 +127,7 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
 
 export function CreateSharedSpaceModal({ houseId, onClose, onCreated }) {
   const { t } = useTranslation();
+  const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -140,9 +146,11 @@ export function CreateSharedSpaceModal({ houseId, onClose, onCreated }) {
   };
 
   return (
-    <div className="hm-modal-overlay" onClick={onClose}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-        <div className="hm-modal-handle" />
+    <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
+      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+        <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
+          <div className="hm-modal-handle" />
+        </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("spaces.cancel")}>✕</button>
           <h3 className="hm-display hm-modal-title">{t("spaces.newSharedSpaceTitle")}</h3>

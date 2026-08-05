@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, Fragment, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment, lazy, Suspense, memo } from "react";
 import {
   Home, Search, Package, ShoppingCart, Settings, Plus, Camera, MapPin,
   ChevronRight, X, Sun, Moon, Sofa, UtensilsCrossed, BedDouble, Bath,
@@ -9,6 +9,8 @@ import {
   ScanLine, Grid3x3, ExternalLink, MapPinOff, RotateCcw, Zap, Share2, Eye, EyeOff,
   ShieldCheck, Bell, User, Building2, CheckSquare, TrendingUp, Star
 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 import { I18nProvider, useTranslation } from "./i18n";
 import { CurrencyProvider, useCurrency } from "./currency";
 import { formatCurrencyValue } from "./utils/currencyUtils";
@@ -25,6 +27,7 @@ import { AddObjectWizard } from "./components/AddObjectWizard";
 import { AddRoomWizard } from "./components/AddRoomWizard";
 import { AddContainerWizard } from "./components/AddContainerWizard";
 import { AuthView } from "./components/auth/AuthView";
+import { EmptyState } from "./components/EmptyState";
 import { HomeSelector } from "./components/home/HomeSelector";
 import { ShareHomeModal } from "./components/home/ShareHomeModal";
 import { OnboardingManager } from "./components/onboarding/OnboardingManager";
@@ -212,7 +215,8 @@ const GlobalStyle = () => (
     .hm-pl-0 { padding-left: 0; }
 
     /* Small icon/button helpers */
-    .hm-btn--icon-circle { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
+    .hm-btn--icon-circle { position: relative; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
+    .hm-btn--icon-circle::after { content: ""; position: absolute; inset: -8px; }
     .hm-btn--danger { background: var(--danger); color: #fff; border: none; }
 
     /* Buttons - unified */
@@ -293,12 +297,21 @@ const GlobalStyle = () => (
     .hm-empty-subtitle { font-size: 13.5px; margin: 0 0 var(--space-4); }
 
 
-    /* Animations: consistent, subtle */
-    .hm-fade-in { animation: hmFadeIn .32s cubic-bezier(.22,1,.36,1) both; }
+    /* Animations: consistent, subtle. fill-mode "backwards" (not "both"): aplica
+       el keyframe "from" antes de empezar (sin flash), pero NO retiene el "to"
+       después de terminar. "both" retendría para siempre un transform distinto
+       de "none" en el elemento — y por CSS, cualquier ancestro con transform
+       se convierte en el "containing block" de sus descendientes
+       position:fixed, confinando cualquier overlay/modal anidado dentro a la
+       caja de ese ancestro en vez de al viewport real (el bug de "el backdrop
+       solo cubre parte de la pantalla"). Visualmente idéntico: el estado final
+       ya es transform:none/opacity:1 en ambos casos. */
+    .hm-fade-in { animation: hmFadeIn .32s cubic-bezier(.22,1,.36,1) backwards; }
     @keyframes hmFadeIn { from { opacity: 0; transform: translateY(-8px) scale(0.995); } to { opacity: 1; transform: translateY(0) scale(1); } }
-    .hm-pop { animation: hmPop .18s cubic-bezier(.2,.9,.3,1.2) both; }
+    .hm-pop { animation: hmPop .18s cubic-bezier(.2,.9,.3,1.2) backwards; }
     @keyframes hmPop { from { opacity:0; transform: scale(.98); } to { opacity:1; transform: scale(1);} }
     @keyframes hmDrawerIn { from { opacity: 0; transform: translateX(18px) scale(0.995); } to { opacity: 1; transform: translateX(0) scale(1); } }
+    @keyframes hmSpin { to { transform: rotate(360deg); } }
 
     /* Iconography: unified sizes, no wandering float */
     .hm-icon { width: 18px; height: 18px; display: inline-block; vertical-align: middle; }
@@ -317,10 +330,10 @@ const GlobalStyle = () => (
     /* Modal / drawer */
     .hm-modal-overlay { position: fixed; inset: 0; z-index: 1000; padding: 0; background: rgba(0,0,0,0.36); backdrop-filter: blur(6px); display: flex; align-items: flex-end; justify-content: center; }
     .hm-drawer-overlay { position: fixed; inset: 0; z-index: 1200; display: flex; justify-content: flex-end; align-items: stretch; background: rgba(15,20,25,0.32); backdrop-filter: blur(8px); padding: 0; }
-    .hm-drawer { width: min(100%, 920px); height: 100vh; max-height: 100vh; background: var(--surface); box-shadow: -24px 0 48px rgba(0,0,0,0.12); overflow-y: auto; overflow-x: hidden; animation: hmDrawerIn .28s cubic-bezier(.22,1,.36,1) both; }
+    .hm-drawer { width: min(100%, 920px); height: 100dvh; max-height: 100dvh; background: var(--surface); box-shadow: -24px 0 48px rgba(0,0,0,0.12); overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; animation: hmDrawerIn .28s cubic-bezier(.22,1,.36,1) backwards; }
     .hm-drawer.profile-drawer { width: min(100%, 420px); }
 
-    .hm-modal { width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; overscroll-behavior-y: contain; background: var(--surface); border-radius: 28px 28px 0 0; box-shadow: 0 -12px 40px rgba(0,0,0,0.18); overflow-x: hidden; position: relative; animation: hmSheetIn .32s cubic-bezier(.22,1,.36,1) both; }
+    .hm-modal { width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; overscroll-behavior-y: contain; background: var(--surface); border-radius: 28px 28px 0 0; box-shadow: 0 -12px 40px rgba(0,0,0,0.18); overflow-x: hidden; position: relative; animation: hmSheetIn .32s cubic-bezier(.22,1,.36,1) backwards; }
     .hm-modal--wide { max-width: 680px; }
     @keyframes hmSheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
     .hm-modal-handle-wrap { width: 100%; padding: 16px 0 14px; display: flex; justify-content: center; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -328,8 +341,8 @@ const GlobalStyle = () => (
     .hm-modal-handle { width: 42px; height: 5px; border-radius: 999px; background: var(--border); transition: background .15s; }
     .hm-modal-handle-wrap:active .hm-modal-handle { background: var(--ink-soft); }
     .hm-modal-header { padding: 6px 56px 14px; display: flex; align-items: center; justify-content: center; position: relative; text-align: center; }
-    .hm-modal-body { padding: var(--space-2) var(--space-5) var(--space-6); }
-    .hm-modal-close { position: absolute; left: 14px; top: 2px; background: var(--surface-alt); border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-soft); }
+    .hm-modal-body { padding: var(--space-2) var(--space-5) calc(var(--space-6) + env(safe-area-inset-bottom)); }
+    .hm-modal-close { position: absolute; left: 10px; top: -2px; background: var(--surface-alt); border: none; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-soft); }
     @media (prefers-reduced-motion: reduce) { .hm-modal { animation: none !important; } }
 
     @media (prefers-reduced-motion: reduce) { .hm-fade-in, .hm-pop { animation: none !important; } .hm-tap { transition: none !important; } }
@@ -852,17 +865,6 @@ function MemberPicker({ id, members = [], selected = [] }) {
           </label>
         );
       })}
-    </div>
-  );
-}
-
-function EmptyState({ icon: Icon, title, subtitle, action }) {
-  return (
-    <div className="hm-fade-in hm-empty">
-      <div className="hm-empty-icon"><Icon size={26} /></div>
-      <p className="hm-empty-title">{title}</p>
-      <p className="hm-empty-subtitle">{subtitle}</p>
-      {action}
     </div>
   );
 }
@@ -1405,7 +1407,6 @@ function ScanSpaceModal({ onClose, onImport, state }) {
           )}
           <div style={{ textAlign: "center" }}>
             <div style={{ width: 44, height: 44, margin: "0 auto 16px", borderRadius: "50%", border: "3px solid var(--accent-soft)", borderTopColor: "var(--accent)", animation: "hmSpin 0.9s linear infinite" }} />
-            <style>{`@keyframes hmSpin { to { transform: rotate(360deg); } }`}</style>
             <p style={{ fontWeight: 700, margin: "0 0 4px" }}>{t("scan." + analysisStep) || t("scan.analyzing")}</p>
             <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: 0 }}>{t("scanSpace.aiStatus")}</p>
           </div>
@@ -1904,9 +1905,10 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateObject, houseId 
   if (activeContainer) {
     const childObjects = state.objects.filter((o) => o.containerId === activeContainer.id);
     const childContainers = state.containers.filter((c) => c.parentId === activeContainer.id);
+    const parentContainer = activeContainer.parentId ? getContainer(state, activeContainer.parentId) : null;
     return (
       <div className="hm-fade-in">
-        <button className="hm-btn hm-btn-ghost" style={{ paddingLeft: 0, marginBottom: 8 }} onClick={() => setView({})}><ArrowLeft size={16} />{t("room.boxesSection")}</button>
+        <button className="hm-btn hm-btn-ghost" style={{ paddingLeft: 0, marginBottom: 8 }} onClick={() => setView(parentContainer ? { containerId: parentContainer.id } : {})}><ArrowLeft size={16} />{parentContainer ? parentContainer.name : t("room.boxesSection")}</button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
@@ -2035,7 +2037,7 @@ const NAV = [
   { key: "economia", label: "Economía", icon: TrendingUp, oldKeys: ["facturas"] },
 ];
 
-function Sidebar({ active, onSelect, homeName, darkMode, onToggleDark, onOpenHomeSelector, user, nav = NAV }) {
+const Sidebar = memo(function Sidebar({ active, onSelect, homeName, darkMode, onToggleDark, onOpenHomeSelector, user, nav = NAV }) {
   const { t } = useTranslation();
   return (
     <div className="hm-card" style={{ width: 232, padding: 18, display: "flex", flexDirection: "column", gap: 4, flexShrink: 0, height: "fit-content", position: "sticky", top: 24 }}>
@@ -2074,14 +2076,14 @@ function Sidebar({ active, onSelect, homeName, darkMode, onToggleDark, onOpenHom
       </div>
     </div>
   );
-}
+});
 
-function BottomNav({ active, onSelect, nav = NAV }) {
+const BottomNav = memo(function BottomNav({ active, onSelect, nav = NAV }) {
   const { t } = useTranslation();
   return (
     <nav role="navigation" aria-label="Main" style={{ display: "flex", justifyContent: "center" }}>
       <div role="tablist" aria-label="Main tabs" style={{
-        position: "fixed", bottom: 12, left: 12, right: 12, display: "flex", padding: "4px 8px",
+        position: "fixed", bottom: "calc(12px + env(safe-area-inset-bottom))", left: 12, right: 12, display: "flex", padding: "4px 8px",
         zIndex: 50, borderRadius: 24,
         background: "rgba(var(--surface-rgb), 0.55)",
         backdropFilter: "blur(24px) saturate(180%)",
@@ -2107,14 +2109,17 @@ function BottomNav({ active, onSelect, nav = NAV }) {
       </div>
     </nav>
   );
-}
+});
 
 function NotificationsModal({ notifications, activity, onAction, onMarkRead, onArchive, onDelete, onSnooze, onClose }) {
   const { t } = useTranslation();
+  const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   return (
-    <div className="hm-modal-overlay" onClick={onClose}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 540 }} onClick={(e) => e.stopPropagation()}>
-        <div className="hm-modal-handle" />
+    <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
+      <div className="hm-modal hm-scroll" style={{ maxWidth: 540, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+        <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
+          <div className="hm-modal-handle" />
+        </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("common.close")}><X size={20} /></button>
           <h3 className="hm-display hm-modal-title" style={{ fontSize: 21, fontWeight: 600, margin: 0 }}>{t("header.notifications")}</h3>
@@ -2452,6 +2457,35 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         } catch (error) {
           console.error("Error transferring house ownership:", error);
           showNotice(error?.message || t("memberDetail.transferError"));
+        }
+      },
+      onCancel: () => setConfirmDialog(null),
+    });
+  };
+
+  /**
+   * Borra la casa entera (habitaciones, objetos, tareas, compras, notas,
+   * Economía...) — irreversible, solo el admin la ve. Tras confirmar, cierra
+   * el panel de ajustes y navega fuera antes de que `activeHome` quede
+   * apuntando a una casa que ya no existe.
+   */
+  const handleDeleteHouse = (house) => {
+    setConfirmDialog({
+      title: t("confirm.deleteHouseTitle"),
+      message: t("confirm.deleteHouseMessage", { name: house.name }),
+      isDangerous: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await houseService.deleteHouse(house.id);
+          closeModal();
+          setRoute({ tab: "inicio" });
+          setHomes((prev) => prev.filter((h) => h.id !== house.id));
+          setCurrentHomeId((prev) => (prev === house.id ? "" : prev));
+          showNotice(t("toast.houseDeleted", { name: house.name }));
+        } catch (error) {
+          console.error("Error deleting house:", error);
+          showNotice(error?.message || t("toast.houseDeleteError"));
         }
       },
       onCancel: () => setConfirmDialog(null),
@@ -2813,11 +2847,18 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   };
 
   const goTo = (r) => {
+    // Normaliza claves de ruta heredadas (micasa/cajas/tareas/compras/...) al
+    // pilar nuevo correspondiente, igual que ya hace `selectTab` — si no, el
+    // contenido se renderiza igual (hay bloques de compatibilidad), pero ni
+    // el bottom-nav ni el selector de Organización quedan resaltados porque
+    // comparan contra la clave nueva.
+    const newTab = mapTabToNewPillar(r.tab);
     /* Preserve previous tab when navigating to detail-like screens */
-    if (route?.tab && route.tab !== "objectDetail" && route.tab !== r.tab) setPrevTab(route.tab);
+    if (route?.tab && route.tab !== "objectDetail" && route.tab !== newTab) setPrevTab(route.tab);
     if (r.tab === "micasa") setMicasaView({ roomId: r.roomId, zoneId: r.zoneId });
     if (r.tab === "cajas") setCajasView({ containerId: r.containerId });
-    setRoute(r);
+    if (["compras", "tareas", "notas", "calendario"].includes(r.tab)) setOrganizationTab(r.tab);
+    setRoute({ ...r, tab: newTab });
   };
   // Mapeo de rutas antiguas a nuevas (backwards compatibility)
   const mapTabToNewPillar = (key) => {
@@ -2863,6 +2904,51 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   // abiertos desde Perfil deben devolver a Perfil, no saltar a Inicio) en vez
   // de cerrar del todo, cuando el modal se abrió con `returnTo`.
   const closeModal = () => setModal((current) => (current?.returnTo ? { type: current.returnTo } : null));
+
+  // Botón físico "atrás" de Android: orden de prioridad — diálogo de
+  // confirmación abierto → modal abierto → un nivel arriba en Cajas/MiCasa →
+  // pestaña "inicio" → si ya está en inicio, deja que el sistema minimice/
+  // cierre la app. El listener se registra una sola vez (no puede depender
+  // de `modal`/`route`/etc., que cambian en casi cada render) y en su lugar
+  // lee siempre el snapshot más reciente desde esta ref, actualizada en cada
+  // render — así nunca actúa sobre estado obsoleto. Solo usa setters de
+  // useState (estables) o updaters funcionales, nunca los closures de arriba
+  // (`closeModal` es una excepción segura: solo usa el updater funcional de
+  // `setModal`, no lee `modal` del closure).
+  const backButtonStateRef = useRef(null);
+  backButtonStateRef.current = { modal, confirmDialog, route, cajasView, micasaView, state };
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listenerPromise = CapacitorApp.addListener("backButton", () => {
+      const { modal, confirmDialog, route, cajasView, micasaView, state } = backButtonStateRef.current;
+
+      if (confirmDialog) {
+        confirmDialog.onCancel ? confirmDialog.onCancel() : setConfirmDialog(null);
+        return;
+      }
+      if (modal) {
+        closeModal();
+        return;
+      }
+      if (route?.tab === "cajas" && cajasView?.containerId) {
+        const activeContainer = getContainer(state, cajasView.containerId);
+        setCajasView(activeContainer?.parentId ? { containerId: activeContainer.parentId } : {});
+        return;
+      }
+      if (route?.tab === "hogar" && micasaView?.roomId) {
+        setMicasaView({});
+        return;
+      }
+      if (route?.tab && route.tab !== "inicio") {
+        setPrevTab(route.tab);
+        setRoute({ tab: "inicio" });
+        return;
+      }
+      CapacitorApp.exitApp();
+    });
+    return () => { listenerPromise.then((l) => l.remove()); };
+  }, []);
 
   if (authLoading) {
     return (
@@ -3561,8 +3647,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
              
             {/* 🏡 HOGAR - Rooms, Zones, Containers, Objects */}
             {route.tab === "hogar" && <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />}
-            {route.tab === "hogar" && micasaView?.showCajas && <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />}
-             
+
             {/* ✅ ORGANIZACIÓN - Shopping, Tasks, Calendar */}
             {route.tab === "organizacion" && (
               <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{t("nav.organizacion")}</h1>
@@ -3700,6 +3785,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onChangeTaskRetention={setTaskRetentionDays}
             onClose={closeModal}
             isCurrencyLoading={currencyLoading}
+            onDeleteHouse={handleDeleteHouse}
           />
         </Suspense>
       )}

@@ -8,6 +8,7 @@ import { getCategoryIcon, getPriorityMeta, isUrgent } from "./shoppingMeta";
 import { computeFrequentProducts } from "./frequentProducts";
 import { ShoppingCheckoutMode } from "./ShoppingCheckoutMode";
 import { getPortalTarget } from "../../utils/portalTarget";
+import { EmptyState } from "../../components/EmptyState";
 import { useTranslation } from "../../i18n";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -254,11 +255,7 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
         </div>
 
         {shoppingLists.length === 0 ? (
-          <div className="hm-card hm-card--p24 hm-card--center">
-            <ShoppingCart size={26} style={{ color: "var(--accent)", marginBottom: 10 }} />
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("shoppingModule.emptyListsTitle")}</div>
-            <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>{t("shoppingModule.emptyListsSubtitle")}</div>
-          </div>
+          <EmptyState card icon={ShoppingCart} title={t("shoppingModule.emptyListsTitle")} subtitle={t("shoppingModule.emptyListsSubtitle")} />
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             {shoppingLists.map((list) => {
@@ -312,9 +309,9 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
       </div>
 
       <div className="hm-card hm-card--p14">
-        <div style={{ display: "flex", gap: 8, flexWrap: "nowrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <Tag size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />
-          <select className="hm-input" style={{ flex: 1, minWidth: 0 }} value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
+          <select className="hm-input" style={{ flex: 1, minWidth: 120 }} value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
             {categories.map((category) => (
               <option key={category} value={category}>{category === "all" ? t("search.allCategories") : category}</option>
             ))}
@@ -331,12 +328,13 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
       </div>
 
       {listItems.length === 0 ? (
-        <div className="hm-card hm-card--p24 hm-card--center">
-          <ShoppingCart size={26} style={{ color: "var(--accent)", marginBottom: 10 }} />
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("shoppingModule.emptyListTitle")}</div>
-          <div style={{ color: "var(--ink-soft)", fontSize: 13, marginBottom: 14 }}>{t("shoppingModule.emptyListSubtitle")}</div>
-          <button className="hm-btn hm-btn-primary" onClick={() => openModal("addShopping", { listId: activeList.id })}><Plus size={15} /> {t("shopping.addProduct")}</button>
-        </div>
+        <EmptyState
+          card
+          icon={ShoppingCart}
+          title={t("shoppingModule.emptyListTitle")}
+          subtitle={t("shoppingModule.emptyListSubtitle")}
+          action={<button className="hm-btn hm-btn-primary" onClick={() => openModal("addShopping", { listId: activeList.id })}><Plus size={15} /> {t("shopping.addProduct")}</button>}
+        />
       ) : visibleItems.length === 0 ? (
         <div className="hm-card hm-card--p24 hm-card--center">
           <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>

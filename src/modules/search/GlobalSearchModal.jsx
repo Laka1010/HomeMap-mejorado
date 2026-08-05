@@ -1,6 +1,7 @@
 import { Search, Package, Home, Box, CheckSquare, ShoppingCart, Wallet, Users, MapPin } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { useGlobalSearch } from "./useGlobalSearch";
+import { EmptyState } from "../../components/EmptyState";
 
 const CATEGORY_META = {
   object: { labelKey: "search.type.object", icon: Package },
@@ -43,8 +44,14 @@ export function GlobalSearchModal({ state, houseId, canSeeEconomy, members, getP
         goTo({ tab: "economia" });
         break;
       case "member":
+        // A diferencia de los demás casos, onOpenMembers() abre otro modal
+        // usando el mismo estado `modal` de App.jsx que este buscador (el
+        // houseSettings sustituye al globalSearch en el mismo slot) — así
+        // que NO hay que llamar también a onClose() aquí: cerraría justo el
+        // modal que se acaba de abrir (el bug original: onClose() se
+        // llamaba siempre al final, sin excepción para este caso).
         onOpenMembers?.();
-        break;
+        return;
       default:
         break;
     }
@@ -71,11 +78,7 @@ export function GlobalSearchModal({ state, houseId, canSeeEconomy, members, getP
       {!hasQuery ? (
         <p style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>{t("search.startTypingHint")}</p>
       ) : !hasResults ? (
-        <div className="hm-card hm-card--p24 hm-card--center">
-          <Search size={26} style={{ color: "var(--accent)", marginBottom: 10 }} />
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("common.noResults")}</div>
-          <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>{t("common.noResultsDetails", { query })}</div>
-        </div>
+        <EmptyState card icon={Search} title={t("common.noResults")} subtitle={t("common.noResultsDetails", { query })} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           {groups.map((group) => {

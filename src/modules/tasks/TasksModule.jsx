@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CalendarDays, Check, ClipboardList, Edit3, Plus, ShoppingCart, Star } from "lucide-react";
 import { ModuleCard } from "../core/ModuleCard";
 import { FavoriteStar } from "../../components/FavoriteStar";
+import { EmptyState } from "../../components/EmptyState";
 import { taskService } from "../../services/taskService";
 import { useTranslation } from "../../i18n";
 
@@ -60,12 +61,13 @@ export function TasksModule({ state, dispatch, openModal, onAddToShopping, onTas
       </div>
 
       {tasks.length === 0 ? (
-        <div className="hm-card hm-card--p24 hm-card--center">
-          <ClipboardList size={26} style={{ color: "var(--accent)", marginBottom: 10 }} />
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("tasksModule.emptyTitle")}</div>
-          <div style={{ color: "var(--ink-soft)", fontSize: 13, marginBottom: 14 }}>{t("tasksModule.emptySubtitle")}</div>
-          <button className="hm-btn hm-btn-primary" onClick={() => openModal("addTask")}><Plus size={15} /> {t("tasksModule.createTask")}</button>
-        </div>
+        <EmptyState
+          card
+          icon={ClipboardList}
+          title={t("tasksModule.emptyTitle")}
+          subtitle={t("tasksModule.emptySubtitle")}
+          action={<button className="hm-btn hm-btn-primary" onClick={() => openModal("addTask")}><Plus size={15} /> {t("tasksModule.createTask")}</button>}
+        />
       ) : visibleTasks.length === 0 ? (
         <div className="hm-card hm-card--p24 hm-card--center">
           <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>{t("tasksModule.noFavoriteTasks")}</div>

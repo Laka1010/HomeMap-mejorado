@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { X, ChevronLeft, ChevronRight, Check, MapPin, Box } from "lucide-react";
 import { useTranslation } from "../i18n";
+import { useDragToDismiss } from "../hooks/useDragToDismiss";
 
 const BOX_COLORS = ["#3D5A80", "#C98A3E", "#6B7A5E", "#8E5B72", "#4C7A8B", "#8B6B4C"];
 
 export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
   const { t } = useTranslation();
+  const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState("next");
   const [data, setData] = useState({
@@ -47,16 +49,18 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
   const selectedZone = state.zones.find(z => z.id === data.zoneId);
 
   return (
-    <div className="wizard-overlay" onClick={onClose}>
-      <div className="wizard-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="wizard-handle" />
+    <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
+      <div className="wizard-modal" onClick={(e) => e.stopPropagation()} style={sheetStyle}>
+        <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
+          <div className="hm-modal-handle" />
+        </div>
         <div className="wizard-progress-bar">
           <div className="wizard-progress-fill" style={{ width: `${(step / TOTAL_STEPS) * 100}%` }} />
         </div>
 
-        <div className="wizard-header">
+        <div className="hm-modal-header">
+          <button className="hm-modal-close" onClick={onClose} aria-label={t("common.close")}><X size={20} /></button>
           <div className="wizard-step-counter">{t("wizard.stepCounter", { step, total: TOTAL_STEPS })}</div>
-          <button className="wizard-close-btn" onClick={onClose}><X size={20} /></button>
         </div>
 
         <div className={`wizard-body transition-${direction}`}>
@@ -175,17 +179,12 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
       </div>
 
       <style>{`
-        .wizard-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); display: flex; align-items: flex-end; justify-content: center; z-index: 1000; padding: 0; }
-        .wizard-modal { background: var(--surface); width: 100%; max-width: 540px; max-height: 92vh; border-radius: 28px 28px 0 0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 -12px 40px rgba(0,0,0,0.18); position: relative; animation: wizardSheetIn .32s cubic-bezier(.22,1,.36,1) both; }
-        @keyframes wizardSheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .wizard-modal { background: var(--surface); width: 100%; max-width: 540px; max-height: 92vh; border-radius: 28px 28px 0 0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 -12px 40px rgba(0,0,0,0.18); position: relative; animation: hmSheetIn .32s cubic-bezier(.22,1,.36,1) backwards; }
         @media (prefers-reduced-motion: reduce) { .wizard-modal { animation: none !important; } }
-        .wizard-handle { width: 42px; height: 5px; border-radius: 999px; background: var(--border); margin: 12px auto 0; flex-shrink: 0; }
-        .wizard-progress-bar { height: 6px; background: var(--surface-alt); width: 100%; margin-top: 10px; }
+        .wizard-progress-bar { height: 6px; background: var(--surface-alt); width: 100%; flex-shrink: 0; }
         .wizard-progress-fill { height: 100%; background: var(--accent); transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        .wizard-header { padding: 24px 32px 10px; display: flex; justify-content: space-between; align-items: center; }
         .wizard-step-counter { font-size: 13px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
-        .wizard-close-btn { background: var(--surface-alt); border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-soft); }
-        .wizard-body { padding: 20px 32px 40px; min-height: 400px; display: flex; flex-direction: column; }
+        .wizard-body { padding: 20px 32px 40px; flex: 1; overflow-y: auto; overscroll-behavior-y: contain; display: flex; flex-direction: column; }
         .wizard-content-wrapper { flex: 1; display: flex; flex-direction: column; }
         .wizard-step-container { display: flex; flex-direction: column; align-items: center; text-align: center; }
         .wizard-title { font-size: 28px; margin-bottom: 32px; font-weight: 700; }

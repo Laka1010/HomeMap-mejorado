@@ -5,6 +5,7 @@ import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { normalizeText } from "../../utils/textMatch";
 import { EXPENSE_CATEGORIES } from "./economyCategories";
+import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 
 /**
  * Objetivos económicos: límite de gasto por categoría o ahorro objetivo.
@@ -56,7 +57,7 @@ export function GoalsSection({ houseId, userId, expenseCategoryTotals, balance }
 
   return (
     <div className="hm-card" style={{ padding: 18 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", color: "var(--ink-soft)", textTransform: "uppercase" }}>
           {t("goals.title")}
         </div>
@@ -120,6 +121,7 @@ function GoalRow({ goal, current, onDelete, formatCurrency, t }) {
 
 function AddGoalModal({ onCreate, onClose }) {
   const { t } = useTranslation();
+  const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const [type, setType] = useState("spending_limit");
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
   const [amount, setAmount] = useState("");
@@ -146,9 +148,11 @@ function AddGoalModal({ onCreate, onClose }) {
   };
 
   return (
-    <div className="hm-modal-overlay" onClick={onClose}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-        <div className="hm-modal-handle" />
+    <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
+      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+        <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
+          <div className="hm-modal-handle" />
+        </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("goals.cancel")}>✕</button>
           <h3 className="hm-display hm-modal-title">{t("goals.addTitle")}</h3>

@@ -3,6 +3,7 @@ import { useTranslation } from "../../i18n";
 import { CurrencyPickerModal } from "../../components/settings/CurrencyPickerModal";
 import { accountsService } from "./services/accountsService";
 import { getCurrenciesList } from "../../utils/currencyUtils";
+import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 
 const TYPE_OPTIONS = [
   { value: "bank", icon: "🏦", labelKey: "accounts.typeBank" },
@@ -23,6 +24,7 @@ const COLOR_SWATCHES = ["#6366F1", "#22C55E", "#EC4899", "#F59E0B", "#06B6D4", "
  */
 export function AccountModal({ spaceId, userId, account, onClose, onSaved, onDeleted }) {
   const { t } = useTranslation();
+  const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const isEdit = !!account;
   const [name, setName] = useState(account?.name || "");
   const [type, setType] = useState(account?.type || "bank");
@@ -84,9 +86,11 @@ export function AccountModal({ spaceId, userId, account, onClose, onSaved, onDel
   };
 
   return (
-    <div className="hm-modal-overlay" onClick={onClose}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-        <div className="hm-modal-handle" />
+    <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
+      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+        <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
+          <div className="hm-modal-handle" />
+        </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("accounts.cancel")}>✕</button>
           <h3 className="hm-display hm-modal-title">{t(isEdit ? "accounts.editTitle" : "accounts.addTitle")}</h3>

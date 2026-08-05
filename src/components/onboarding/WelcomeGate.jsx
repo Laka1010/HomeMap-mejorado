@@ -266,9 +266,8 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           border: 2.5px solid rgba(255,255,255,0.35);
           border-top-color: #fff;
           border-radius: 50%;
-          animation: wgspin 0.8s linear infinite;
+          animation: hmSpin 0.8s linear infinite;
         }
-        @keyframes wgspin { to { transform: rotate(360deg); } }
 
         /* Start mode (Empty / Template / AI) */
         .wg-startmode-card {

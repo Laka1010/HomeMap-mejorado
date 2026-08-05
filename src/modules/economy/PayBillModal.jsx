@@ -4,6 +4,7 @@ import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { economyService } from "./services/economyService";
 import { accountsService } from "./services/accountsService";
+import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 
 /**
  * "¿Cómo quieres pagarla?" — desde una cuenta del propio Household, o
@@ -15,6 +16,7 @@ import { accountsService } from "./services/accountsService";
 export function PayBillModal({ bill, spaceId, spaces, onClose, onPaid }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
+  const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const [mode, setMode] = useState(null); // null | 'account' | 'contribution'
   const [householdAccounts, setHouseholdAccounts] = useState([]);
   const [contributionAccounts, setContributionAccounts] = useState([]);
@@ -57,9 +59,11 @@ export function PayBillModal({ bill, spaceId, spaces, onClose, onPaid }) {
   };
 
   return (
-    <div className="hm-modal-overlay" onClick={onClose}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-        <div className="hm-modal-handle" />
+    <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
+      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+        <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
+          <div className="hm-modal-handle" />
+        </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("bills.close")}>✕</button>
           <h3 className="hm-display hm-modal-title">{bill.name}</h3>

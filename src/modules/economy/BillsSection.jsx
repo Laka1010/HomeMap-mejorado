@@ -5,6 +5,7 @@ import { FavoriteStar } from "../../components/FavoriteStar";
 import { PayBillModal } from "./PayBillModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
+import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 
 export default function BillsSection({ currentHome, spaceId, spaces, state, dispatch, user }) {
   const { t } = useTranslation();
@@ -97,6 +98,8 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
     setConfirmingDelete(false);
     setActionError("");
   };
+
+  const { handleRef: detailHandleRef, handleMouseDown: detailHandleMouseDown, isSuppressingClick: isDetailSuppressingClick, sheetStyle: detailSheetStyle } = useDragToDismiss(closeDetail);
 
   // El pago en sí (elegir cuenta o contribución) lo gestiona PayBillModal
   // llamando a economyService.payBillFromAccount/payBillViaContribution
@@ -265,9 +268,11 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
 
       {/* Detalle modal */}
       {showDetail && selectedBill && (
-        <div className="hm-modal-overlay" onClick={closeDetail}>
-          <div className="hm-modal hm-scroll" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
-            <div className="hm-modal-handle" />
+        <div className="hm-modal-overlay" onClick={(e) => { if (isDetailSuppressingClick()) return; closeDetail(e); }}>
+          <div className="hm-modal hm-scroll" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520, ...detailSheetStyle }}>
+            <div ref={detailHandleRef} className="hm-modal-handle-wrap" onMouseDown={detailHandleMouseDown}>
+              <div className="hm-modal-handle" />
+            </div>
             <div className="hm-modal-header">
               <button className="hm-modal-close" onClick={closeDetail} aria-label={t("bills.close")}>✕</button>
               <h3 className="hm-display hm-modal-title">{selectedBill.name}</h3>
@@ -382,6 +387,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
 
 function AddBillModal({ spaceId, userId, onClose, onCreated }) {
   const { t } = useTranslation();
+  const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -420,9 +426,11 @@ function AddBillModal({ spaceId, userId, onClose, onCreated }) {
   };
 
   return (
-    <div className="hm-modal-overlay" onClick={onClose}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-        <div className="hm-modal-handle" />
+    <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
+      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+        <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
+          <div className="hm-modal-handle" />
+        </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("bills.cancel")}>✕</button>
           <h3 className="hm-display hm-modal-title">{t("bills.add")}</h3>

@@ -68,18 +68,35 @@ export function useDragToDismiss(onDismiss, { threshold = 90, entranceDelay = 34
     };
   }, []);
 
+  // Los listeners de mousemove/mouseup de un arrastre en curso solo se
+  // quitaban dentro de `onUp` — si el componente se desmonta a mitad de un
+  // arrastre (p. ej. ActionCenter cerrándose por cambio de pestaña mientras
+  // se arrastra el tirador con ratón), esos listeners quedaban en `window`
+  // para siempre, referenciando closures obsoletas. `mouseCleanupRef` deja
+  // un cleanup pendiente que el efecto de abajo ejecuta también al desmontar.
+  const mouseCleanupRef = useRef(null);
+
   const handleMouseDown = (e) => {
     e.preventDefault();
     startDrag(e.clientY);
     const onMove = (ev) => moveDrag(ev.clientY);
-    const onUp = () => {
-      endDrag();
+    const cleanup = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      mouseCleanupRef.current = null;
     };
+    const onUp = () => {
+      endDrag();
+      cleanup();
+    };
+    mouseCleanupRef.current = cleanup;
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   };
+
+  useEffect(() => {
+    return () => mouseCleanupRef.current?.();
+  }, []);
 
   // La animación de entrada (hmSheetIn/hmPop) usa animation-fill-mode:both,
   // así que su transform se queda "vivo" para siempre y pisa el transform
