@@ -220,7 +220,7 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
                   cursor: "pointer",
                 }}
               >
-                <div style={{ width: 38, height: 38, borderRadius: "50%", background: accentSoft, display: "grid", placeItems: "center", flexShrink: 0, color: accent }}>
+                <div className="hm-row-icon" style={{ background: accentSoft, color: accent }}>
                   {type === "expenses" ? <TrendingDown size={17} /> : <TrendingUp size={17} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>

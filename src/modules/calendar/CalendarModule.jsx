@@ -164,8 +164,8 @@ export function CalendarModule({ state, currentHome, canSeeEconomy = true }) {
                   borderBottom: idx < dayEvents.length - 1 ? "1px solid var(--border)" : "none",
                 }}
               >
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: meta.bg, color: meta.color, display: "grid", placeItems: "center", flexShrink: 0 }}>
-                  <Icon size={16} />
+                <div className="hm-row-icon" style={{ background: meta.bg, color: meta.color }}>
+                  <Icon size={17} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.title}</div>

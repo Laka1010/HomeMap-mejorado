@@ -102,7 +102,7 @@ export function ActionCenter({ currentTab, openModal, currentHome, position = "c
           style={{
             position: "relative",
             width: fabSize, height: fabSize, borderRadius: fabRadius,
-            boxShadow: position === "corner" ? "0 8px 20px rgba(0,0,0,0.18)" : "0 8px 24px rgba(0,0,0,0.14)",
+            boxShadow: "var(--shadow-elev-3)",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: position === "corner" ? 28 : 22, padding: 0,
             animation: open ? "none" : "hmFabBob 2.6s ease-in-out infinite",
@@ -120,7 +120,6 @@ export function ActionCenter({ currentTab, openModal, currentHome, position = "c
       {open && (
         <div
           className="hm-modal-overlay"
-          style={{ background: "rgba(8,10,12,0.36)", backdropFilter: "blur(6px)", alignItems: "flex-end", padding: 0 }}
           onClick={() => { if (!isSuppressingClick()) setOpen(false); }}
         >
           <div
@@ -129,11 +128,11 @@ export function ActionCenter({ currentTab, openModal, currentHome, position = "c
             style={{
               width: "100%",
               maxWidth: 920,
-              borderTopLeftRadius: 18,
-              borderTopRightRadius: 18,
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
               background: "var(--surface)",
               paddingBottom: 20,
-              boxShadow: "0 -20px 40px rgba(0,0,0,0.12)",
+              boxShadow: "0 -12px 40px rgba(0,0,0,0.18)",
               zIndex: 1401,
               ...sheetStyle,
             }}

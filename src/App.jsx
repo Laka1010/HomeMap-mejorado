@@ -135,6 +135,7 @@ const GlobalStyle = () => (
       /* Elevation */
       --shadow-elev-1: 0 1px 3px rgba(20,20,15,0.05);
       --shadow-elev-2: 0 10px 28px rgba(10,10,10,0.10);
+      --shadow-elev-3: 0 8px 22px rgba(10,10,10,0.16);
 
       font-family: 'Inter', sans-serif;
       background: var(--bg);
@@ -357,6 +358,31 @@ const GlobalStyle = () => (
     .hm-stat-chip { padding: 14px 16px; flex: 1 1 120px; min-width: 110px; }
     .hm-stat-value { font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 600; line-height: 1; }
     .hm-stat-label { font-size: 12.5px; color: var(--ink-soft); margin-top: 6px; font-weight: 500; }
+
+    /* Avatars: unified scale (was drifting per-screen — same "member" avatar
+       rendered at slightly different sizes/weights depending on which file
+       happened to implement it). Initials by default; an <img> child fills it. */
+    .hm-avatar { border-radius: 50%; display: grid; place-items: center; font-weight: 700; flex-shrink: 0; overflow: hidden; background: var(--accent); color: var(--accent-ink); }
+    .hm-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .hm-avatar--sm { width: 32px; height: 32px; font-size: 13px; }
+    .hm-avatar--md { width: 40px; height: 40px; font-size: 16px; }
+    .hm-avatar--lg { width: 64px; height: 64px; font-size: 26px; }
+    .hm-avatar--xl { width: 96px; height: 96px; font-size: 32px; }
+
+    /* Badges/pills: unified scale (role labels, status pills) — was drifting
+       between 3px/9px and 5px/12px padding for the same kind of small pill. */
+    .hm-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: var(--radius-pill); white-space: nowrap; }
+    .hm-badge--accent { color: var(--accent); background: var(--accent-soft); }
+    .hm-badge--neutral { color: var(--ink-soft); background: var(--surface-alt); font-weight: 600; }
+    .hm-badge--success { color: var(--success); background: var(--success-soft); }
+    .hm-badge--danger { color: var(--danger); background: var(--danger-soft); }
+    .hm-badge--pin { color: var(--pin); background: var(--pin-soft); }
+
+    /* Row icon: the colored circle + icon that leads a list row (movements,
+       bills, calendar events, overview rows) — unified at 38px/17px, the size
+       already used consistently everywhere except Calendar, which had
+       independently drifted to 34px/16px. */
+    .hm-row-icon { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
 
     .hm-desktop-sidebar { display: none; }
     .hm-mobile-nav { display: block; }
@@ -1670,11 +1696,12 @@ function ObjectDetail({ state, objectId, onBack, onDelete, dispatch, onMove, onU
 /* -------------------------------------------------------------------- */
 /* DASHBOARD                                                             */
 /* -------------------------------------------------------------------- */
-function Dashboard({ state, goTo, canSeeEconomy, currentHome, houseMembers, notifications }) {
+function Dashboard({ state, goTo, openModal, canSeeEconomy, currentHome, houseMembers, notifications }) {
   return (
     <DashboardModule
       state={state}
       goTo={goTo}
+      openModal={openModal}
       canSeeEconomy={canSeeEconomy}
       currentHome={currentHome}
       houseMembers={houseMembers}
@@ -3638,6 +3665,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               <Dashboard
                 state={state}
                 goTo={goTo}
+                openModal={openModal}
                 canSeeEconomy={canSeeEconomy}
                 currentHome={currentHome}
                 houseMembers={houseMembers}

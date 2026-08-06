@@ -211,7 +211,7 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
                     borderBottom: idx < Math.min(entries.length, 4) - 1 ? "1px solid var(--border)" : "none",
                   }}
                 >
-                  <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--surface-alt)", display: "grid", placeItems: "center", flexShrink: 0, color: "var(--ink-soft)" }}>
+                  <div className="hm-row-icon" style={{ background: "var(--surface-alt)", color: "var(--ink-soft)" }}>
                     <Icon size={17} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -246,7 +246,7 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
               const overdue = daysUntil < 0;
               return (
                 <div key={bill.id || idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: idx < upcomingBills.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <div style={{ width: 38, height: 38, borderRadius: "50%", background: overdue ? "var(--danger-soft)" : "var(--surface-alt)", display: "grid", placeItems: "center", flexShrink: 0, color: overdue ? "var(--danger)" : "var(--ink-soft)" }}>
+                  <div className="hm-row-icon" style={{ background: overdue ? "var(--danger-soft)" : "var(--surface-alt)", color: overdue ? "var(--danger)" : "var(--ink-soft)" }}>
                     <Calendar size={17} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

@@ -29,7 +29,7 @@ export const AppHeader = memo(function AppHeader({ user, profile, currentHome, o
             borderRadius: "50%",
             padding: 0,
             background: "var(--surface)",
-            boxShadow: "0 10px 18px rgba(0,0,0,0.08)",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
             display: "grid",
             placeItems: "center",
             color: "var(--accent)",

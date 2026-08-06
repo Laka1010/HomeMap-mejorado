@@ -112,7 +112,7 @@ export function MemberDetailScreen({
         <div style={{ padding: 28, overflowY: "auto", display: "grid", gap: 26, alignContent: "start" }}>
           {/* CABECERA */}
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--accent)", color: "var(--accent-ink)", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 26, flexShrink: 0 }}>
+            <div className="hm-avatar hm-avatar--lg">
               {member.name?.charAt(0).toUpperCase()}
             </div>
             <div style={{ minWidth: 0 }}>
@@ -128,7 +128,7 @@ export function MemberDetailScreen({
                   <span style={{ color: "var(--ink-soft)", fontWeight: 600, fontSize: 13 }}>{ROLE_LABELS[member.role] || member.role}</span>
                 )}
                 <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--border)" }} />
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: "var(--success)", background: "var(--success-soft)", padding: "3px 9px", borderRadius: 999 }}>
+                <span className="hm-badge hm-badge--success">
                   {t("memberDetail.statusActive")}
                 </span>
               </div>

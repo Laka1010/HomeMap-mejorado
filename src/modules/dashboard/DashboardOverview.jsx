@@ -9,7 +9,7 @@ import { DASHBOARD_WIDGETS } from "./widgetRegistry";
  * independientes, cada uno oculto por sí mismo si no tiene nada real que
  * mostrar. Ver widgetRegistry.js para el porqué de la lista en vez de JSX fijo.
  */
-export function DashboardOverview({ state, goTo, canSeeEconomy = true, currentHome, houseMembers = [], notifications = [] }) {
+export function DashboardOverview({ state, goTo, openModal, canSeeEconomy = true, currentHome, houseMembers = [], notifications = [] }) {
   const { t, locale } = useTranslation();
   const tasks = Array.isArray(state.tasks) ? state.tasks : [];
   const shoppingItems = Array.isArray(state.shoppingItems) ? state.shoppingItems : [];
@@ -21,7 +21,7 @@ export function DashboardOverview({ state, goTo, canSeeEconomy = true, currentHo
   const greeting = t("header.greeting", { greeting: t(getGreetingKey()), name: state.profile.userName });
   const dateAndHome = formatLongDate(locale);
 
-  const widgetProps = { tasks, bills, shoppingItems, shoppingLists, activity, members: houseMembers, notifications, canSeeEconomy, monthIncome, monthExpenses, prevMonthExpenses, economyLoaded: loaded, loaded, goTo };
+  const widgetProps = { tasks, bills, shoppingItems, shoppingLists, activity, members: houseMembers, notifications, canSeeEconomy, monthIncome, monthExpenses, prevMonthExpenses, economyLoaded: loaded, loaded, goTo, openModal };
 
   return (
     <div className="hm-fade-in" style={{ display: "flex", flexDirection: "column", gap: 20 }}>

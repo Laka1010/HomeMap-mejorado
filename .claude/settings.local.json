@@ -10,7 +10,9 @@
       "mcp__00b59277-9243-4340-9ccf-98580045d178__execute_sql",
       "Bash(pwd && echo \"---\" && ls \"C:\\\\Users\\\\andre\\\\Claude\\\\homemap-mejorado\" 2>&1 | head -20 && echo \"---desktop---\" && ls \"C:\\\\Users\\\\andre\\\\Desktop\\\\homemap-mejorado\" 2>&1 | head -20)",
       "Bash(npm install *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(node -e ' *)"
     ]
   }
 }

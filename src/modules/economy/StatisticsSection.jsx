@@ -143,7 +143,7 @@ export default function StatisticsSection({ spaceId }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Hero stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
         <div className="hm-card" style={{ padding: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--ink-soft)", fontSize: 12, fontWeight: 700 }}>
             <PiggyBank size={15} /> {t("statistics.savingsRateLabel")}
@@ -158,7 +158,7 @@ export default function StatisticsSection({ spaceId }) {
           </div>
           <div style={{ fontSize: 20, fontWeight: 800, marginTop: 6 }}>{formatCurrency(avgMonthlyExpense)}</div>
         </div>
-        <div className="hm-card" style={{ padding: 14 }}>
+        <div className="hm-card" style={{ padding: 14, gridColumn: "1 / -1" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--ink-soft)", fontSize: 12, fontWeight: 700 }}>
             <Receipt size={15} /> {t("statistics.biggestExpenseLabel")}
           </div>

@@ -1,4 +1,5 @@
 import { TodayWidget } from "./widgets/TodayWidget";
+import { SearchWidget } from "./widgets/SearchWidget";
 import { RecentActivityWidget } from "./widgets/RecentActivityWidget";
 import { ShoppingPreviewWidget } from "./widgets/ShoppingPreviewWidget";
 import { UpcomingBillsWidget } from "./widgets/UpcomingBillsWidget";
@@ -19,6 +20,7 @@ import { MembersWidget } from "./widgets/MembersWidget";
  * no aparece.
  */
 export const DASHBOARD_WIDGETS = [
+  { id: "search", Component: SearchWidget },
   { id: "today", Component: TodayWidget },
   { id: "recentActivity", Component: RecentActivityWidget },
   { id: "shoppingPreview", Component: ShoppingPreviewWidget },

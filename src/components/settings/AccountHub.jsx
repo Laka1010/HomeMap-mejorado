@@ -152,26 +152,25 @@ function ProfileHeader({ avatar, initials, displayName, displayEmail, role, home
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "16px 0 36px" }}>
       <div
+        className="hm-avatar hm-avatar--xl"
         style={{
-          width: 96, height: 96, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
-          background: avatar ? "var(--surface-alt)" : "var(--accent-soft)", color: "var(--accent)",
-          display: "grid", placeItems: "center", fontSize: 32, fontWeight: 700, marginBottom: 18,
+          marginBottom: 18,
           boxShadow: "0 10px 26px rgba(94,140,97,0.18)", border: "3px solid var(--surface)", outline: "1px solid var(--border)",
         }}
       >
-        {avatar ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}
+        {avatar ? <img src={avatar} alt="" /> : initials}
       </div>
       <div className="hm-display" style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>{displayName}</div>
       {displayEmail && <div style={{ marginTop: 5, fontSize: 13.5, color: "var(--ink-soft)" }}>{displayEmail}</div>}
       {(role || homeName) && (
         <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
           {role && (
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "var(--accent-soft)", padding: "5px 12px", borderRadius: 999 }}>
+            <span className="hm-badge hm-badge--accent">
               {t(ROLE_LABEL_KEY[role] || "shareHome.roleAdultLabel")}
             </span>
           )}
           {homeName && (
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-soft)", background: "var(--surface-alt)", padding: "5px 12px", borderRadius: 999, display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <span className="hm-badge hm-badge--neutral">
               <HomeIcon size={12} /> {homeName}
             </span>
           )}

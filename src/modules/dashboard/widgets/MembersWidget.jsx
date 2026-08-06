@@ -18,7 +18,7 @@ export function MembersWidget({ members }) {
           const role = member.role;
           return (
             <div key={member.user_id || member.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--accent)", color: "var(--accent-ink)", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+              <div className="hm-avatar hm-avatar--sm">
                 {name.charAt(0).toUpperCase()}
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>

@@ -72,7 +72,7 @@ export function HouseMembersSection({
               role={clickable ? "button" : undefined}
               tabIndex={clickable ? 0 : undefined}
             >
-              <div className="hm-member-avatar">{member.name.charAt(0).toUpperCase()}</div>
+              <div className="hm-avatar hm-avatar--md">{member.name.charAt(0).toUpperCase()}</div>
               <div className="hm-member-info">
                 <div className="hm-member-name">
                   <span className="hm-member-name-text">{member.name}</span>
@@ -140,22 +140,9 @@ export function HouseMembersSection({
           align-items: center;
           gap: 10px 14px;
           padding: 10px;
-          border-radius: 14px;
+          border-radius: var(--radius);
           background: var(--surface);
           border: 1px solid var(--border);
-        }
-        .hm-member-avatar {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: var(--accent);
-          color: var(--accent-ink);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 700;
-          font-size: 16px;
-          flex-shrink: 0;
         }
         .hm-member-info {
           flex: 1 1 140px;

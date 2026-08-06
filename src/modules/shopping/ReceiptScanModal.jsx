@@ -196,7 +196,7 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
         {stage === "review" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 640, margin: "0 auto" }}>
             {imagePreviewUrl && (
-              <div style={{ width: "100%", maxHeight: 160, borderRadius: 14, overflow: "hidden", background: "var(--surface-alt)" }}>
+              <div style={{ width: "100%", maxHeight: 160, borderRadius: 16, overflow: "hidden", background: "var(--surface-alt)" }}>
                 <img src={imagePreviewUrl} alt="" style={{ width: "100%", height: 160, objectFit: "cover" }} />
               </div>
             )}

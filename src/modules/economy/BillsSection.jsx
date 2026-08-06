@@ -230,7 +230,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
                 cursor: "pointer",
               }}
             >
-              <div style={{ width: 38, height: 38, borderRadius: "50%", background: iconBg, display: "grid", placeItems: "center", flexShrink: 0, color: iconColor }}>
+              <div className="hm-row-icon" style={{ background: iconBg, color: iconColor }}>
                 {isPaid ? <CheckCircle2 size={17} /> : <Calendar size={17} />}
               </div>
               <FavoriteStar active={bill.favorite} onToggle={() => toggleFavorite(bill)} size={15} />
