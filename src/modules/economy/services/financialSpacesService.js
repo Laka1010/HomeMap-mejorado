@@ -81,6 +81,16 @@ export const financialSpacesService = {
   },
 
   /**
+   * Borrado real (no archivo) de un espacio compartido y todo lo que
+   * contiene — cuentas, movimientos, facturas, objetivos y transferencias.
+   * Solo espacios shared: Personal y Household son permanentes.
+   */
+  async deleteSpace(spaceId) {
+    const { error } = await supabase.rpc("delete_shared_financial_space", { p_space_id: spaceId });
+    if (error) throw error;
+  },
+
+  /**
    * Miembros de un espacio compartido, con su nombre desde profiles.
    * financial_space_members no tiene una FK directa a profiles (ambas
    * referencian auth.users por separado, igual que home_members — ver

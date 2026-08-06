@@ -2,6 +2,7 @@ import { ArrowLeft, Home as HomeIcon, Shield, Trash2 } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { CurrencySection } from "./CurrencySection";
 import { HouseMembersSection } from "./HouseMembersSection";
+import { SharedSpacesSection } from "./SharedSpacesSection";
 import { CategoriesSection } from "./CategoriesSection";
 import { TaskRetentionSection } from "./TaskRetentionSection";
 
@@ -77,6 +78,8 @@ export function HouseSettingsScreen({
             onMemberClick={onMemberClick}
             showIcon
           />
+
+          <SharedSpacesSection houseId={house?.id} />
 
           <CategoriesSection categories={categories} onChange={onChangeCategories} />
 
