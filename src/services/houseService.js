@@ -1,4 +1,5 @@
 import { supabase } from "../supabaseClient";
+import { logIfPermissionDenied } from "./securityEventsService";
 
 /**
  * Máximo de casas que un usuario puede crear (no aplica a casas a las que
@@ -77,7 +78,10 @@ export const houseService = {
       p_user_id: userId,
       p_role: role,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_unauthorized_write", { resourceType: "house", resourceId: houseId });
+      throw error;
+    }
   },
 
   /**
@@ -91,7 +95,10 @@ export const houseService = {
       p_user_id: userId,
       p_role: role,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_unauthorized_write", { resourceType: "house", resourceId: houseId });
+      throw error;
+    }
   },
 
   /** Elimina a un miembro de la casa (o te quita a ti mismo). */
@@ -100,7 +107,10 @@ export const houseService = {
       p_house_id: houseId,
       p_user_id: userId,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_unauthorized_write", { resourceType: "house", resourceId: houseId });
+      throw error;
+    }
   },
 
   /** Transfiere la propiedad de la casa a otro miembro; solo el admin actual puede llamarlo. */
@@ -109,7 +119,10 @@ export const houseService = {
       p_house_id: houseId,
       p_new_owner_user_id: newOwnerUserId,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_permission_bypass_attempt", { resourceType: "house", resourceId: houseId });
+      throw error;
+    }
   },
 
   /** Renombra una casa; solo el admin puede llamarlo. */
@@ -118,7 +131,10 @@ export const houseService = {
       p_house_id: houseId,
       p_name: name,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_unauthorized_write", { resourceType: "house", resourceId: houseId });
+      throw error;
+    }
     return data;
   },
 
@@ -128,7 +144,10 @@ export const houseService = {
       p_house_id: houseId,
       p_currency_code: currencyCode,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_unauthorized_write", { resourceType: "house", resourceId: houseId });
+      throw error;
+    }
     return data;
   },
 
@@ -140,6 +159,9 @@ export const houseService = {
    */
   async deleteHouse(houseId) {
     const { error } = await supabase.rpc("delete_house", { p_house_id: houseId });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_unauthorized_write", { resourceType: "house", resourceId: houseId });
+      throw error;
+    }
   },
 };

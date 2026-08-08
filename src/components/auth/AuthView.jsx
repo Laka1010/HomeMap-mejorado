@@ -3,6 +3,7 @@ import { Mail, Lock, User, ArrowRight, Sparkles } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { BrandMark } from "../BrandMark";
 import { useTranslation } from "../../i18n";
+import { securityEventsService } from "../../services/securityEventsService";
 
 export function AuthView({ onLogin }) {
   const { t } = useTranslation();
@@ -43,6 +44,7 @@ export function AuthView({ onLogin }) {
           setErrorMessage(t("auth.networkError"));
           return;
         }
+        securityEventsService.logSecurityEvent("auth_password_reset_requested", { email });
         setNoticeMessage(t("auth.resetEmailSent"));
         return;
       }
@@ -56,6 +58,9 @@ export function AuthView({ onLogin }) {
         });
 
       if (result.error) {
+        if (isLogin) {
+          securityEventsService.logSecurityEvent("auth_login_failure", { email });
+        }
         setErrorMessage(getAuthErrorMessage(result.error));
         return;
       }
@@ -66,6 +71,9 @@ export function AuthView({ onLogin }) {
         return;
       }
 
+      if (isLogin) {
+        securityEventsService.logSecurityEvent("auth_login_success");
+      }
       onLogin(result.data.user);
     } catch (error) {
       setErrorMessage(t("auth.networkError"));
@@ -264,6 +272,7 @@ export function ResetPasswordView({ onDone }) {
         setErrorMessage(error.message || t("auth.authError"));
         return;
       }
+      securityEventsService.logSecurityEvent("auth_password_change");
       onDone();
     } catch (error) {
       setErrorMessage(t("auth.networkError"));

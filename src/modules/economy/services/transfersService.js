@@ -1,4 +1,5 @@
 import { supabase } from "../../../supabaseClient";
+import { logIfPermissionDenied } from "../../../services/securityEventsService";
 
 /**
  * Servicio de transferencias y contribuciones (financial_transfers).
@@ -17,7 +18,10 @@ export const transfersService = {
       p_amount: amount,
       p_note: note || null,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_unauthorized_financial_operation", { resourceType: "financial_account", resourceId: fromAccountId });
+      throw error;
+    }
     return data;
   },
 
@@ -29,7 +33,10 @@ export const transfersService = {
       p_amount: amount,
       p_note: note || null,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_unauthorized_financial_operation", { resourceType: "financial_space", resourceId: toSpaceId });
+      throw error;
+    }
     return data;
   },
 

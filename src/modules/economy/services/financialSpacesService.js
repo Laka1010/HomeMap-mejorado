@@ -1,4 +1,5 @@
 import { supabase } from "../../../supabaseClient";
+import { logIfPermissionDenied } from "../../../services/securityEventsService";
 
 /**
  * Servicio de Financial Spaces - capa de acceso a datos para el contenedor
@@ -71,13 +72,19 @@ export const financialSpacesService = {
       p_space_id: spaceId,
       p_name: name,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_rpc_rejected", { resourceType: "financial_space", resourceId: spaceId });
+      throw error;
+    }
   },
 
   /** Solo espacios shared: Personal y Household son permanentes. */
   async archiveSpace(spaceId) {
     const { error } = await supabase.rpc("archive_financial_space", { p_space_id: spaceId });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_rpc_rejected", { resourceType: "financial_space", resourceId: spaceId });
+      throw error;
+    }
   },
 
   /**
@@ -87,7 +94,10 @@ export const financialSpacesService = {
    */
   async deleteSpace(spaceId) {
     const { error } = await supabase.rpc("delete_shared_financial_space", { p_space_id: spaceId });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_rpc_rejected", { resourceType: "financial_space", resourceId: spaceId });
+      throw error;
+    }
   },
 
   /**
@@ -126,7 +136,10 @@ export const financialSpacesService = {
       p_space_id: spaceId,
       p_user_id: userId,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_rpc_rejected", { resourceType: "financial_space", resourceId: spaceId });
+      throw error;
+    }
   },
 
   /** El propietario del espacio no se puede eliminar por esta vía. */
@@ -135,7 +148,10 @@ export const financialSpacesService = {
       p_space_id: spaceId,
       p_user_id: userId,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_rpc_rejected", { resourceType: "financial_space", resourceId: spaceId });
+      throw error;
+    }
   },
 
   /** El usuario actual abandona un espacio compartido (el owner no puede: debe archivarlo). */

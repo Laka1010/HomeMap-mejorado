@@ -36,6 +36,7 @@ import { BrandMark } from "./components/BrandMark";
 import { DependencyGateModal } from "./components/DependencyGateModal";
 import { checkDependency } from "./dependencyGuard";
 import { supabase } from "./supabaseClient";
+import { securityEventsService } from "./services/securityEventsService";
 import { houseService, MAX_HOMES_PER_USER } from "./services/houseService";
 import { homeContentService } from "./services/homeContentService";
 import { taskService, DEFAULT_TASK_RETENTION_DAYS } from "./services/taskService";
@@ -2866,6 +2867,10 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     };
 
   const handleLogout = async () => {
+      // Se registra ANTES de signOut(): en cuanto la sesión se cierra, el
+      // cliente deja de adjuntar el JWT a sus llamadas y auth.uid() ya no
+      // podría resolver quién ha salido.
+      await securityEventsService.logSecurityEvent("auth_logout");
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Error signing out:", error);
@@ -3660,6 +3665,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
+      securityEventsService.logSecurityEvent("auth_password_change");
       showNotice(t("toast.passwordChanged"));
       return true;
     } catch (error) {

@@ -1,5 +1,6 @@
 import { supabase } from "../../../supabaseClient";
 import { toLocalDateString } from "../../../utils/dates";
+import { logIfPermissionDenied } from "../../../services/securityEventsService";
 
 /**
  * Servicio de Economía - Capa de acceso a datos de economía del hogar
@@ -404,7 +405,10 @@ export const economyService = {
       p_bill_id: billId,
       p_account_id: accountId,
     });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_unauthorized_financial_operation", { resourceType: "economy_bill", resourceId: billId });
+      throw error;
+    }
     return data;
   },
 
