@@ -1,4 +1,15 @@
 import OpenAI from "npm:openai";
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+// Mismo límite que src/services/photoUtils.jsx (MAX_PHOTO_SIZE) -- aquí se
+// re-valida server-side porque el límite del cliente es fácil de saltarse
+// llamando a esta función directamente.
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+// Cuota diaria por usuario para acotar el gasto en la API de OpenAI. No hay
+// un motivo de producto para necesitar más de esto en un uso normal
+// (escanear objetos/tickets); ajustar si hace falta.
+const DAILY_CALL_LIMIT = 60;
 
 const OBJECT_DETECTION_PROMPT = `
 Analiza esta fotografía de un espacio doméstico (cajón, estantería, caja o habitación).
@@ -60,6 +71,31 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+// Tamaño decodificado aproximado de un data URL base64, sin decodificarlo
+// entero en memoria: basta con el largo de la parte base64 y su padding.
+function estimateBase64DecodedBytes(dataUrl: string): number {
+  const commaIndex = dataUrl.indexOf(",");
+  const base64Part = commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl;
+  const padding = base64Part.endsWith("==") ? 2 : base64Part.endsWith("=") ? 1 : 0;
+  return Math.floor((base64Part.length * 3) / 4) - padding;
+}
+
+// El gateway de Supabase ya verificó la firma del JWT antes de invocar esta
+// función (verify_jwt = true), así que confiar en el "sub" del payload aquí
+// es seguro -- solo lo usamos para poder llevar la cuota por usuario.
+function getUserIdFromAuthHeader(req: Request): string | null {
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "");
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.sub === "string" ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 function parseJsonLoosely(rawText: string, fallback: unknown) {
   try {
     return JSON.parse(rawText);
@@ -94,6 +130,10 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Falta el campo image en base64 data URL" }, 400);
     }
 
+    if (estimateBase64DecodedBytes(image) > MAX_IMAGE_BYTES) {
+      return jsonResponse({ error: "La imagen supera el tamaño máximo permitido (5MB)" }, 413);
+    }
+
     if (providerName !== "openai") {
       return jsonResponse({ error: `Proveedor no soportado todavía en esta Edge Function: ${providerName}` }, 400);
     }
@@ -101,6 +141,26 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get("OPENAI_API_KEY");
     if (!apiKey) {
       return jsonResponse({ error: "OPENAI_API_KEY no configurada en Supabase Edge Function" }, 500);
+    }
+
+    // verify_jwt=true garantiza que req trae un JWT válido, pero por si acaso
+    // no se pudiera decodificar (config futura sin verify_jwt), fallamos
+    // cerrado en vez de dejar pasar peticiones sin cuota.
+    const userId = getUserIdFromAuthHeader(req);
+    if (!userId) {
+      return jsonResponse({ error: "No autenticado" }, 401);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (supabaseUrl && serviceRoleKey) {
+      const admin = createClient(supabaseUrl, serviceRoleKey);
+      const { data: currentCount, error: usageError } = await admin.rpc("increment_vision_proxy_usage", {
+        p_user_id: userId,
+      });
+      if (!usageError && typeof currentCount === "number" && currentCount > DAILY_CALL_LIMIT) {
+        return jsonResponse({ error: "Límite diario de escaneos alcanzado. Inténtalo mañana." }, 429);
+      }
     }
 
     const isReceiptMode = scanMode === "receipt";

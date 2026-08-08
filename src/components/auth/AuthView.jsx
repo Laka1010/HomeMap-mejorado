@@ -6,7 +6,7 @@ import { useTranslation } from "../../i18n";
 
 export function AuthView({ onLogin }) {
   const { t } = useTranslation();
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState("login"); // "login" | "signup" | "forgot"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -15,6 +15,15 @@ export function AuthView({ onLogin }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [noticeMessage, setNoticeMessage] = useState("");
 
+  const isLogin = mode === "login";
+  const isForgot = mode === "forgot";
+
+  const switchMode = (nextMode) => {
+    setMode(nextMode);
+    setErrorMessage("");
+    setNoticeMessage("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -22,6 +31,22 @@ export function AuthView({ onLogin }) {
     setNoticeMessage("");
 
     try {
+      if (isForgot) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin,
+        });
+        // No revelamos si el email existe o no en la respuesta -- Supabase
+        // ya no distingue esto en el mensaje de error para evitar
+        // enumeración de cuentas, así que mostramos el mismo aviso salvo
+        // que sea un error real de red/servidor.
+        if (error && error.status && error.status >= 500) {
+          setErrorMessage(t("auth.networkError"));
+          return;
+        }
+        setNoticeMessage(t("auth.resetEmailSent"));
+        return;
+      }
+
       const result = isLogin
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({
@@ -37,7 +62,7 @@ export function AuthView({ onLogin }) {
 
       if (!result.data.session) {
         setNoticeMessage(t("auth.accountCreatedNotice"));
-        setIsLogin(true);
+        switchMode("login");
         return;
       }
 
@@ -59,6 +84,10 @@ export function AuthView({ onLogin }) {
     return error?.message || t("auth.authError");
   };
 
+  const submitDisabled = isForgot
+    ? loading || !email.trim()
+    : loading || !email.trim() || !password.trim() || (!isLogin && (!name.trim() || !surname.trim()));
+
   return (
     <div className="auth-container">
       <div className="auth-card hm-pop">
@@ -66,14 +95,14 @@ export function AuthView({ onLogin }) {
           <div className="auth-logo">
             <BrandMark size={32} />
           </div>
-          <h1 className="hm-display auth-title">{t("auth.title")}</h1>
-          <p className="auth-subtitle">{t("auth.subtitle")}</p>
+          <h1 className="hm-display auth-title">{isForgot ? t("auth.forgotPasswordTitle") : t("auth.title")}</h1>
+          <p className="auth-subtitle">{isForgot ? t("auth.forgotPasswordSubtitle") : t("auth.subtitle")}</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           {errorMessage && <div className="auth-message auth-error" role="alert">{errorMessage}</div>}
           {noticeMessage && <div className="auth-message auth-notice" role="status">{noticeMessage}</div>}
-          {!isLogin && (
+          {!isLogin && !isForgot && (
             <>
               <div className="auth-input-group">
                 <label className="hm-label">{t("auth.nameLabel")}</label>
@@ -123,45 +152,67 @@ export function AuthView({ onLogin }) {
             </div>
           </div>
 
-          <div className="auth-input-group">
-            <label className="hm-label">{t("auth.passwordLabel")}</label>
-            <div className="auth-input-wrapper">
-              <Lock size={18} className="auth-input-icon" />
-              <input
-                type="password"
-                autoComplete={isLogin ? "current-password" : "new-password"}
-                className="hm-input auth-input"
-                placeholder={t("auth.passwordPlaceholder")}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+          {!isForgot && (
+            <div className="auth-input-group">
+              <label className="hm-label">{t("auth.passwordLabel")}</label>
+              <div className="auth-input-wrapper">
+                <Lock size={18} className="auth-input-icon" />
+                <input
+                  type="password"
+                  autoComplete={isLogin ? "current-password" : "new-password"}
+                  className="hm-input auth-input"
+                  placeholder={t("auth.passwordPlaceholder")}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
             </div>
-          </div>
+          )}
+
+          {isLogin && (
+            <button
+              type="button"
+              className="auth-forgot-btn"
+              onClick={() => switchMode("forgot")}
+            >
+              {t("auth.forgotPassword")}
+            </button>
+          )}
 
           <button
             type="submit"
             className="hm-btn hm-btn-primary auth-submit-btn"
-            disabled={loading || !email.trim() || !password.trim() || (!isLogin && (!name.trim() || !surname.trim()))}
+            disabled={submitDisabled}
           >
             {loading ? (
               <div className="spinner" />
             ) : (
               <>
-                {isLogin ? t("auth.login") : t("auth.signup")} <ArrowRight size={18} />
+                {isForgot ? t("auth.sendResetLink") : isLogin ? t("auth.login") : t("auth.signup")} <ArrowRight size={18} />
               </>
             )}
           </button>
         </form>
 
         <div className="auth-footer">
-          <button
-            type="button"
-            className="auth-switch-btn"
-            onClick={() => setIsLogin(!isLogin)}
-          >
-            {isLogin ? t("auth.switchToSignup") : t("auth.switchToLogin")}
-          </button>
+          {isForgot ? (
+            <button
+              type="button"
+              className="auth-switch-btn"
+              onClick={() => switchMode("login")}
+            >
+              {t("auth.backToLogin")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="auth-switch-btn"
+              onClick={() => switchMode(isLogin ? "signup" : "login")}
+            >
+              {isLogin ? t("auth.switchToSignup") : t("auth.switchToLogin")}
+            </button>
+          )}
         </div>
       </div>
 
@@ -175,7 +226,114 @@ export function AuthView({ onLogin }) {
         </p>
       </div>
 
-      <style>{`
+      <style>{AUTH_STYLES}</style>
+    </div>
+  );
+}
+
+/**
+ * Pantalla mostrada cuando el usuario llega desde el enlace de recuperación
+ * de contraseña del email (Supabase crea una sesión temporal de tipo
+ * "recovery" y dispara el evento PASSWORD_RECOVERY -- ver App.jsx). No deja
+ * pasar a la app hasta que se fija una contraseña nueva con updateUser.
+ */
+export function ResetPasswordView({ onDone }) {
+  const { t } = useTranslation();
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMessage("");
+
+    if (password.length < 8) {
+      setErrorMessage(t("auth.passwordTooShort"));
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorMessage(t("auth.passwordMismatch"));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        setErrorMessage(error.message || t("auth.authError"));
+        return;
+      }
+      onDone();
+    } catch (error) {
+      setErrorMessage(t("auth.networkError"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-container">
+      <div className="auth-card hm-pop">
+        <div className="auth-header">
+          <div className="auth-logo">
+            <BrandMark size={32} />
+          </div>
+          <h1 className="hm-display auth-title">{t("auth.newPasswordTitle")}</h1>
+          <p className="auth-subtitle">{t("auth.newPasswordSubtitle")}</p>
+        </div>
+
+        <form className="auth-form" onSubmit={handleSubmit}>
+          {errorMessage && <div className="auth-message auth-error" role="alert">{errorMessage}</div>}
+
+          <div className="auth-input-group">
+            <label className="hm-label">{t("auth.newPasswordLabel")}</label>
+            <div className="auth-input-wrapper">
+              <Lock size={18} className="auth-input-icon" />
+              <input
+                type="password"
+                autoComplete="new-password"
+                className="hm-input auth-input"
+                placeholder={t("auth.passwordPlaceholder")}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="auth-input-group">
+            <label className="hm-label">{t("auth.confirmPasswordLabel")}</label>
+            <div className="auth-input-wrapper">
+              <Lock size={18} className="auth-input-icon" />
+              <input
+                type="password"
+                autoComplete="new-password"
+                className="hm-input auth-input"
+                placeholder={t("auth.confirmPasswordPlaceholder")}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="hm-btn hm-btn-primary auth-submit-btn"
+            disabled={loading || !password || !confirmPassword}
+          >
+            {loading ? <div className="spinner" /> : <>{t("auth.updatePassword")} <ArrowRight size={18} /></>}
+          </button>
+        </form>
+      </div>
+
+      <style>{AUTH_STYLES}</style>
+    </div>
+  );
+}
+
+const AUTH_STYLES = `
         .auth-container {
           height: 100dvh;
           overflow-y: auto;
@@ -272,6 +430,21 @@ export function AuthView({ onLogin }) {
         }
         .auth-error { background: var(--danger-soft); color: var(--danger); }
         .auth-notice { background: var(--success-soft); color: var(--success); }
+        .auth-forgot-btn {
+          background: none;
+          border: none;
+          color: var(--ink-soft);
+          font-size: 13px;
+          text-align: right;
+          cursor: pointer;
+          padding: 0;
+          margin-top: -8px;
+          align-self: flex-end;
+        }
+        .auth-forgot-btn:hover {
+          color: var(--accent);
+          text-decoration: underline;
+        }
         .auth-footer {
           margin-top: 24px;
           text-align: center;
@@ -332,7 +505,4 @@ export function AuthView({ onLogin }) {
           .auth-card { padding: 40px 24px; border-radius: 0; box-shadow: none; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
           .auth-container { padding: 0; background: white; }
         }
-      `}</style>
-    </div>
-  );
-}
+      `;

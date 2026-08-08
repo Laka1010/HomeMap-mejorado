@@ -1,17 +1,16 @@
 import { useState } from "react";
-import { CalendarDays, Check, ClipboardList, Edit3, Plus, ShoppingCart, Star } from "lucide-react";
+import { CalendarDays, Check, ClipboardList, Edit3, Plus, Star } from "lucide-react";
 import { ModuleCard } from "../core/ModuleCard";
 import { FavoriteStar } from "../../components/FavoriteStar";
 import { EmptyState } from "../../components/EmptyState";
 import { taskService } from "../../services/taskService";
 import { useTranslation } from "../../i18n";
 
-export function TasksModule({ state, dispatch, openModal, onAddToShopping, onTaskCompleted }) {
+export function TasksModule({ state, dispatch, openModal, onTaskCompleted }) {
   const { t } = useTranslation();
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const priorityLabel = (priority) => (priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : t("tasksModule.priorityNormal"));
   const tasks = Array.isArray(state.tasks) ? state.tasks : [];
-  const shoppingItems = Array.isArray(state.shoppingItems) ? state.shoppingItems : [];
   const toggleTask = (taskId) => {
     const task = tasks.find((t) => t.id === taskId);
     const nextStatus = task?.status === "done" ? "pending" : "done";
@@ -38,10 +37,9 @@ export function TasksModule({ state, dispatch, openModal, onAddToShopping, onTas
     });
   };
 
-  const visibleTasks = favoritesOnly ? tasks.filter((t) => t.favorite) : tasks;
-
-  const isAlreadyInShoppingList = (taskId) =>
-    shoppingItems.some((item) => item.sourceTaskId === taskId && !item.completed);
+  const visibleTasks = (favoritesOnly ? tasks.filter((t) => t.favorite) : tasks)
+    .slice()
+    .sort((a, b) => (a.status === "done") - (b.status === "done"));
 
   return (
     <div className="hm-fade-in" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -99,17 +97,6 @@ export function TasksModule({ state, dispatch, openModal, onAddToShopping, onTas
                     <Edit3 size={14} />
                   </button>
                 </div>
-                {onAddToShopping && task.status !== "done" ? (
-                  isAlreadyInShoppingList(task.id) ? (
-                    <div className="hm-btn hm-btn-soft hm-btn--full" style={{ color: "var(--success)", cursor: "default" }}>
-                      <Check size={14} /> {t("tasksModule.inShoppingList")}
-                    </div>
-                  ) : (
-                    <button className="hm-btn hm-btn-soft hm-btn--full" onClick={() => onAddToShopping(task)}>
-                      <ShoppingCart size={14} /> {t("tasksModule.addToShopping")}
-                    </button>
-                  )
-                ) : null}
               </div>
             </ModuleCard>
           ))}

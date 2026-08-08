@@ -301,7 +301,10 @@ export const economyService = {
       .insert([expense])
       .select();
 
-    if (error) console.error("Error creating expense:", error);
+    if (error) {
+      console.error("Error creating expense:", error);
+      throw error;
+    }
     return data?.[0] || null;
   },
 
@@ -348,7 +351,10 @@ export const economyService = {
       .insert([income])
       .select();
 
-    if (error) console.error("Error creating income:", error);
+    if (error) {
+      console.error("Error creating income:", error);
+      throw error;
+    }
     return data?.[0] || null;
   },
 

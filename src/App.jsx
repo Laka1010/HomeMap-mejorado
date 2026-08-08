@@ -26,7 +26,7 @@ import { detectObjects } from "./services/visionService";
 import { AddObjectWizard } from "./components/AddObjectWizard";
 import { AddRoomWizard } from "./components/AddRoomWizard";
 import { AddContainerWizard } from "./components/AddContainerWizard";
-import { AuthView } from "./components/auth/AuthView";
+import { AuthView, ResetPasswordView } from "./components/auth/AuthView";
 import { EmptyState } from "./components/EmptyState";
 import { HomeSelector } from "./components/home/HomeSelector";
 import { ShareHomeModal } from "./components/home/ShareHomeModal";
@@ -58,7 +58,6 @@ const TasksModule = lazy(() => import("./modules/tasks/TasksModule").then((m) =>
 const NotesModule = lazy(() => import("./modules/notes/NotesModule").then((m) => ({ default: m.NotesModule })));
 const CalendarModule = lazy(() => import("./modules/calendar/CalendarModule").then((m) => ({ default: m.CalendarModule })));
 const EconomyModule = lazy(() => import("./modules/economy/EconomyModule").then((m) => ({ default: m.EconomyModule })));
-import { suggestShoppingItemsFromTask } from "./modules/shopping/taskSuggestions";
 import { computeFrequentProducts } from "./modules/shopping/frequentProducts";
 import { uploadReceiptImage } from "./services/receiptService";
 import { notificationsService } from "./services/notificationsService";
@@ -2033,8 +2032,8 @@ function Compras({ state, dispatch, openModal, deleteShoppingList, addShopping, 
 /* -------------------------------------------------------------------- */
 /* TAREAS                                                                 */
 /* -------------------------------------------------------------------- */
-function Tareas({ state, dispatch, openModal, onAddToShopping, onTaskCompleted }) {
-  return <TasksModule state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={onAddToShopping} onTaskCompleted={onTaskCompleted} />;
+function Tareas({ state, dispatch, openModal, onTaskCompleted }) {
+  return <TasksModule state={state} dispatch={dispatch} openModal={openModal} onTaskCompleted={onTaskCompleted} />;
 }
 
 /* -------------------------------------------------------------------- */
@@ -2269,6 +2268,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const { t } = useTranslation();
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [homes, setHomes] = useState([]);
   const [homesLoaded, setHomesLoaded] = useState(false);
   const [homesLoadError, setHomesLoadError] = useState(false);
@@ -2354,6 +2354,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     loadSession();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted) {
+        if (_event === "PASSWORD_RECOVERY") {
+          setPasswordRecovery(true);
+        }
         setUser(mapSupabaseUser(session?.user));
         setAuthLoading(false);
       }
@@ -2794,7 +2797,20 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       isDangerous: true,
       onConfirm: async () => {
         setConfirmDialog(null);
-        // Limpiar todas las casas y datos de este usuario
+
+        const { data: deleteResult, error: invokeError } = await supabase.functions.invoke("delete-account");
+
+        if (invokeError || deleteResult?.error) {
+          if (deleteResult?.error === "blocked_owner") {
+            showNotice(t("toast.accountDeleteBlockedOwner"));
+          } else {
+            console.error("Error deleting account:", invokeError || deleteResult?.error);
+            showNotice(t("toast.accountDeleteError"));
+          }
+          return;
+        }
+
+        // La cuenta ya no existe en el servidor -- limpiar todo el estado local.
         homes.forEach((h) => {
           const houseKey = getHouseStorageKey(user?.id, h.id);
           if (houseKey) localStorage.removeItem(houseKey);
@@ -2804,12 +2820,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         }
         localStorage.removeItem(USER_STORAGE_KEY);
 
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          console.error("Error signing out after account deletion:", error);
-          showNotice(t("toast.logoutLocalOnly"));
-          return;
-        }
+        await supabase.auth.signOut();
 
         setState(null);
         setHomes([]);
@@ -2982,6 +2993,20 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       <div className="hm-root" style={{ padding: 40, textAlign: "center" }}>
         <GlobalStyle />
         {t("common.loadingSession")}
+      </div>
+    );
+  }
+
+  if (passwordRecovery) {
+    return (
+      <div className="hm-root" style={{ background: "var(--bg)" }}>
+        <GlobalStyle />
+        <ResetPasswordView
+          onDone={() => {
+            setPasswordRecovery(false);
+            showNotice(t("auth.passwordUpdated"));
+          }}
+        />
       </div>
     );
   }
@@ -3173,30 +3198,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     const list = await shoppingListsService.createList(currentHome.id, "General", 0);
     dispatch((s) => ({ ...s, shoppingLists: [...(s.shoppingLists || []), list] }));
     return list;
-  };
-
-  /** Integración Tareas -> Compras: alta de uno o varios productos con un toque. */
-  const addShoppingFromTask = async (task) => {
-    const { items: names, category } = suggestShoppingItemsFromTask(task);
-    try {
-      const list = await ensureDefaultShoppingList();
-      const newItems = names.map((name) => ({
-        id: "s-" + uid(),
-        listId: list.id,
-        name,
-        category: category || null,
-        quantity: 1,
-        priority: "urgent",
-        completed: false,
-        sourceTaskId: task.id,
-      }));
-      dispatch((s) => ({ ...s, shoppingItems: [...(s.shoppingItems || []), ...newItems] }));
-      showNotice(names.length > 1 ? t("toast.productsAddedToShopping", { count: names.length }) : t("toast.productAddedToShopping", { name: names[0] }));
-      await Promise.all(newItems.map((item) => shoppingService.createItem(currentHome.id, item)));
-    } catch (error) {
-      console.error("Error adding shopping item from task:", error);
-      showNotice(t("toast.shoppingAddError"));
-    }
   };
 
   /**
@@ -3725,7 +3726,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               <div key={organizationTab} className="hm-fade-in" style={{ minWidth: 0 }}>
                 <Suspense fallback={null}>
                   {organizationTab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}
-                  {organizationTab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={addShoppingFromTask} onTaskCompleted={logTaskCompleted} />}
+                  {organizationTab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onTaskCompleted={logTaskCompleted} />}
                   {organizationTab === "notas" && <Notas state={state} dispatch={dispatch} openModal={openModal} />}
                   {organizationTab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} />}
                 </Suspense>
@@ -3747,7 +3748,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             {route.tab === "cajas" && <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />}
             <Suspense fallback={null}>
               {route.tab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}
-              {route.tab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onAddToShopping={addShoppingFromTask} onTaskCompleted={logTaskCompleted} />}
+              {route.tab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onTaskCompleted={logTaskCompleted} />}
               {route.tab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} />}
             </Suspense>
 
