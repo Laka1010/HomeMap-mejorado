@@ -1,5 +1,5 @@
 import { supabase } from "../../../supabaseClient";
-import { logIfPermissionDenied } from "../../../services/securityEventsService";
+import { logIfPermissionDenied, securityEventsService } from "../../../services/securityEventsService";
 
 /**
  * Servicio de Financial Spaces - capa de acceso a datos para el contenedor
@@ -34,7 +34,13 @@ export const financialSpacesService = {
     return data;
   },
 
-  /** El espacio household de una casa (existe siempre, se crea con la casa). */
+  /**
+   * El espacio household de una casa (existe siempre, se crea con la casa).
+   * `.single()` lanza PGRST116 ("0 rows") si RLS filtra la fila -- houseId
+   * ajeno o acceso a Economía revocado a mitad de sesión son la única forma
+   * de llegar aquí, ya que el resto de la app siempre pasa el houseId de la
+   * propia casa actual del usuario.
+   */
   async getHouseholdSpace(houseId) {
     const { data, error } = await supabase
       .from("my_financial_spaces")
@@ -42,7 +48,12 @@ export const financialSpacesService = {
       .eq("type", "household")
       .eq("house_id", houseId)
       .single();
-    if (error) throw error;
+    if (error) {
+      if (error.code === "PGRST116") {
+        securityEventsService.logSecurityEvent("authz_cross_workspace_access", { resourceType: "house", resourceId: houseId });
+      }
+      throw error;
+    }
     return data;
   },
 

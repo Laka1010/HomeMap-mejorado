@@ -1,4 +1,5 @@
 import { supabase } from "../../../supabaseClient";
+import { securityEventsService } from "../../../services/securityEventsService";
 
 /**
  * Servicio de cuentas (financial_accounts) — cada Financial Space puede
@@ -41,7 +42,13 @@ export const accountsService = {
     return data;
   },
 
-  /** No permite tocar `balance` directamente — solo nombre/icono/color/estado. */
+  /**
+   * No permite tocar `balance` directamente — solo nombre/icono/color/estado.
+   * `.single()` lanza PGRST116 ("0 rows") si el USING de RLS filtra la fila
+   * -- mismo mecanismo que getHouseholdSpace: no hay error de RLS "de
+   * verdad" en un UPDATE cuya cláusula USING no ve la fila, pero 0 filas
+   * devueltas por el RETURNING que sintetiza `.select()` sí lo es.
+   */
   async updateAccount(accountId, updates) {
     const { data, error } = await supabase
       .from("financial_accounts")
@@ -49,7 +56,12 @@ export const accountsService = {
       .eq("id", accountId)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      if (error.code === "PGRST116") {
+        securityEventsService.logSecurityEvent("authz_cross_account_access", { resourceType: "financial_account", resourceId: accountId });
+      }
+      throw error;
+    }
     return data;
   },
 
@@ -70,7 +82,14 @@ export const accountsService = {
    * `AccountModal`, que ni siquiera muestra el botón para ella).
    */
   async deleteAccount(accountId) {
-    const { error } = await supabase.from("financial_accounts").delete().eq("id", accountId);
+    // `.select()` no cambia el borrado en sí -- solo hace observable cuántas
+    // filas se borraron realmente. Sin él, un DELETE cuyo USING de RLS
+    // filtra la fila no afecta ninguna y Postgres no lo trata como error
+    // (a diferencia de un INSERT/UPDATE con WITH CHECK): sería silencioso.
+    const { data, error } = await supabase.from("financial_accounts").delete().eq("id", accountId).select();
     if (error) throw error;
+    if (!data || data.length === 0) {
+      securityEventsService.logSecurityEvent("authz_cross_account_access", { resourceType: "financial_account", resourceId: accountId });
+    }
   },
 };
