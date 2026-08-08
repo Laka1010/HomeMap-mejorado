@@ -11,6 +11,13 @@ import { useTranslation } from "../../i18n";
  * se puede cambiar ni se le puede expulsar (lo impide también set_member_role /
  * remove_member en la base de datos).
  */
+const ECONOMY_STATUS_META = {
+  pending: { icon: "⏳", labelKey: "economyAccess.statusPending" },
+  accepted: { icon: "✓", labelKey: "economyAccess.statusAccepted" },
+  rejected: { icon: "🚫", labelKey: "economyAccess.statusRejected" },
+  revoked: { icon: "🚫", labelKey: "economyAccess.statusRevoked" },
+};
+
 export function HouseMembersSection({
   members = [],
   currentUserId,
@@ -19,6 +26,12 @@ export function HouseMembersSection({
   onRemoveMember,
   onMemberClick,
   showIcon = false,
+  // Opcionales: cuando se pasan, cada fila (salvo la propia) muestra si ya
+  // tengo acceso solicitado/concedido a la economía Personal de ese miembro
+  // y, si aplica, un botón para solicitarlo. Sin estos props (uso actual en
+  // ShareHomeModal) el comportamiento no cambia en nada.
+  economyAccessStatuses,
+  onRequestAccess,
 }) {
   const { t } = useTranslation();
   const ROLE_LABELS = {
@@ -63,6 +76,9 @@ export function HouseMembersSection({
         {rows.map((member) => {
           const canManage = isAdmin && !member.isYou && member.role !== "admin";
           const clickable = isAdmin && !!onMemberClick;
+          const showEconomyAccess = economyAccessStatuses !== undefined && !member.isYou;
+          const accessEntry = showEconomyAccess ? economyAccessStatuses[member.id] : null;
+          const canRequestAccess = !accessEntry || accessEntry.status === "rejected" || accessEntry.status === "revoked";
           return (
             <div
               key={member.id}
@@ -105,6 +121,26 @@ export function HouseMembersSection({
                   >
                     <UserMinus size={16} />
                   </button>
+                </div>
+              )}
+              {!canManage && showEconomyAccess && (
+                <div
+                  className="hm-member-actions"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ flexDirection: "column", alignItems: "flex-end", gap: 4 }}
+                >
+                  <span style={{ fontSize: 12, color: "var(--ink-soft)", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
+                    {accessEntry ? ECONOMY_STATUS_META[accessEntry.status].icon : "🔒"}
+                    {accessEntry ? t(ECONOMY_STATUS_META[accessEntry.status].labelKey) : t("economyAccess.statusPrivate")}
+                  </span>
+                  {canRequestAccess && (
+                    <button
+                      className="hm-btn hm-btn-ghost hm-btn--compact"
+                      onClick={() => onRequestAccess?.(member.id, member.name)}
+                    >
+                      {t("economyAccess.requestButton")}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

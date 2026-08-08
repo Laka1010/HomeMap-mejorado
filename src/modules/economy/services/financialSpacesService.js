@@ -146,13 +146,14 @@ export const financialSpacesService = {
 
   /**
    * Espacios Personales de los demás miembros de una casa concreta, visibles
-   * gracias a la policy de "existencia" de 20260808_041
-   * (financial_spaces_select deja ver la fila aunque shared_with_house sea
-   * false — solo id/nombre/icono, nunca cuentas ni movimientos). Se acota a
-   * `houseId` porque un espacio Personal no tiene house_id propio (es del
-   * usuario, no de una casa); para saber "quién es compañero en ESTA casa"
-   * hay que pasar por home_members. Se combinan con profiles para el nombre
-   * del dueño, mismo patrón que listSpaceMembers.
+   * gracias a la policy de "existencia" (financial_spaces_select deja ver la
+   * fila con solo id/nombre/icono, nunca cuentas ni movimientos, sin
+   * necesidad de que haya ningún acceso concedido — ver
+   * economy_access_requests para quién puede además ENTRAR a leerla). Se
+   * acota a `houseId` porque un espacio Personal no tiene house_id propio
+   * (es del usuario, no de una casa); para saber "quién es compañero en
+   * ESTA casa" hay que pasar por home_members. Se combinan con profiles
+   * para el nombre del dueño, mismo patrón que listSpaceMembers.
    */
   async listHousematesPersonalSpaces(houseId) {
     if (!houseId) return [];
@@ -169,7 +170,7 @@ export const financialSpacesService = {
 
     const { data: spaces, error } = await supabase
       .from("financial_spaces")
-      .select("id, name, icon, owner_id, shared_with_house")
+      .select("id, name, icon, owner_id")
       .eq("type", "personal")
       .is("archived_at", null)
       .in("owner_id", ownerIds);
@@ -187,16 +188,5 @@ export const financialSpacesService = {
       ...s,
       ownerName: profileMap.get(s.owner_id)?.display_name || profileMap.get(s.owner_id)?.email || "",
     }));
-  },
-
-  /**
-   * Activa/desactiva que los compañeros de casa puedan ENTRAR (solo lectura)
-   * al espacio Personal del usuario actual. Solo afecta al propio espacio —
-   * nadie más, ni el admin de la casa, puede cambiarlo (set_personal_space_
-   * privacy solo opera sobre el espacio personal de auth.uid()).
-   */
-  async setPersonalSpacePrivacy(shared) {
-    const { error } = await supabase.rpc("set_personal_space_privacy", { p_shared: shared });
-    if (error) throw error;
   },
 };

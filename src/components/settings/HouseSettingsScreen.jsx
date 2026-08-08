@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
 import { ArrowLeft, Home as HomeIcon, Shield, Trash2 } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { CurrencySection } from "./CurrencySection";
 import { HouseMembersSection } from "./HouseMembersSection";
 import { SharedSpacesSection } from "./SharedSpacesSection";
-import { PersonalSpacePrivacySection } from "./PersonalSpacePrivacySection";
+import { EconomyAccessSection } from "./EconomyAccessSection";
+import { RequestEconomyAccessModal } from "./RequestEconomyAccessModal";
+import { economyAccessService } from "../../modules/economy/services/economyAccessService";
 import { CategoriesSection } from "./CategoriesSection";
 import { TaskRetentionSection } from "./TaskRetentionSection";
 
@@ -33,7 +36,23 @@ export function HouseSettingsScreen({
   const myRole = house?.myRole;
   const isAdmin = myRole === "admin";
 
+  // Mis solicitudes de acceso enviadas a cada compañero de casa (para pintar
+  // 🔒/⏳/✓/🚫 en HouseMembersSection). Vive aquí y no en HouseMembersSection
+  // porque ese componente es presentacional y se reutiliza también en
+  // ShareHomeModal, donde esto no aplica.
+  const [economyAccessStatuses, setEconomyAccessStatuses] = useState({});
+  const [requestingMember, setRequestingMember] = useState(null); // null | { id, name }
+
+  const loadEconomyAccessStatuses = () => {
+    economyAccessService.listMySentStatuses()
+      .then(setEconomyAccessStatuses)
+      .catch((error) => console.error("Error loading economy access statuses:", error));
+  };
+
+  useEffect(() => { loadEconomyAccessStatuses(); }, []);
+
   return (
+    <>
     <div className="hm-drawer-overlay" onClick={onClose}>
       <div
         className="hm-drawer hm-scroll"
@@ -78,11 +97,13 @@ export function HouseSettingsScreen({
             onRemoveMember={onRemoveMember}
             onMemberClick={onMemberClick}
             showIcon
+            economyAccessStatuses={economyAccessStatuses}
+            onRequestAccess={(id, name) => setRequestingMember({ id, name })}
           />
 
           <SharedSpacesSection houseId={house?.id} />
 
-          <PersonalSpacePrivacySection />
+          <EconomyAccessSection members={members} currentUserId={currentUserId} />
 
           <CategoriesSection categories={categories} onChange={onChangeCategories} />
 
@@ -107,5 +128,15 @@ export function HouseSettingsScreen({
         </div>
       </div>
     </div>
+
+    {requestingMember && (
+      <RequestEconomyAccessModal
+        ownerUserId={requestingMember.id}
+        ownerName={requestingMember.name}
+        onClose={() => setRequestingMember(null)}
+        onSent={loadEconomyAccessStatuses}
+      />
+    )}
+    </>
   );
 }

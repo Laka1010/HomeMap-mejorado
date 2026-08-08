@@ -23,19 +23,21 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
 
   const activeSpace = spaces.find((s) => s.id === activeSpaceId);
 
-  // Espacios Personales de compañeros de casa que NO nos han dado acceso:
-  // se ven (nombre + icono) como tarjeta bloqueada, pero no se pueden abrir.
-  // Los que SÍ han activado el acceso ya llegan en `spaces` (vía
-  // my_financial_spaces) y no hace falta duplicarlos aquí.
+  // Espacios Personales de compañeros de casa que NO nos han concedido
+  // acceso (ver economy_access_requests): se ven (nombre + icono) como
+  // tarjeta bloqueada, pero no se pueden abrir — desde el perfil del
+  // miembro en Configuración de la casa se puede solicitar acceso. Los que
+  // SÍ tienen una solicitud aceptada ya llegan en `spaces` (vía
+  // my_financial_spaces) y se excluyen aquí para no duplicarlos.
   useEffect(() => {
     let cancelled = false;
     if (!houseId) { setLockedSpaces([]); return; }
     financialSpacesService.listHousematesPersonalSpaces(houseId).then((list) => {
       if (cancelled) return;
-      setLockedSpaces(list.filter((s) => !s.shared_with_house));
+      setLockedSpaces(list.filter((s) => !spaces.some((accessible) => accessible.id === s.id)));
     }).catch(() => { if (!cancelled) setLockedSpaces([]); });
     return () => { cancelled = true; };
-  }, [houseId]);
+  }, [houseId, spaces]);
 
   return (
     <>

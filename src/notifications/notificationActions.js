@@ -28,5 +28,8 @@ export function buildNotificationActionHandlers({ dispatch, openModal, goTo, set
       setOrganizationTab("calendario");
       goTo({ tab: "organizacion" });
     },
+    open_house_settings: () => {
+      openModal("houseSettings");
+    },
   };
 }
