@@ -1,0 +1,51 @@
+-- Migration: drop the obsolete create_house(text) overload — Fase 6 audit
+-- finding C-1.
+-- Date: 2026-08-08
+--
+-- ============================================================================
+-- ANÁLISIS PREVIO (hecho antes de tocar nada)
+-- ============================================================================
+--
+-- Dos overloads de create_house llegaron vivos a esta fecha:
+--   - create_house(p_name text)               -- original, 20260726_001
+--   - create_house(p_name text, p_photo text)  -- 20260728_008 en adelante
+--
+-- Historial exacto de cómo el de 1 argumento volvió a existir pese a haberse
+-- borrado una vez (confirmado leyendo el propio código, no de memoria):
+--   1. 20260726_001 crea create_house(text).
+--   2. 20260728_008 hace `drop function if exists public.create_house(text)`
+--      y pasa a create_house(text, text) — el de 1 argumento deja de existir.
+--   3. 20260731_016 añade el límite de 2 casas a create_house(text, text).
+--   4. 20260803_022 y 20260803_023 (Financial Spaces / Accounts), al añadir
+--      el aprovisionamiento del Household Financial Space y la Cuenta Común,
+--      usan por error la firma create_house(p_name text) -- RESUCITANDO el
+--      overload de 1 argumento (CREATE OR REPLACE crea de nuevo lo que no
+--      existe). Consecuencia real, documentada en el propio commit de
+--      20260808_039_fix_create_house_financial_setup.sql: la app (que
+--      SIEMPRE llama con p_name Y p_photo, ver houseService.js:23) quedó
+--      golpeando el overload de 2 argumentos, que se había quedado
+--      desactualizado desde el paso 3 -- sin Financial Space ni Cuenta
+--      Común -- mientras que el overload de 1 argumento, nunca llamado por
+--      nadie, sí los tenía. 20260808_039 corrigió el de 2 argumentos para
+--      que coincidiera; nadie volvió a tocar el de 1 argumento desde
+--      entonces, y siguió concedido a `authenticated`, sin el límite de 2
+--      casas que sí tiene el de 2 argumentos.
+--
+-- Verificación de que no hay ninguna dependencia real (antes de borrar):
+--   - grep completo de src/: la ÚNICA llamada a create_house es
+--     houseService.js:23, `supabase.rpc("create_house", { p_name, p_photo })`
+--     -- siempre con los dos argumentos, nunca solo p_name.
+--   - grep completo de supabase/migrations/: ninguna otra función, trigger o
+--     migración invoca create_house(text) como dependencia -- las únicas
+--     apariciones son las propias definiciones históricas y sus grants.
+--   - create_house(text, text) (definición vigente, 20260808_039) mantiene:
+--     límite de 2 casas, creación de home_members admin, Household
+--     Financial Space y Cuenta Común -- comportamiento actual de la app
+--     íntegro, no se toca en esta migración.
+--
+-- Alcance de este cambio: SOLO se elimina create_house(text). No se toca
+-- create_house(text, text), ninguna política RLS, ni ninguna otra función.
+
+drop function if exists public.create_house(text);
+
+-- EOF
