@@ -1712,12 +1712,28 @@ function Dashboard({ state, goTo, openModal, canSeeEconomy, currentHome, houseMe
 /* -------------------------------------------------------------------- */
 /* MI CASA                                                               */
 /* -------------------------------------------------------------------- */
-function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObject, houseId }) {
+function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObject, onUpdateCategories, houseId }) {
   const { t } = useTranslation();
   const room = view.roomId ? getRoom(state, view.roomId) : null;
   const zone = view.zoneId ? getZone(state, view.zoneId) : null;
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [activeSection, setActiveSection] = useState("rooms"); // 'rooms' | 'favorites' | 'categories'
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const showFavoritesOnly = activeSection === "favorites";
+  const showCategoryFilter = activeSection === "categories";
   const toggleObjectFavorite = (o) => onUpdateObject?.(o.id, { favorite: !o.favorite });
+  const selectSection = (section) => {
+    setActiveSection(section);
+    setSelectedCategory(null);
+  };
+  const handleAddCategory = () => {
+    const name = window.prompt(t("wizard.stepCategoryPrompt"));
+    const trimmed = (name || "").trim();
+    if (!trimmed) return;
+    if (!(state.categories || []).includes(trimmed)) {
+      onUpdateCategories?.([...(state.categories || []), trimmed]);
+    }
+    setSelectedCategory(trimmed);
+  };
   // Las habitaciones no tienen foto "legacy" real (esa columna nunca se ha
   // llegado a rellenar — ver AddRoomWizard), así que la galería aquí solo
   // gestiona entity_photos.
@@ -1726,18 +1742,36 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
   if (!room) {
     // ROOM LIST
     const favoriteObjects = showFavoritesOnly ? state.objects.filter((o) => o.favorite) : [];
+    const categoriesInUse = showCategoryFilter
+      ? [...new Set([...(state.categories || []), ...state.objects.map((o) => o.category).filter(Boolean)])].sort((a, b) => a.localeCompare(b))
+      : [];
+    const categoryObjects = selectedCategory ? state.objects.filter((o) => o.category === selectedCategory) : [];
     return (
       <div className="hm-fade-in">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
           <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{t("room.title")}</h1>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 6 }}>
             <button
-              className={showFavoritesOnly ? "hm-btn hm-btn-primary" : "hm-btn hm-btn-soft"}
-              onClick={() => setShowFavoritesOnly((v) => !v)}
+              className={`hm-btn hm-btn--compact ${activeSection === "rooms" ? "hm-btn-primary" : "hm-btn-soft"}`}
+              style={{ fontSize: 12.5 }}
+              onClick={() => selectSection("rooms")}
             >
-              <Star size={15} fill={showFavoritesOnly ? "currentColor" : "none"} /> {t("common.favoritesFilter")}
+              <Home size={13} /> {t("common.roomsFilter")}
             </button>
-            <button className="hm-btn hm-btn-primary" onClick={() => openModal("addRoom")}><Plus size={16} /> {t("room.createRoom")}</button>
+            <button
+              className={`hm-btn hm-btn--compact ${showCategoryFilter ? "hm-btn-primary" : "hm-btn-soft"}`}
+              style={{ fontSize: 12.5 }}
+              onClick={() => selectSection("categories")}
+            >
+              <Tag size={13} /> {t("common.categoriesFilter")}
+            </button>
+            <button
+              className={`hm-btn hm-btn--compact ${showFavoritesOnly ? "hm-btn-primary" : "hm-btn-soft"}`}
+              style={{ fontSize: 12.5 }}
+              onClick={() => selectSection("favorites")}
+            >
+              <Star size={13} fill={showFavoritesOnly ? "currentColor" : "none"} /> {t("common.favoritesFilter")}
+            </button>
           </div>
         </div>
         {showFavoritesOnly ? (
@@ -1756,9 +1790,54 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
               ))}
             </div>
           )
-        ) : state.rooms.length === 0 ? (
-          <EmptyState icon={Home} title={t("room.emptyTitle")} subtitle={t("room.emptySubtitle")}
-            action={<button className="hm-btn hm-btn-primary" onClick={() => openModal("addRoom")}><Plus size={16} />{t("dashboard.createFirstRoom")}</button>} />
+        ) : showCategoryFilter ? (
+          selectedCategory ? (
+            <div>
+              <button className="hm-btn hm-btn-ghost" style={{ paddingLeft: 0, marginBottom: 12 }} onClick={() => setSelectedCategory(null)}>
+                <ArrowLeft size={16} /> {t("common.back")}
+              </button>
+              {categoryObjects.length === 0 ? (
+                <EmptyState icon={Tag} title={t("common.noResults")} subtitle={t("room.noCategoryObjects")} />
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {categoryObjects.map((o) => (
+                    <ObjectRow
+                      key={o.id}
+                      o={o}
+                      onClick={() => goTo({ tab: "objectDetail", objectId: o.id })}
+                      onToggleFavorite={() => toggleObjectFavorite(o)}
+                      path={locationPath(state, o)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))", gap: 10 }}>
+              {categoriesInUse.map((cat) => (
+                <div key={cat} className="hm-card hm-tap hm-card--p14" onClick={() => setSelectedCategory(cat)}>
+                  <CategoryIcon category={cat} size={26} style={{ color: "var(--accent)" }} />
+                  <div className="hm-display" style={{ fontWeight: 600, fontSize: 15, marginTop: 10 }}>{cat}</div>
+                  <div style={{ fontSize: 12, color: "var(--ink-soft)", margin: "3px 0 10px" }}>
+                    {t("common.objectsCount", { count: state.objects.filter((o) => o.category === cat).length })}
+                  </div>
+                  <span style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                    {t("room.viewObjects")} <ChevronRight size={14} />
+                  </span>
+                </div>
+              ))}
+              <div
+                className="hm-tap hm-card--p14"
+                onClick={handleAddCategory}
+                style={{ border: "2px dashed var(--border)", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: "var(--ink-soft)", minHeight: 132 }}
+              >
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surface-alt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Plus size={18} />
+                </div>
+                <span className="hm-display" style={{ fontWeight: 600, fontSize: 15 }}>{t("wizard.stepCategoryNew")}</span>
+              </div>
+            </div>
+          )
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))", gap: 10 }}>
             {state.rooms.map((r) => (
@@ -1771,6 +1850,16 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
                 </span>
               </div>
             ))}
+            <div
+              className="hm-tap hm-card--p14"
+              onClick={() => openModal("addRoom")}
+              style={{ border: "2px dashed var(--border)", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: "var(--ink-soft)", minHeight: 132 }}
+            >
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surface-alt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Plus size={18} />
+              </div>
+              <span className="hm-display" style={{ fontWeight: 600, fontSize: 15 }}>{t("room.createRoom")}</span>
+            </div>
           </div>
         )}
       </div>
@@ -3675,7 +3764,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             )}
              
             {/* 🏡 HOGAR - Rooms, Zones, Containers, Objects */}
-            {route.tab === "hogar" && <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />}
+            {route.tab === "hogar" && <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} onUpdateCategories={updateCategories} houseId={currentHome?.id} />}
 
             {/* ✅ ORGANIZACIÓN - Shopping, Tasks, Calendar */}
             {route.tab === "organizacion" && (
@@ -3744,7 +3833,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             )}
 
             {/* BACKWARDS COMPATIBILITY - Old routes still work */}
-            {route.tab === "micasa" && <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />}
+            {route.tab === "micasa" && <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} onUpdateCategories={updateCategories} houseId={currentHome?.id} />}
             {route.tab === "cajas" && <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />}
             <Suspense fallback={null}>
               {route.tab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}

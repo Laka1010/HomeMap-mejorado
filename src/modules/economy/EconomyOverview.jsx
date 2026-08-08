@@ -6,6 +6,7 @@ import { useCurrency } from "../../currency";
 import { normalizeText } from "../../utils/textMatch";
 import { toLocalDateString } from "../../utils/dates";
 import { GoalsSection } from "./GoalsSection";
+import { AccountsSection } from "./AccountsSection";
 import { accountsService } from "./services/accountsService";
 import { computeInsights } from "./insightsEngine";
 import { InsightsBar } from "./InsightsBar";
@@ -177,6 +178,8 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--danger)", display: "inline-block" }} /> {t("economy.expenses")}</span>
         </div>
       </div>
+
+      <AccountsSection spaceId={spaceId} spaces={spaces} userId={user?.id} />
 
       {isHousehold && (
         <GoalsSection

@@ -247,10 +247,10 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
       <div className="hm-fade-in" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{t("shopping.title")}</h1>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="hm-btn hm-btn-soft" onClick={() => openModal("shoppingHistory")}><History size={15} /> {t("shoppingModule.history")}</button>
-            <button className="hm-btn hm-btn-soft" onClick={() => setScanningReceipt({ listId: null, purchasedItemIds: [] })}><Receipt size={15} /> {t("shoppingModule.scanReceipt")}</button>
-            <button className="hm-btn hm-btn-primary" onClick={() => openModal("addShoppingList")}><Plus size={15} /> {t("shoppingModule.newList")}</button>
+          <div className="hm-scroll" style={{ display: "flex", gap: 6, flexWrap: "nowrap", overflowX: "auto", maxWidth: "100%" }}>
+            <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => openModal("shoppingHistory")}><History size={13} /> {t("shoppingModule.history")}</button>
+            <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => setScanningReceipt({ listId: null, purchasedItemIds: [] })}><Receipt size={13} /> {t("shoppingModule.scanReceipt")}</button>
+            <button className="hm-btn hm-btn-primary hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => openModal("addShoppingList")}><Plus size={13} /> {t("shoppingModule.newList")}</button>
           </div>
         </div>
 
@@ -299,12 +299,12 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
           <button className="hm-btn hm-btn-soft hm-btn--compact" onClick={() => setActiveListId(null)}><ArrowLeft size={16} /></button>
           <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{activeList.name}</h1>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="hm-btn hm-btn-soft" onClick={() => openModal("shoppingHistory", { listId: activeList.id })}><History size={15} /> {t("shoppingModule.history")}</button>
+        <div className="hm-scroll" style={{ display: "flex", gap: 6, flexWrap: "nowrap", overflowX: "auto", maxWidth: "100%" }}>
+          <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => openModal("shoppingHistory", { listId: activeList.id })}><History size={13} /> {t("shoppingModule.history")}</button>
           {listItems.length > 0 && (
-            <button className="hm-btn hm-btn-soft" onClick={() => setCheckoutMode(true)}><ShoppingCart size={15} /> {t("shoppingModule.checkoutMode")}</button>
+            <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => setCheckoutMode(true)}><ShoppingCart size={13} /> {t("shoppingModule.checkoutMode")}</button>
           )}
-          <button className="hm-btn hm-btn-primary" onClick={() => openModal("addShopping", { listId: activeList.id })}><Plus size={15} /> {t("shopping.add")}</button>
+          <button className="hm-btn hm-btn-primary hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => openModal("addShopping", { listId: activeList.id })}><Plus size={13} /> {t("shopping.add")}</button>
         </div>
       </div>
 
@@ -317,13 +317,13 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
             ))}
           </select>
           <button
-            className={favoritesOnly ? "hm-btn hm-btn-primary" : "hm-btn hm-btn-soft"}
-            style={{ flexShrink: 0, whiteSpace: "nowrap" }}
+            className={"hm-btn hm-btn--compact " + (favoritesOnly ? "hm-btn-primary" : "hm-btn-soft")}
+            style={{ flexShrink: 0, whiteSpace: "nowrap", fontSize: 12.5 }}
             onClick={() => setFavoritesOnly((v) => !v)}
           >
-            <Star size={14} fill={favoritesOnly ? "currentColor" : "none"} /> {t("common.favoritesFilter")}
+            <Star size={13} fill={favoritesOnly ? "currentColor" : "none"} /> {t("common.favoritesFilter")}
           </button>
-          <button className="hm-btn hm-btn-soft" style={{ flexShrink: 0, whiteSpace: "nowrap" }} onClick={() => openModal && openModal("editCategories")}>{t("shoppingModule.editCategories")}</button>
+          <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ flexShrink: 0, whiteSpace: "nowrap", fontSize: 12.5 }} onClick={() => openModal && openModal("editCategories")}>{t("shoppingModule.editCategories")}</button>
         </div>
       </div>
 

@@ -47,14 +47,15 @@ export function TasksModule({ state, dispatch, openModal, onTaskCompleted }) {
         <div>
           <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{t("tasksModule.title")}</h1>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           <button
-            className={favoritesOnly ? "hm-btn hm-btn-primary" : "hm-btn hm-btn-soft"}
+            className={"hm-btn hm-btn--compact " + (favoritesOnly ? "hm-btn-primary" : "hm-btn-soft")}
+            style={{ fontSize: 12.5 }}
             onClick={() => setFavoritesOnly((v) => !v)}
           >
-            <Star size={15} fill={favoritesOnly ? "currentColor" : "none"} /> {t("common.favoritesFilter")}
+            <Star size={13} fill={favoritesOnly ? "currentColor" : "none"} /> {t("common.favoritesFilter")}
           </button>
-          <button className="hm-btn hm-btn-primary" onClick={() => openModal("addTask")}><Plus size={15} /> {t("tasksModule.newTask")}</button>
+          <button className="hm-btn hm-btn-primary hm-btn--compact" style={{ fontSize: 12.5 }} onClick={() => openModal("addTask")}><Plus size={13} /> {t("tasksModule.newTask")}</button>
         </div>
       </div>
 

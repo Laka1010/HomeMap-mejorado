@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronDown, Plus, Check } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown, Plus, Check, Lock } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { financialSpacesService } from "./services/financialSpacesService";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
@@ -17,10 +17,25 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
   const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [lockedSpaces, setLockedSpaces] = useState([]);
   const closePicker = () => setShowPicker(false);
   const { handleRef: pickerHandleRef, handleMouseDown: pickerHandleMouseDown, isSuppressingClick: isPickerSuppressingClick, sheetStyle: pickerSheetStyle } = useDragToDismiss(closePicker);
 
   const activeSpace = spaces.find((s) => s.id === activeSpaceId);
+
+  // Espacios Personales de compañeros de casa que NO nos han dado acceso:
+  // se ven (nombre + icono) como tarjeta bloqueada, pero no se pueden abrir.
+  // Los que SÍ han activado el acceso ya llegan en `spaces` (vía
+  // my_financial_spaces) y no hace falta duplicarlos aquí.
+  useEffect(() => {
+    let cancelled = false;
+    if (!houseId) { setLockedSpaces([]); return; }
+    financialSpacesService.listHousematesPersonalSpaces(houseId).then((list) => {
+      if (cancelled) return;
+      setLockedSpaces(list.filter((s) => !s.shared_with_house));
+    }).catch(() => { if (!cancelled) setLockedSpaces([]); });
+    return () => { cancelled = true; };
+  }, [houseId]);
 
   return (
     <>
@@ -98,6 +113,42 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
                   );
                 })}
               </div>
+
+              {lockedSpaces.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 8 }}>
+                    {t("spaces.lockedSectionTitle")}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {lockedSpaces.map((space) => (
+                      <div
+                        key={space.id}
+                        title={t("spaces.lockedHint", { name: space.ownerName })}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 14,
+                          padding: 14,
+                          borderRadius: "var(--radius)",
+                          border: "1px dashed var(--border)",
+                          background: "var(--surface-alt)",
+                          opacity: 0.65,
+                          cursor: "not-allowed",
+                        }}
+                      >
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--surface)", display: "grid", placeItems: "center", fontSize: 19, flexShrink: 0 }}>
+                          {space.icon || "👤"}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{space.name}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--ink-soft)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{space.ownerName}</div>
+                        </div>
+                        <Lock size={15} style={{ color: "var(--ink-soft)", flexShrink: 0 }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <button
                 className="hm-btn hm-btn-soft hm-btn--full"

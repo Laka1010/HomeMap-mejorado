@@ -53,7 +53,7 @@ export function NotesModule({ state, dispatch, openModal }) {
         <div>
           <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{t("notesModule.title")}</h1>
         </div>
-        <button className="hm-btn hm-btn-primary" onClick={() => openModal && openModal("addNote")}><Plus size={15} /> {t("notesModule.newNote")}</button>
+        <button className="hm-btn hm-btn-primary hm-btn--compact" style={{ fontSize: 12.5 }} onClick={() => openModal && openModal("addNote")}><Plus size={13} /> {t("notesModule.newNote")}</button>
       </div>
 
       {sorted.length === 0 ? (

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { EconomyOverview } from "./EconomyOverview";
-import { AccountsSection } from "./AccountsSection";
 import BillsSection from "./BillsSection";
 import MovementsSection from "./MovementsSection";
 import StatisticsSection from "./StatisticsSection";
@@ -54,7 +53,6 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
 
   const tabs = [
     { key: "overview", label: t("economy.tabOverview") },
-    { key: "accounts", label: t("accounts.title") },
     { key: "bills", label: t("economy.tabBills") },
     { key: "movements", label: t("economy.tabMovements") },
     { key: "statistics", label: t("economy.tabStatistics") },
@@ -129,10 +127,6 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
               activity={state?.activity}
               user={user}
             />
-          )}
-
-          {currentPage === "accounts" && (
-            <AccountsSection spaceId={currentSpaceId} spaces={spaces} userId={user?.id} />
           )}
 
           {currentPage === "bills" && (

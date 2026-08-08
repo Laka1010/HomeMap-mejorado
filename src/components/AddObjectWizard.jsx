@@ -3,8 +3,6 @@ import { X, ChevronLeft, ChevronRight, Check } from "lucide-react";
 
 // Importación de pasos
 import { StepName } from "./wizard/StepName";
-import { StepPhoto } from "./wizard/StepPhoto";
-import { StepAnalyze } from "./wizard/StepAnalyze";
 import { StepCategory } from "./wizard/StepCategory";
 import { StepLocation } from "./wizard/StepLocation";
 import { StepDetails } from "./wizard/StepDetails";
@@ -15,7 +13,15 @@ import { useDragToDismiss } from "../hooks/useDragToDismiss";
 export function AddObjectWizard({ state, onClose, onSave, defaults = {} }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
-  const [step, setStep] = useState(1);
+  // Si ya estamos dentro de una habitación/zona/caja, no hace falta preguntar dónde está.
+  const hasLocationContext = Boolean(defaults.roomId);
+  const [STEPS] = useState(() => {
+    const s = ["name", "category"];
+    if (!hasLocationContext) s.push("location");
+    s.push("details", "summary");
+    return s;
+  });
+  const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState("next"); // 'next' or 'back'
   const [data, setData] = useState({
     name: "",
@@ -29,36 +35,23 @@ export function AddObjectWizard({ state, onClose, onSave, defaults = {} }) {
     notes: "",
   });
 
-  const TOTAL_STEPS = 6;
-
-  // El paso de análisis (2.5) es especial y condicional
-  const isAIStep = step === 2.5;
-  const currentProgress = isAIStep ? 2 : step;
+  const TOTAL_STEPS = STEPS.length;
+  const currentStep = STEPS[stepIndex];
 
   const updateData = (updates) => {
     setData((prev) => ({ ...prev, ...updates }));
   };
 
   const nextStep = () => {
-    if (step === 1 && !data.name.trim()) return;
+    if (currentStep === "name" && !data.name.trim()) return;
 
     setDirection("next");
-    if (step === 2 && data.photo) {
-      setStep(2.5);
-    } else if (step === 2.5) {
-      setStep(3);
-    } else if (step < TOTAL_STEPS) {
-      setStep(Math.floor(step + 1));
-    }
+    setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
   };
 
   const prevStep = () => {
     setDirection("back");
-    if (step === 2.5) {
-      setStep(2);
-    } else if (step > 1) {
-      setStep(Math.floor(step - 1));
-    }
+    setStepIndex((i) => Math.max(i - 1, 0));
   };
 
   const handleSave = () => {
@@ -82,7 +75,7 @@ export function AddObjectWizard({ state, onClose, onSave, defaults = {} }) {
         <div className="wizard-progress-bar">
           <div
             className="wizard-progress-fill"
-            style={{ width: `${(currentProgress / TOTAL_STEPS) * 100}%` }}
+            style={{ width: `${((stepIndex + 1) / TOTAL_STEPS) * 100}%` }}
           />
         </div>
 
@@ -91,24 +84,22 @@ export function AddObjectWizard({ state, onClose, onSave, defaults = {} }) {
             <X size={20} />
           </button>
           <div className="wizard-step-counter">
-            {isAIStep ? t("wizard.analyzingStep") : t("wizard.stepCounter", { step, total: TOTAL_STEPS })}
+            {t("wizard.stepCounter", { step: stepIndex + 1, total: TOTAL_STEPS })}
           </div>
         </div>
 
         <div className={`wizard-body transition-${direction}`}>
-          <div className="wizard-content-wrapper" key={step}>
-            {step === 1 && <StepName data={data} onChange={updateData} onNext={nextStep} />}
-            {step === 2 && <StepPhoto data={data} onChange={updateData} onNext={nextStep} />}
-            {step === 2.5 && <StepAnalyze data={data} onChange={updateData} onNext={nextStep} />}
-            {step === 3 && <StepCategory data={data} onChange={updateData} categories={state.categories} onNext={nextStep} />}
-            {step === 4 && <StepLocation data={data} onChange={updateData} state={state} onNext={nextStep} />}
-            {step === 5 && <StepDetails data={data} onChange={updateData} />}
-            {step === 6 && <StepSummary data={data} state={state} />}
+          <div className="wizard-content-wrapper" key={stepIndex}>
+            {currentStep === "name" && <StepName data={data} onChange={updateData} onNext={nextStep} />}
+            {currentStep === "category" && <StepCategory data={data} onChange={updateData} categories={state.categories} onNext={nextStep} />}
+            {currentStep === "location" && <StepLocation data={data} onChange={updateData} state={state} onNext={nextStep} />}
+            {currentStep === "details" && <StepDetails data={data} onChange={updateData} />}
+            {currentStep === "summary" && <StepSummary data={data} state={state} />}
           </div>
         </div>
 
         <div className="wizard-footer">
-          {step > 1 && (
+          {stepIndex > 0 && (
             <button className="hm-btn hm-btn-soft" onClick={prevStep}>
               <ChevronLeft size={18} /> {t("wizard.back")}
             </button>
@@ -119,19 +110,19 @@ export function AddObjectWizard({ state, onClose, onSave, defaults = {} }) {
               {t("wizard.cancel")}
             </button>
 
-            {step === TOTAL_STEPS ? (
+            {currentStep === "summary" ? (
               <button className="hm-btn hm-btn-primary" onClick={handleSave}>
                 <Check size={18} /> {t("wizard.saveObjectButton")}
               </button>
-            ) : step === 5 ? (
+            ) : currentStep === "details" ? (
               <button className="hm-btn hm-btn-primary" onClick={nextStep}>
                 {t("wizard.reviewSummaryButton")} <ChevronRight size={18} />
               </button>
-            ) : !isAIStep && step !== 2 && (
+            ) : (
               <button
                 className="hm-btn hm-btn-primary"
                 onClick={nextStep}
-                disabled={step === 1 && !data.name.trim()}
+                disabled={currentStep === "name" && !data.name.trim()}
               >
                 {t("wizard.next")} <ChevronRight size={18} />
               </button>

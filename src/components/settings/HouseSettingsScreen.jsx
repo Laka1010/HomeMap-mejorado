@@ -3,6 +3,7 @@ import { useTranslation } from "../../i18n";
 import { CurrencySection } from "./CurrencySection";
 import { HouseMembersSection } from "./HouseMembersSection";
 import { SharedSpacesSection } from "./SharedSpacesSection";
+import { PersonalSpacePrivacySection } from "./PersonalSpacePrivacySection";
 import { CategoriesSection } from "./CategoriesSection";
 import { TaskRetentionSection } from "./TaskRetentionSection";
 
@@ -80,6 +81,8 @@ export function HouseSettingsScreen({
           />
 
           <SharedSpacesSection houseId={house?.id} />
+
+          <PersonalSpacePrivacySection />
 
           <CategoriesSection categories={categories} onChange={onChangeCategories} />
 
