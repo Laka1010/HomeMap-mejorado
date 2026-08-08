@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft, ChevronRight, ExternalLink, User, Lock, Home as HomeIcon, Users, Shield,
   MessageCircle, Info, Eye, EyeOff, Upload, Download, Trash2, LogOut, Share2,
-  Languages, Coins, Palette, Bell, Calendar, Crown, Sun, Moon, Smartphone,
+  Languages, Coins, Palette, Bell, Calendar, Crown, Sun, Moon, Smartphone, ShieldAlert,
 } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { LanguageSection } from "./LanguageSection";
@@ -10,6 +10,7 @@ import { CurrencySection } from "./CurrencySection";
 import { NotificationSection } from "./NotificationSection";
 import { SupportSection } from "./SupportSection";
 import { AboutSection } from "./AboutSection";
+import { securityAdminService } from "../../modules/security/services/securityAdminService";
 
 const ROLE_LABEL_KEY = { admin: "shareHome.roleAdminLabel", adult: "shareHome.roleAdultLabel", child: "shareHome.roleChildLabel" };
 
@@ -59,6 +60,20 @@ export function AccountHub({
   // de responsabilidad única, en vez de reutilizar la vieja pantalla "Ajustes"
   // que las mezclaba todas. Ver `renderView` más abajo.
   const [view, setView] = useState(null);
+
+  // Entrada al Security Center: solo UX (evita mostrar la fila a quien no
+  // la va a poder usar). La protección real es server-side — is_security_
+  // admin() se vuelve a comprobar dentro de cada RPC del panel, así que
+  // ocultar o no esta fila no cambia nada sobre quién puede actuar de
+  // verdad. Ser admin de ESTA casa no influye aquí en absoluto.
+  const [isSecurityAdmin, setIsSecurityAdmin] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    securityAdminService.amISecurityAdmin()
+      .then((v) => { if (!cancelled) setIsSecurityAdmin(v); })
+      .catch(() => { if (!cancelled) setIsSecurityAdmin(false); });
+    return () => { cancelled = true; };
+  }, []);
   const profile = state.profile;
   const isAdmin = currentHome?.myRole === "admin";
 
@@ -133,6 +148,20 @@ export function AccountHub({
                     ))}
                   </HubSection>
                 ))}
+
+                {isSecurityAdmin && (
+                  <HubSection icon={ShieldAlert} color="var(--danger)" title="Security Center">
+                    <HubRow
+                      id="securityCenter"
+                      icon={ShieldAlert}
+                      label="Security Center"
+                      kind="nav"
+                      isLast
+                      sectionColor="var(--danger)"
+                      onClick={() => openModal("securityCenter", null, { returnTo: "accountHub" })}
+                    />
+                  </HubSection>
+                )}
 
                 <HubSection>
                   {dangerRows.map((row, idx) => (

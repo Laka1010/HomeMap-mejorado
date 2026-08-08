@@ -19,6 +19,7 @@ import { formatCurrencyValue } from "./utils/currencyUtils";
 const HouseSettingsScreen = lazy(() => import("./components/settings/HouseSettingsScreen").then((m) => ({ default: m.HouseSettingsScreen })));
 const AccountHub = lazy(() => import("./components/settings/AccountHub").then((m) => ({ default: m.AccountHub })));
 const MemberDetailScreen = lazy(() => import("./components/settings/MemberDetailScreen").then((m) => ({ default: m.MemberDetailScreen })));
+const SecurityCenter = lazy(() => import("./modules/security/SecurityCenter").then((m) => ({ default: m.SecurityCenter })));
 import { CategoriesSection } from "./components/settings/CategoriesSection";
 import { AppHeader } from "./components/AppHeader";
 import { NotificationSection } from "./components/settings/NotificationSection";
@@ -3890,6 +3891,11 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onClose={closeModal}
             version={APP_VERSION}
           />
+        </Suspense>
+      )}
+      {modal?.type === "securityCenter" && (
+        <Suspense fallback={null}>
+          <SecurityCenter onClose={closeModal} />
         </Suspense>
       )}
       {modal?.type === "houseSettings" && (
