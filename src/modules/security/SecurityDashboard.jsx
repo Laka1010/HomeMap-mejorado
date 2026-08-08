@@ -55,7 +55,6 @@ export function SecurityDashboard() {
         .sc-stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
         .sc-stat-value { font-size: 24px; font-weight: 800; line-height: 1.1; }
         .sc-stat-label { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
-        .sc-error { padding: 20px; color: var(--danger); font-size: 14px; }
       `}</style>
     </div>
   );

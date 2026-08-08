@@ -177,6 +177,8 @@ export function SecurityUserDetailModal({ userId, onClose, onChanged }) {
 
       <style>{`
         .sc-user-modal { max-width: 520px; width: 100%; }
+        .sc-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+        .sc-modal-body { padding: 18px; overflow-y: auto; max-height: 70vh; }
         .sc-note { background: var(--surface-alt); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
         .sc-kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .sc-section-label { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }

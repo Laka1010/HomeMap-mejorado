@@ -129,6 +129,7 @@ const SECURITY_CENTER_STYLES = `
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 10px; padding: 60px 20px; text-align: center; height: 100%;
   }
+  .sc-error { padding: 20px; color: var(--danger); font-size: 14px; }
   @media (max-width: 768px) {
     .sc-drawer { max-width: 100%; }
     .sc-body { padding: 14px; }
