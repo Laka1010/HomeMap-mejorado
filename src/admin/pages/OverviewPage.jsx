@@ -71,7 +71,7 @@ export function OverviewPage({ onNavigate }) {
         <QuickNavCard icon={ShieldAlert} label="Security" value={security.ip_blocks_active} valueLabel="IP blocks" onClick={() => onNavigate("security")} />
       </div>
 
-      <div>
+      <div style={{ display: "grid", gap: 10 }}>
         <SectionTitle icon={Users} title="Cuentas" />
         <StatGrid>
           <StatCard label="Total users" value={platform.total_users} />
@@ -114,7 +114,7 @@ export function OverviewPage({ onNavigate }) {
         )}
       </div>
 
-      <div>
+      <div style={{ display: "grid", gap: 10 }}>
         <SectionTitle icon={ShieldAlert} title="Security snapshot" />
         <StatGrid>
           <StatCard label="Eventos HIGH (24h)" value={security.events_24h_high} tone="warning" />

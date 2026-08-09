@@ -25,6 +25,8 @@ export function AdminSidebar({ activeSection, onNavigate }) {
         .admin-sidebar {
           width: 220px;
           flex-shrink: 0;
+          height: 100vh;
+          overflow-y: auto;
           background: var(--surface);
           border-right: 1px solid var(--border);
           padding: 20px 12px;

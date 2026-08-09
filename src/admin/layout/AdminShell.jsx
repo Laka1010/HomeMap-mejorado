@@ -32,14 +32,17 @@ export function AdminShell({ section, onNavigate, onLogout, userEmail, children 
       <style>{`
         .admin-shell {
           display: flex;
-          min-height: 100vh;
+          height: 100vh;
           background: var(--bg);
+          overflow: hidden;
         }
         .admin-shell-main {
           flex: 1;
           min-width: 0;
+          height: 100vh;
           display: flex;
           flex-direction: column;
+          overflow: hidden;
         }
         .admin-header {
           height: 60px;
@@ -69,9 +72,6 @@ export function AdminShell({ section, onNavigate, onLogout, userEmail, children 
           flex: 1;
           overflow-y: auto;
           padding: 28px 32px;
-        }
-        @media (max-width: 720px) {
-          .admin-shell { flex-direction: column; }
         }
       `}</style>
     </div>
