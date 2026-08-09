@@ -9,6 +9,7 @@ import { AdminShell } from "./layout/AdminShell";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { SecurityPage } from "./pages/SecurityPage";
 import { OverviewPage } from "./pages/OverviewPage";
+import { UsersPage } from "./pages/UsersPage";
 import { useAdminRoute } from "./navigation/useAdminRoute";
 import { ADMIN_SECTIONS } from "./navigation/sections";
 
@@ -109,8 +110,9 @@ export function AdminApp() {
   return (
     <AdminShell section={section} onNavigate={navigate} onLogout={handleLogout} userEmail={session.user?.email}>
       {section === "overview" && <OverviewPage onNavigate={navigate} />}
+      {section === "users" && <UsersPage />}
       {section === "security" && <SecurityPage />}
-      {section !== "overview" && section !== "security" && <PlaceholderPage section={activeSection} />}
+      {section !== "overview" && section !== "users" && section !== "security" && <PlaceholderPage section={activeSection} />}
     </AdminShell>
   );
 }
