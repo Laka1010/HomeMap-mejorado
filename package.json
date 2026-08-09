@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
+    "build:capacitor": "vite build --mode capacitor",
     "preview": "vite preview",
-    "cap:sync": "npm run build && npx cap sync",
+    "cap:sync": "npm run build:capacitor && node scripts/assert-no-admin-in-dist.js && npx cap sync",
     "cap:add:android": "npx cap add android",
     "cap:add:ios": "npx cap add ios",
     "android:release": "npm run cap:sync && powershell -ExecutionPolicy Bypass -NoProfile -Command \"cd android; .\\gradlew.bat assembleRelease\"",

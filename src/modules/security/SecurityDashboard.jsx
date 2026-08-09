@@ -49,22 +49,30 @@ export function SecurityDashboard() {
         <StatCard label="Active IP blocks" value={stats.ip_blocks_active} tone="warning" />
       </StatGrid>
 
-      <style>{`
-        .sc-section-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--ink); }
-        .sc-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: -8px; }
-        .sc-stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
-        .sc-stat-value { font-size: 24px; font-weight: 800; line-height: 1.1; }
-        .sc-stat-label { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
-      `}</style>
+      <style>{STAT_CARD_STYLES}</style>
     </div>
   );
 }
 
-function SectionTitle({ icon: Icon, title }) {
+/**
+ * Extraído a constante exportada (en vez de dejarlo como string inline)
+ * porque src/admin/pages/OverviewPage.jsx reutiliza SectionTitle/StatGrid/
+ * StatCard sin montar SecurityDashboard — así ambos comparten exactamente
+ * las mismas reglas en vez de que Overview tenga su propia copia.
+ */
+export const STAT_CARD_STYLES = `
+  .sc-section-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--ink); }
+  .sc-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: -8px; }
+  .sc-stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .sc-stat-value { font-size: 24px; font-weight: 800; line-height: 1.1; }
+  .sc-stat-label { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+`;
+
+export function SectionTitle({ icon: Icon, title }) {
   return <div className="sc-section-title"><Icon size={15} /> {title}</div>;
 }
 
-function StatGrid({ children }) {
+export function StatGrid({ children }) {
   return <div className="sc-stat-grid">{children}</div>;
 }
 
@@ -74,7 +82,7 @@ const TONE_COLOR = {
   danger: "var(--danger)",
 };
 
-function StatCard({ label, value, tone }) {
+export function StatCard({ label, value, tone }) {
   return (
     <div className="sc-stat-card">
       <div className="sc-stat-value" style={tone ? { color: TONE_COLOR[tone] } : undefined}>

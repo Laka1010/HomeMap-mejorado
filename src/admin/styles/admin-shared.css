@@ -1,0 +1,213 @@
+/*
+ * Design system compartido de Admin Console.
+ *
+ * Este archivo NO es un diseño nuevo: es una copia deliberada y acotada de
+ * los tokens y clases `.hm-*` definidos en el bloque GlobalStyle de
+ * src/App.jsx (líneas ~82-371 en el momento de escribir esto), necesaria
+ * porque los componentes reutilizados de Security Center
+ * (src/modules/security/*.jsx) dependen de esas clases (hm-btn, hm-input,
+ * hm-modal, hm-drawer, hm-avatar, hm-empty, hm-scroll, tokens de color) y
+ * admin.html es un documento HTML completamente separado de index.html, así
+ * que no hereda nada de App.jsx en tiempo de ejecución.
+ *
+ * Es una copia, no una referencia — si App.jsx cambia estos valores, este
+ * archivo puede quedar desincronizado. Riesgo documentado en el informe de
+ * Fase 1 (sección "riesgos pendientes"), no resuelto aquí porque mover
+ * GlobalStyle a un archivo compartido importado por ambas entradas
+ * significa modificar App.jsx, fuera del alcance de esta fase.
+ *
+ * Solo se han portado las reglas que los componentes reutilizados y los
+ * componentes nuevos de src/admin/ realmente usan — no el archivo completo.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ============================================================================
+   Reset mínimo
+   ============================================================================ */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #F6F7F5;
+}
+@media (prefers-color-scheme: dark) {
+  html, body { background: #15171A; }
+}
+
+#admin-root, #admin-root * {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+/* ============================================================================
+   Design tokens — copiados de src/App.jsx (bloque .hm-root / .hm-root.dark),
+   escalados aquí a :root porque admin.html es su propio documento.
+   ============================================================================ */
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  --bg: #F6F7F5;
+  --surface: #FFFFFF;
+  --surface-alt: #EEF0EC;
+  --ink: #1B1D1F;
+  --ink-soft: #676D67;
+  --border: #E3E5E0;
+  --accent: #5E8C61;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E7EEE7;
+  --success: #3F7857;
+  --success-soft: #DEEAE2;
+  --danger: #B3503F;
+  --danger-soft: #F4E1DC;
+
+  --chart-warning: #fab219;
+
+  --radius: 12px;
+  --radius-pill: 999px;
+  --btn-height: 44px;
+  --input-height: 44px;
+
+  --shadow-elev-1: 0 1px 3px rgba(20,20,15,0.05);
+  --shadow-elev-2: 0 10px 28px rgba(10,10,10,0.10);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171A;
+    --surface: #1D2024;
+    --surface-alt: #24282D;
+    --ink: #EDEEEC;
+    --ink-soft: #9BA1A6;
+    --border: #2C3036;
+    --accent: #96B498;
+    --accent-ink: #10151C;
+    --accent-soft: #3B4541;
+    --success: #6FBF95;
+    --success-soft: #22362B;
+    --danger: #E08877;
+    --danger-soft: #3C2622;
+  }
+}
+
+/* ============================================================================
+   Animaciones (App.jsx: hmFadeIn, hmDrawerIn, hmSheetIn, hmSpin)
+   ============================================================================ */
+
+@keyframes hmFadeIn { from { opacity: 0; transform: translateY(-8px) scale(0.995); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes hmDrawerIn { from { opacity: 0; transform: translateX(18px) scale(0.995); } to { opacity: 1; transform: translateX(0) scale(1); } }
+@keyframes hmSheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes hmSpin { to { transform: rotate(360deg); } }
+
+.hm-fade-in { animation: hmFadeIn .32s cubic-bezier(.22,1,.36,1) backwards; }
+@media (prefers-reduced-motion: reduce) { .hm-fade-in { animation: none !important; } }
+
+/* ============================================================================
+   Botones (App.jsx ~L220-253)
+   ============================================================================ */
+
+.hm-btn, button {
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  color: inherit;
+  transition: transform .14s cubic-bezier(.22,1,.36,1), opacity .14s ease, background .18s ease, background-color .18s ease, color .18s ease, box-shadow .14s ease, border-color .18s ease;
+}
+.hm-btn { display: inline-flex; align-items: center; gap: var(--space-2); height: var(--btn-height); min-height: var(--btn-height); padding: 0 var(--space-4); border-radius: var(--radius); font-weight: 600; font-size: 14px; border: 1px solid transparent; cursor: pointer; }
+.hm-btn:active, button:active { transform: scale(0.96); box-shadow: var(--shadow-elev-1); }
+.hm-btn:disabled, button:disabled { opacity: 0.65; cursor: not-allowed; transform: none; box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .hm-btn, button { transition: none !important; } }
+
+.hm-btn-primary { background: var(--accent); color: var(--accent-ink); }
+.hm-btn-primary:hover { filter: brightness(0.96); }
+.hm-btn-secondary, .hm-btn-soft { background: var(--surface-alt); color: var(--ink); border-color: var(--border); }
+.hm-btn-secondary:hover { background: var(--border); }
+.hm-btn-ghost { background: transparent; color: var(--ink-soft); }
+.hm-btn-ghost:hover { color: var(--ink); }
+
+.hm-btn--full { width: 100%; justify-content: center; }
+.hm-btn--compact { padding: 8px 10px; }
+.hm-square-54 { width: 54px; height: 54px; min-width: 54px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; }
+.hm-justify-center { justify-content: center; }
+.hm-text-danger { color: var(--danger); }
+
+/* ============================================================================
+   Inputs (App.jsx ~L255-274)
+   ============================================================================ */
+
+.hm-input, textarea.hm-input, select.hm-input {
+  width: 100%;
+  min-height: var(--input-height);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0 var(--space-4);
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color .12s ease, box-shadow .12s ease, background .12s ease;
+  display: block;
+}
+.hm-input:focus, textarea.hm-input:focus, select.hm-input:focus { border-color: var(--accent); box-shadow: 0 6px 18px rgba(0,0,0,0.04); }
+.hm-input::placeholder, textarea.hm-input::placeholder { color: var(--ink-soft); }
+textarea.hm-input { min-height: calc(var(--input-height) * 2); padding-top: 12px; resize: vertical; }
+.hm-input:disabled, textarea.hm-input:disabled, select.hm-input:disabled { background: var(--surface-alt); cursor: not-allowed; }
+
+/* ============================================================================
+   Scroll (App.jsx ~L324-326)
+   ============================================================================ */
+
+.hm-scroll { -webkit-overflow-scrolling: touch; }
+.hm-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.hm-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+/* ============================================================================
+   Overlays / modal / drawer (App.jsx ~L333-348) — usados por
+   SecurityEventDetailModal y SecurityUserDetailModal
+   ============================================================================ */
+
+.hm-modal-overlay { position: fixed; inset: 0; z-index: 1000; padding: 0; background: rgba(0,0,0,0.36); backdrop-filter: blur(6px); display: flex; align-items: flex-end; justify-content: center; }
+.hm-drawer-overlay { position: fixed; inset: 0; z-index: 1200; display: flex; justify-content: flex-end; align-items: stretch; background: rgba(15,20,25,0.32); backdrop-filter: blur(8px); padding: 0; }
+.hm-drawer { width: min(100%, 920px); height: 100dvh; max-height: 100dvh; background: var(--surface); box-shadow: -24px 0 48px rgba(0,0,0,0.12); overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; animation: hmDrawerIn .28s cubic-bezier(.22,1,.36,1) backwards; }
+.hm-modal { width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; overscroll-behavior-y: contain; background: var(--surface); border-radius: 28px 28px 0 0; box-shadow: 0 -12px 40px rgba(0,0,0,0.18); overflow-x: hidden; position: relative; animation: hmSheetIn .32s cubic-bezier(.22,1,.36,1) backwards; }
+@media (prefers-reduced-motion: reduce) { .hm-modal, .hm-drawer { animation: none !important; } }
+
+@media (min-width: 720px) {
+  .hm-modal-overlay { align-items: center; }
+  .hm-modal { border-radius: var(--radius); }
+}
+
+/* ============================================================================
+   Avatares (App.jsx ~L366-371)
+   ============================================================================ */
+
+.hm-avatar { border-radius: 50%; display: grid; place-items: center; font-weight: 700; flex-shrink: 0; overflow: hidden; background: var(--accent); color: var(--accent-ink); }
+.hm-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.hm-avatar--sm { width: 32px; height: 32px; font-size: 13px; }
+.hm-avatar--md { width: 40px; height: 40px; font-size: 16px; }
+.hm-avatar--lg { width: 64px; height: 64px; font-size: 26px; }
+
+/* ============================================================================
+   Estado vacío (App.jsx ~L295-299) — usado por SecurityCenter y por
+   src/admin/pages/PlaceholderPage.jsx
+   ============================================================================ */
+
+.hm-empty { text-align: center; padding: var(--space-8) var(--space-3); color: var(--ink-soft); }
+.hm-empty-icon { width: 56px; height: 56px; border-radius: 12px; background: var(--surface-alt); display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-3); }
+.hm-empty-icon svg { color: var(--accent); }
+.hm-empty-title { font-weight: 600; color: var(--ink); margin: 0 0 4px; }
+.hm-empty-subtitle { font-size: 13.5px; margin: 0 0 var(--space-4); }

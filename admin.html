@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Haven — Admin</title>
+    <!--
+      Entrada Vite independiente de index.html (ver vite.config.js).
+      Deliberadamente SIN <link rel="manifest">: la Admin Console no es una
+      PWA instalable. Deliberadamente sin registrar el Service Worker (ver
+      src/admin/main.jsx) — el panel admin nunca debe servirse desde caché.
+    -->
+  </head>
+  <body>
+    <div id="admin-root"></div>
+    <script type="module" src="/src/admin/main.jsx"></script>
+  </body>
+</html>

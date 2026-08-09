@@ -99,7 +99,7 @@ export function SecurityCenter({ onClose }) {
   );
 }
 
-const SECURITY_CENTER_STYLES = `
+export const SECURITY_CENTER_STYLES = `
   .sc-drawer { max-width: 720px; margin-left: auto; }
   .sc-header {
     padding: 20px 24px;
