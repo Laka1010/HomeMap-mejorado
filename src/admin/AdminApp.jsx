@@ -10,6 +10,7 @@ import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { SecurityPage } from "./pages/SecurityPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { UsersPage } from "./pages/UsersPage";
+import { HousesPage } from "./pages/HousesPage";
 import { useAdminRoute } from "./navigation/useAdminRoute";
 import { ADMIN_SECTIONS } from "./navigation/sections";
 
@@ -111,8 +112,9 @@ export function AdminApp() {
     <AdminShell section={section} onNavigate={navigate} onLogout={handleLogout} userEmail={session.user?.email}>
       {section === "overview" && <OverviewPage onNavigate={navigate} />}
       {section === "users" && <UsersPage />}
+      {section === "houses" && <HousesPage />}
       {section === "security" && <SecurityPage />}
-      {section !== "overview" && section !== "users" && section !== "security" && <PlaceholderPage section={activeSection} />}
+      {!["overview", "users", "houses", "security"].includes(section) && <PlaceholderPage section={activeSection} />}
     </AdminShell>
   );
 }
