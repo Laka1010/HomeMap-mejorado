@@ -43,4 +43,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- Fase 7: requerido por @capacitor/push-notifications en Android 13+ (API 33).
+         El plugin no lo declara en su propio manifest -- hay que añadirlo aquí a mano
+         (documentado así por el propio Capacitor). El permiso en sí no basta: la app
+         sigue pidiéndolo en runtime vía PushNotifications.requestPermissions(). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>
