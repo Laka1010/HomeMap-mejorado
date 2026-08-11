@@ -35,7 +35,6 @@ import { OnboardingManager } from "./components/onboarding/OnboardingManager";
 import { WelcomeGate } from "./components/onboarding/WelcomeGate";
 import { BrandMark } from "./components/BrandMark";
 import { DependencyGateModal } from "./components/DependencyGateModal";
-import { PushNotificationsInit } from "./components/PushNotificationsInit";
 import { checkDependency } from "./dependencyGuard";
 import { supabase } from "./supabaseClient";
 import { securityEventsService } from "./services/securityEventsService";
@@ -3741,7 +3740,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         </div>
 
         <ToastHost message={notice} />
-        <PushNotificationsInit userId={user?.id} />
 
         <div className="hm-scroll" style={{ flex: 1, minWidth: 0, height: "calc(100svh - 104px)", overflowY: "auto", paddingRight: 4, WebkitOverflowScrolling: "touch" }}>
           <AppHeader
