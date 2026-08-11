@@ -11,6 +11,7 @@ import { SecurityPage } from "./pages/SecurityPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { UsersPage } from "./pages/UsersPage";
 import { HousesPage } from "./pages/HousesPage";
+import { WorkspacesPage } from "./pages/WorkspacesPage";
 import { useAdminRoute } from "./navigation/useAdminRoute";
 import { ADMIN_SECTIONS } from "./navigation/sections";
 
@@ -113,8 +114,9 @@ export function AdminApp() {
       {section === "overview" && <OverviewPage onNavigate={navigate} />}
       {section === "users" && <UsersPage />}
       {section === "houses" && <HousesPage />}
+      {section === "workspaces" && <WorkspacesPage />}
       {section === "security" && <SecurityPage />}
-      {!["overview", "users", "houses", "security"].includes(section) && <PlaceholderPage section={activeSection} />}
+      {!["overview", "users", "houses", "workspaces", "security"].includes(section) && <PlaceholderPage section={activeSection} />}
     </AdminShell>
   );
 }
