@@ -72,7 +72,6 @@ export function AddRoomWizard({ onClose, onSave }) {
                 <h2 className="hm-display wizard-title">{t("wizard.addRoomNameTitle")}</h2>
                 <div className="wizard-input-wrapper">
                   <input
-                    autoFocus
                     type="text"
                     className="hm-input wizard-big-input"
                     placeholder={t("wizard.addRoomNamePlaceholder")}

@@ -64,6 +64,8 @@ import { computeFrequentProducts } from "./modules/shopping/frequentProducts";
 import { uploadReceiptImage } from "./services/receiptService";
 import { notificationsService } from "./services/notificationsService";
 import { useDragToDismiss } from "./hooks/useDragToDismiss";
+import { useAuthSession, mapSupabaseUser, USER_STORAGE_KEY } from "./hooks/useAuthSession";
+import { useTheme } from "./hooks/useTheme";
 import { NotificationCenter } from "./components/NotificationCenter";
 import { evaluateNotifications } from "./notifications/engine";
 import { buildNotificationActionHandlers } from "./notifications/notificationActions";
@@ -227,10 +229,16 @@ const GlobalStyle = () => (
        Reset it here once instead of setting color on every individual button. */
     .hm-btn, button { position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent; color: inherit; transition: transform .14s cubic-bezier(.22,1,.36,1), opacity .14s ease, background .18s ease, background-color .18s ease, color .18s ease, box-shadow .14s ease, border-color .18s ease; }
     .hm-btn { display: inline-flex; align-items: center; gap: var(--space-2); height: var(--btn-height); min-height: var(--btn-height); padding: 0 var(--space-4); border-radius: var(--radius); font-weight: 600; font-size: 14px; border: 1px solid transparent; cursor: pointer; }
-    .hm-btn:active, button:active { transform: scale(0.96); box-shadow: var(--shadow-elev-1); }
+    .hm-btn:active, button:active { transform: scale(0.94); opacity: 0.88; box-shadow: var(--shadow-elev-1); }
     .hm-btn:disabled, button:disabled { opacity: 0.65; cursor: not-allowed; transform: none; box-shadow: none; }
     .hm-btn::after, button::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; }
     @media (prefers-reduced-motion: reduce) { .hm-btn, button { transition: none !important; } }
+
+    /* Pestaña "Movimientos" de Economía — aro interior sutil cuando está
+       seleccionada, para darle más presencia sin cambiar el color de fondo
+       ya existente. El feedback al pulsar ya lo cubre la regla global de
+       arriba (button:active); esto solo añade el estado seleccionado. */
+    .hm-tab-movements--active { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16), var(--shadow-elev-1); }
 
     /* Primary / secondary / ghost */
     .hm-btn-primary { background: var(--accent); color: var(--accent-ink); }
@@ -354,6 +362,7 @@ const GlobalStyle = () => (
     .hm-toast-inner { background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow-elev-1); max-width: 320px; }
     .hm-toast-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--success); display: inline-block; margin-right: 10px; }
     .hm-toast-message { font-size: 13.5px; font-weight: 700; }
+    .hm-toast-action { background: none; border: none; color: var(--accent); font-weight: 700; font-size: 12.5px; cursor: pointer; padding: 0 0 0 14px; white-space: nowrap; }
 
     /* Stat card */
     .hm-stat-chip { padding: 14px 16px; flex: 1 1 120px; min-width: 110px; }
@@ -480,7 +489,6 @@ function buildEmptyState(t) {
 /* -------------------------------------------------------------------- */
 /* PERSISTENCE & MULTI-HOME                                              */
 /* -------------------------------------------------------------------- */
-const USER_STORAGE_KEY = "homemap-user-v2";
 const HOMES_STORAGE_KEY = "homemap-homes-v2";
 
 function getHomesStorageKey(userId) {
@@ -490,19 +498,6 @@ function getHomesStorageKey(userId) {
 function getHouseStorageKey(userId, homeId) {
   if (!homeId) return null;
   return userId ? `homemap-house-${userId}:${homeId}` : `homemap-house-${homeId}`;
-}
-
-function mapSupabaseUser(authUser) {
-  if (!authUser) return null;
-  const firstName = authUser.user_metadata?.name || "";
-  const lastName = authUser.user_metadata?.surname || authUser.user_metadata?.last_name || "";
-  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
-  return {
-    id: authUser.id,
-    name: fullName || authUser.email?.split("@")[0] || "Usuario",
-    email: authUser.email || "",
-    avatar: authUser.user_metadata?.avatar_url || null,
-  };
 }
 
 function useHomeMapState(currentHomeId, userId) {
@@ -896,34 +891,49 @@ function MemberPicker({ id, members = [], selected = [] }) {
   );
 }
 
-function ToastHost({ message }) {
-  if (!message) return null;
+function ToastHost({ notice, onDismiss }) {
+  if (!notice) return null;
+  const { message, action } = notice;
   return (
     <div className="hm-fade-in hm-toast">
       <div className="hm-toast-inner">
-        <div className="hm-row">
-          <span className="hm-toast-dot" />
-          <span className="hm-toast-message">{message}</span>
+        <div className="hm-row" style={{ justifyContent: "space-between" }}>
+          <span className="hm-row">
+            <span className="hm-toast-dot" />
+            <span className="hm-toast-message">{message}</span>
+          </span>
+          {action && (
+            <button type="button" className="hm-toast-action" onClick={() => { action.onClick(); onDismiss && onDismiss(); }}>
+              {action.label}
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function ConfirmDialog({ title, message, onConfirm, onCancel, isDangerous }) {
+function ConfirmDialog({ title, message, onConfirm, onCancel, isDangerous, confirmLabel, extraAction }) {
   return (
     <Modal title={title} onClose={onCancel}>
       <p style={{ color: "var(--ink-soft)", marginBottom: 20 }}>{message}</p>
-      <div style={{ display: "flex", gap: 10 }}>
-        <button className="hm-btn hm-btn-soft hm-btn--full" onClick={onCancel}>
-          Cancelar
-        </button>
-        <button 
-          className={`hm-btn ${isDangerous ? 'hm-btn--danger' : 'hm-btn-primary'} hm-btn--full`}
-          onClick={onConfirm}
-        >
-          Confirmar
-        </button>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {extraAction && (
+          <button className="hm-btn hm-btn-soft hm-btn--full" onClick={extraAction.onClick}>
+            {extraAction.label}
+          </button>
+        )}
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className="hm-btn hm-btn-soft hm-btn--full" onClick={onCancel}>
+            Cancelar
+          </button>
+          <button
+            className={`hm-btn ${isDangerous ? 'hm-btn--danger' : 'hm-btn-primary'} hm-btn--full`}
+            onClick={onConfirm}
+          >
+            {confirmLabel || "Confirmar"}
+          </button>
+        </div>
       </div>
     </Modal>
   );
@@ -956,7 +966,7 @@ function AddShoppingModal({ onClose, onSave, categories = [], openSettings }) {
   return (
     <Modal title={t("modal.addShoppingTitle")} onClose={onClose}>
       <label className="hm-label">{t("addShopping.name")}</label>
-      <input className="hm-input" placeholder={t("addShopping.exampleName")} value={form.name} onChange={set("name")} />
+      <input className="hm-input" value={form.name} onChange={set("name")} />
 
       <label className="hm-label" style={{ marginTop: 14 }}>Prioridad</label>
       <div style={{ display: "flex", gap: 8 }}>
@@ -973,7 +983,7 @@ function AddShoppingModal({ onClose, onSave, categories = [], openSettings }) {
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 14 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-end", marginTop: 14 }}>
         <div style={{ flex: 1 }}>
           <label className="hm-label">{t("addShopping.category") || "Categoría"}</label>
           <select className="hm-input" value={form.category} onChange={set("category")}>
@@ -1065,7 +1075,7 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
       </div>
 
       <label className="hm-label">{t("addMovement.nameLabel")}</label>
-      <input className="hm-input" placeholder={isExpense ? t("addMovement.namePlaceholderExpense") : t("addMovement.namePlaceholderIncome")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+      <input className="hm-input" placeholder={isExpense ? t("addMovement.namePlaceholderExpense") : t("addMovement.namePlaceholderIncome")} value={name} onChange={(e) => setName(e.target.value)} />
       <label className="hm-label" style={{ marginTop: 14 }}>{t("addMovement.amountLabel")}</label>
       <input className="hm-input" type="number" step="0.01" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
       <label className="hm-label" style={{ marginTop: 14 }}>{t("addMovement.categoryLabel")}</label>
@@ -1091,7 +1101,6 @@ function AddZoneModal({ roomId, onClose, onSave }) {
       <label className="hm-label">{t("addZone.zoneName")}</label>
       <input
         className="hm-input"
-        autoFocus
         placeholder={t("addZone.zonePlaceholder")}
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -2311,10 +2320,8 @@ function AddShoppingListModal({ purchases, onCreate, onClose }) {
       <label className="hm-label">{t("quickAdd.nameLabel")}</label>
       <input
         className="hm-input"
-        placeholder={t("quickAdd.listNamePlaceholder")}
         value={name}
         onChange={(e) => setName(e.target.value)}
-        autoFocus
       />
 
       {suggestions.length > 0 && (
@@ -2357,9 +2364,7 @@ function AddShoppingListModal({ purchases, onCreate, onClose }) {
 // (derived from the loaded profile) back up via onLocaleChange.
 function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const { t } = useTranslation();
-  const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [passwordRecovery, setPasswordRecovery] = useState(false);
+  const { user, setUser, authLoading, passwordRecovery, setPasswordRecovery } = useAuthSession();
   const [homes, setHomes] = useState([]);
   const [homesLoaded, setHomesLoaded] = useState(false);
   const [homesLoadError, setHomesLoadError] = useState(false);
@@ -2393,7 +2398,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const [organizationTab, setOrganizationTab] = useState("compras");
   const [modal, setModal] = useState(null); // {type, payload}
   const [notice, setNotice] = useState(null);
-  const [prefersDark, setPrefersDark] = useState(false);
+  const { prefersDark } = useTheme(state?.profile?.theme, state?.profile?.darkMode);
   const [confirmDialog, setConfirmDialog] = useState(null); // {title, message, onConfirm, onCancel}
   /**
    * Se guarda aparte del `modal` normal (no como otro `modal.type`) para que
@@ -2415,49 +2420,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    */
   const [economyVersion, setEconomyVersion] = useState(0);
   const noticeTimerRef = useRef(null);
-
-  useEffect(() => {
-    const themeMode = state?.profile?.theme || (state?.profile?.darkMode ? "dark" : "system");
-    const dark = themeMode === "system" ? prefersDark : themeMode === "dark";
-    const bg = dark ? "#15171A" : "#F6F7F5";
-    document.documentElement.style.background = bg;
-    document.body.style.background = bg;
-  }, [state?.profile?.theme, state?.profile?.darkMode, prefersDark]);
-
-  useEffect(() => {
-    let mounted = true;
-    const loadSession = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (!mounted) return;
-        if (error) {
-          console.error("Error loading Supabase session:", error);
-        }
-        setUser(mapSupabaseUser(data.session?.user));
-      } catch (loadError) {
-        console.error("Error loading Supabase session:", loadError);
-        if (mounted) setUser(null);
-      } finally {
-        if (mounted) setAuthLoading(false);
-      }
-    };
-
-    loadSession();
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) {
-        if (_event === "PASSWORD_RECOVERY") {
-          setPasswordRecovery(true);
-        }
-        setUser(mapSupabaseUser(session?.user));
-        setAuthLoading(false);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
-    };
-  }, []);
 
   const refreshHomes = async () => {
     try {
@@ -2786,18 +2748,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   }, [activeHome?.id]);
 
   useEffect(() => {
-    if (user) localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-  }, [user]);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    setPrefersDark(mediaQuery.matches);
-    const listener = (event) => setPrefersDark(event.matches);
-    mediaQuery.addEventListener("change", listener);
-    return () => mediaQuery.removeEventListener("change", listener);
-  }, []);
-
-  useEffect(() => {
     if (user && (!homes || homes.length === 0)) {
       setCurrentHomeId("");
     }
@@ -2836,10 +2786,10 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   }, []);
 
     const dispatch = (updater) => setState((s) => updater(s));
-    const showNotice = (message) => {
+    const showNotice = (message, action) => {
       if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
-      setNotice(message);
-      noticeTimerRef.current = setTimeout(() => setNotice(null), 2600);
+      setNotice({ message, action: action || null });
+      noticeTimerRef.current = setTimeout(() => setNotice(null), action ? 4200 : 2600);
     };
 
     const handleLogin = (userData) => {
@@ -3296,10 +3246,78 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   };
 
   /**
+   * Crea automáticamente el gasto financiero de una compra recién archivada
+   * (Compras -> Finanzas): mismo house_id/trigger chain que ya usaba el
+   * modal manual de "Registrar gasto", solo que ahora se dispara solo, una
+   * única vez, sin que el usuario tenga que reintroducir nada. El índice
+   * único parcial de economy_expenses.shopping_purchase_id (migración
+   * 20260812_068) es la red de seguridad en base de datos si esto se
+   * llamara dos veces por error.
+   *
+   * financial_space_id no se envía explícitamente: el trigger
+   * economy_sync_house_id lo resuelve al espacio 'household' de la casa a
+   * partir de house_id. Esto NO es un valor por defecto elegido a falta de
+   * algo mejor: es el único financial_space_id que el modelo de datos actual
+   * puede asociar a una compra, sin ambigüedad posible.
+   *   - shopping_purchases y shopping_lists solo tienen house_id — ninguna
+   *     de las dos tablas ha tenido nunca (ni tiene hoy) columna, FK ni
+   *     concepto de financial_space_id. Compras es, por diseño actual,
+   *     una función de la CASA, no de un espacio financiero: no existe (ni
+   *     podría construirse a partir del esquema actual) una compra "del
+   *     espacio Personal de Lucas" o "del espacio compartido Viaje" — solo
+   *     existe "una compra de esta casa".
+   *   - financial_spaces_one_household_per_house (índice único sobre
+   *     financial_spaces.house_id where type='household', migración
+   *     20260803_022) garantiza que cada casa tiene EXACTAMENTE un espacio
+   *     household, creado automáticamente al crear la casa. La resolución
+   *     house_id -> espacio household es por tanto 1:1 y determinista, no
+   *     una suposición.
+   *   - currentSpaceId (el espacio que el usuario tiene seleccionado en el
+   *     SpaceSwitcher de Economía) es estado local de EconomyModule, sin
+   *     persistencia, y solo existe dentro de esa pantalla — Compras no
+   *     tiene ni podría tener acceso a "qué space estás mirando ahora
+   *     mismo", pero tampoco lo necesita: aunque lo tuviera, no habría
+   *     forma de que una compra perteneciera a un space Personal o
+   *     Compartido sin añadir esa relación al esquema, algo que no se ha
+   *     pedido ni se implementa aquí.
+   * Conclusión: el gasto automático en el espacio Household es correcto y
+   * completo para el modelo de datos actual, no una aproximación. Si en el
+   * futuro Compras necesita vincularse a espacios Personal/Compartido, es
+   * una funcionalidad nueva (añadir financial_space_id a shopping_lists o
+   * shopping_purchases) que debe decidirse explícitamente, no inferirse.
+   */
+  const registerPurchaseExpense = async ({ store, amount, purchaseId }) => {
+    try {
+      const expense = await economyService.createExpense({
+        house_id: currentHome.id,
+        created_by: user.id,
+        name: store || t("actionCenter.shopping"),
+        amount,
+        category: EXPENSE_CATEGORIES[0],
+        shopping_purchase_id: purchaseId,
+      });
+      setEconomyVersion((v) => v + 1);
+      showNotice(t("toast.purchaseExpenseAdded", { amount: formatAmount(amount) }), {
+        label: t("common.edit"),
+        onClick: () => openModal("addExpense", {
+          expenseId: expense.id,
+          name: expense.name,
+          amount: expense.amount,
+          category: expense.category,
+        }),
+      });
+    } catch (error) {
+      console.error("Error creating linked expense:", error);
+      showNotice(t("toast.expenseSaveError"));
+    }
+  };
+
+  /**
    * Integración Modo compra -> Historial -> Finanzas. Archiva los productos
    * ya marcados como comprados de una lista en shopping_purchases y los
-   * retira de la lista activa, luego ofrece registrar el gasto reutilizando
-   * el modal de Finanzas existente (sin duplicar el importe/nombre a mano).
+   * retira de la lista activa; si la compra tiene importe, registra el
+   * gasto financiero automáticamente (ver registerPurchaseExpense) sin
+   * pedirle nada más al usuario.
    */
   const completeShoppingPurchase = async ({ listId, items, store }) => {
     const amount = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
@@ -3314,20 +3332,15 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         shoppingItems: (s.shoppingItems || []).filter((item) => !purchasedIds.has(item.id)),
         shoppingPurchases: [purchase, ...(s.shoppingPurchases || [])],
       }));
-      showNotice(t("toast.purchaseCompleted"));
       logActivity(t("activity.purchaseCompleted", { name: user?.name, count: items.length }), { entityType: "shoppingList", entityId: listId });
       Promise.all(items.map((item) => shoppingService.deleteItem(item.id))).catch((error) => {
         console.error("Error clearing purchased shopping items:", error);
       });
-      setConfirmDialog({
-        title: t("confirm.purchaseCompletedTitle"),
-        message: amount > 0 ? t("confirm.registerExpenseAmount", { amount: amount.toFixed(2) }) : t("confirm.registerExpenseGeneric"),
-        onConfirm: () => {
-          setConfirmDialog(null);
-          openModal("addExpense", { name: store || t("actionCenter.shopping"), amount: amount || "", category: t("quickAdd.categoryExpensePlaceholder"), purchaseId: purchase.id });
-        },
-        onCancel: () => setConfirmDialog(null),
-      });
+      if (amount > 0) {
+        await registerPurchaseExpense({ store, amount, purchaseId: purchase.id });
+      } else {
+        showNotice(t("toast.purchaseCompleted"));
+      }
     } catch (error) {
       console.error("Error archiving shopping purchase:", error);
       showNotice(t("toast.purchaseHistorySaveError"));
@@ -3371,22 +3384,17 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         shoppingItems: (s.shoppingItems || []).filter((item) => !purchasedIds.has(item.id)),
         shoppingPurchases: [purchase, ...(s.shoppingPurchases || [])],
       }));
-      showNotice(t("toast.receiptSaved"));
       if (purchasedIds.size > 0) {
         Promise.all(Array.from(purchasedIds).map((id) => shoppingService.deleteItem(id))).catch((error) => {
           console.error("Error clearing purchased shopping items:", error);
         });
       }
 
-      setConfirmDialog({
-        title: t("confirm.receiptSavedTitle"),
-        message: total > 0 ? t("confirm.registerExpenseAmount", { amount: Number(total).toFixed(2) }) : t("confirm.registerExpenseReceiptGeneric"),
-        onConfirm: () => {
-          setConfirmDialog(null);
-          openModal("addExpense", { name: store || t("actionCenter.shopping"), amount: total || "", category: t("quickAdd.categoryExpensePlaceholder"), purchaseId: purchase.id });
-        },
-        onCancel: () => setConfirmDialog(null),
-      });
+      if (total > 0) {
+        await registerPurchaseExpense({ store, amount: Number(total), purchaseId: purchase.id });
+      } else {
+        showNotice(t("toast.receiptSaved"));
+      }
     } catch (error) {
       console.error("Error guardando la compra escaneada:", error);
       showNotice(t("toast.receiptSaveError"));
@@ -3417,8 +3425,13 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     }
   };
 
-  /** Elimina una compra del historial (no afecta a la lista activa). */
-  const deleteShoppingPurchase = async (purchaseId) => {
+  /**
+   * Borra la fila de shopping_purchases y limpia el estado local. El gasto
+   * vinculado (si lo hay) ya se ha resuelto antes de llegar aquí — ver
+   * deleteShoppingPurchase: por la FK on delete set null, si el gasto sigue
+   * vivo simplemente pierde la referencia solo.
+   */
+  const performDeletePurchase = async (purchaseId) => {
     try {
       await shoppingPurchasesService.deletePurchase(purchaseId);
       dispatch((s) => ({
@@ -3430,6 +3443,58 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       console.error("Error deleting shopping purchase:", error);
       showNotice(t("toast.purchaseDeleteError"));
     }
+  };
+
+  /**
+   * Elimina una compra del historial (no afecta a la lista activa). Si tiene
+   * un gasto financiero vinculado (shopping_purchase_id), pregunta primero
+   * qué hacer con él en vez de dejarlo huérfano en silencio.
+   *
+   * La comprobación previa (getExpenseByPurchaseId) puede fallar por red o
+   * por la propia consulta — ese fallo NUNCA debe tratarse como "no tiene
+   * gasto vinculado": si no podemos comprobarlo con certeza, no borramos la
+   * compra y avisamos al usuario, en vez de arriesgarnos a dejar un gasto
+   * huérfano sin que nadie llegue a preguntarlo.
+   */
+  const deleteShoppingPurchase = async (purchaseId) => {
+    let linkedExpense;
+    try {
+      linkedExpense = await economyService.getExpenseByPurchaseId(purchaseId);
+    } catch (error) {
+      console.error("Error checking linked expense before delete:", error);
+      showNotice(t("toast.purchaseDeleteCheckError"));
+      return;
+    }
+
+    if (linkedExpense) {
+      setConfirmDialog({
+        title: t("confirm.purchaseHasExpenseTitle"),
+        message: t("confirm.purchaseHasExpenseMessage", { amount: formatAmount(linkedExpense.amount) }),
+        isDangerous: true,
+        confirmLabel: t("confirm.deletePurchaseAndExpense"),
+        extraAction: {
+          label: t("confirm.keepExpenseOnly"),
+          onClick: () => {
+            setConfirmDialog(null);
+            performDeletePurchase(purchaseId);
+          },
+        },
+        onConfirm: async () => {
+          setConfirmDialog(null);
+          const deleted = await economyService.deleteExpense(linkedExpense.id);
+          if (!deleted) {
+            showNotice(t("toast.expenseDeleteError"));
+            return;
+          }
+          setEconomyVersion((v) => v + 1);
+          performDeletePurchase(purchaseId);
+        },
+        onCancel: () => setConfirmDialog(null),
+      });
+      return;
+    }
+
+    performDeletePurchase(purchaseId);
   };
   const addNote = (text) => {
     const trimmed = (text || "").trim();
@@ -3513,6 +3578,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       name: b.name,
       amount: b.amount,
       due_date: b.dueDate || new Date().toISOString().slice(0, 10),
+      category: b.category || EXPENSE_CATEGORIES[0],
       frequency: b.frequency || "once",
     }).catch((error) => {
       console.error("Error creating bill:", error);
@@ -3535,6 +3601,24 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       console.error("Error creating expense:", error);
       showNotice(t("toast.expenseSaveError"));
     });
+  };
+
+  /**
+   * Modo edición del modal "addExpense" — usado por la acción "Editar" del
+   * toast que aparece tras registrar automáticamente el gasto de una compra
+   * (ver registerPurchaseExpense). Nunca crea una fila nueva: siempre
+   * actualiza el gasto ya existente, así que shopping_purchase_id no se
+   * toca (el vínculo con la compra se conserva tal cual).
+   */
+  const updateExpenseFromModal = async (expenseId, updates) => {
+    closeModal();
+    const result = await economyService.updateExpense(expenseId, updates);
+    if (!result) {
+      showNotice(t("toast.expenseSaveError"));
+      return;
+    }
+    setEconomyVersion((v) => v + 1);
+    showNotice(t("toast.expenseRegistered", { name: updates.name || (updates.amount ? formatAmount(updates.amount) : '') }));
   };
 
   const addIncome = (inc) => {
@@ -3739,7 +3823,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           />
         </div>
 
-        <ToastHost message={notice} />
+        <ToastHost notice={notice} onDismiss={() => setNotice(null)} />
 
         <div className="hm-scroll" style={{ flex: 1, minWidth: 0, height: "calc(100svh - 104px)", overflowY: "auto", paddingRight: 4, WebkitOverflowScrolling: "touch" }}>
           <AppHeader
@@ -3856,7 +3940,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
       <div className="hm-mobile-nav">
         {route.tab !== "perfil" && (
-          <ActionCenter currentTab={route.tab} openModal={openModal} currentHome={state} position={"corner"} />
+          <ActionCenter currentTab={route.tab} openModal={openModal} currentHome={state} canSeeEconomy={canSeeEconomy} position={"corner"} />
         )}
         <BottomNav active={route.tab === "objectDetail" ? (prevTab || "inicio") : route.tab} onSelect={selectTab} nav={visibleNav} />
       </div>
@@ -4096,7 +4180,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       {modal?.type === "addNote" && (
         <Modal title={t("quickAdd.newNoteTitle")} onClose={closeModal}>
           <label className="hm-label">{t("quickAdd.noteLabel")}</label>
-          <textarea className="hm-input" rows={3} placeholder={t("quickAdd.notePlaceholder")} id="ac-note-text" autoFocus />
+          <textarea className="hm-input" rows={3} placeholder={t("quickAdd.notePlaceholder")} id="ac-note-text" />
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
             <button className="hm-btn hm-btn-primary" onClick={() => {
@@ -4166,6 +4250,10 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           <input className="hm-input" type="number" placeholder="0.00" id="ac-bill-amount" />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.dueDateLabel")}</label>
           <input className="hm-input" type="date" id="ac-bill-due" />
+          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.categoryLabel")}</label>
+          <select className="hm-input" id="ac-bill-category" defaultValue={EXPENSE_CATEGORIES[0]}>
+            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.repeatLabel")}</label>
           <select className="hm-input" id="ac-bill-frequency" defaultValue="once">
             <option value="once">{t("quickAdd.frequencyOnce")}</option>
@@ -4181,8 +4269,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               const name = document.getElementById("ac-bill-name").value || t("actionCenter.bill");
               const amount = parseFloat(document.getElementById("ac-bill-amount").value || 0);
               const dueDate = document.getElementById("ac-bill-due").value || null;
+              const category = document.getElementById("ac-bill-category").value;
               const frequency = document.getElementById("ac-bill-frequency").value;
-              addBill({ name, amount, dueDate, frequency });
+              addBill({ name, amount, dueDate, category, frequency });
             }}>{t("quickAdd.add")}</button>
           </div>
         </Modal>
@@ -4197,7 +4286,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       )}
 
       {modal?.type === "addExpense" && (
-        <Modal title={t("quickAdd.registerExpenseTitle")} onClose={closeModal}>
+        <Modal title={modal.payload?.expenseId ? t("quickAdd.editExpenseTitle") : t("quickAdd.registerExpenseTitle")} onClose={closeModal}>
           <label className="hm-label">{t("quickAdd.nameLabel")}</label>
           <input className="hm-input" placeholder={t("quickAdd.expenseNamePlaceholder")} id="ac-exp-name" defaultValue={modal.payload?.name || ""} />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.amountLabel")}</label>
@@ -4212,8 +4301,12 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               const name = document.getElementById("ac-exp-name").value || t("quickAdd.registerExpenseTitle");
               const amount = parseFloat(document.getElementById("ac-exp-amount").value || 0);
               const category = document.getElementById("ac-exp-cat").value || "Otros";
-              addExpense({ name, amount, category, purchaseId: modal.payload?.purchaseId || null });
-            }}>{t("quickAdd.register")}</button>
+              if (modal.payload?.expenseId) {
+                updateExpenseFromModal(modal.payload.expenseId, { name, amount, category });
+              } else {
+                addExpense({ name, amount, category });
+              }
+            }}>{modal.payload?.expenseId ? t("quickAdd.saveChanges") : t("quickAdd.register")}</button>
           </div>
         </Modal>
       )}
@@ -4255,10 +4348,12 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         onAddObjectClick={() => openModal("addObject")}
       />
       {confirmDialog && (
-        <ConfirmDialog 
+        <ConfirmDialog
           title={confirmDialog.title}
           message={confirmDialog.message}
           isDangerous={confirmDialog.isDangerous}
+          confirmLabel={confirmDialog.confirmLabel}
+          extraAction={confirmDialog.extraAction}
           onConfirm={confirmDialog.onConfirm}
           onCancel={confirmDialog.onCancel}
         />

@@ -74,7 +74,6 @@ export function HomeSelector({ homes, currentHomeId, onSelect, onOpenCreate, onJ
         ) : (
           <form className="join-form hm-pop" onSubmit={handleJoinSubmit}>
             <input
-              autoFocus
               className="hm-input join-input"
               placeholder={t("homeSelector.codePlaceholder")}
               value={inviteCode}

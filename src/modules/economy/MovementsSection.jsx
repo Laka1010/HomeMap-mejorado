@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, ShoppingCart } from "lucide-react";
 import { economyService } from "./services/economyService";
 import { accountsService } from "./services/accountsService";
 import { useTranslation } from "../../i18n";
@@ -224,7 +224,12 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
                   {type === "expenses" ? <TrendingDown size={17} /> : <TrendingUp size={17} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                    <span style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
+                    {type === "expenses" && item.shopping_purchase_id ? (
+                      <ShoppingCart size={11} style={{ color: "var(--ink-soft)", flexShrink: 0 }} title={t("movements.fromPurchase")} />
+                    ) : null}
+                  </div>
                   <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{item.category || "Otros"} · {item.date}</div>
                 </div>
                 <div style={{ fontSize: 14.5, fontWeight: 700, color: accent, whiteSpace: "nowrap" }}>
@@ -291,7 +296,9 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
                   <input type="date" className="hm-input" value={editValues.date ? editValues.date.slice(0, 10) : ""} onChange={(e) => setEditValues({ ...editValues, date: e.target.value })} />
 
                   <label className="hm-label">{t("movements.categoryLabel")}</label>
-                  <input className="hm-input" value={editValues.category || ""} onChange={(e) => setEditValues({ ...editValues, category: e.target.value })} />
+                  <select className="hm-input" value={editValues.category || (type === "expenses" ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0])} onChange={(e) => setEditValues({ ...editValues, category: e.target.value })}>
+                    {(type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
 
                   {accounts.length > 0 && (
                     <>
@@ -382,7 +389,7 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated 
         </div>
         <div className="hm-modal-body">
           <label className="hm-label">{t("movements.nameLabel")}</label>
-          <input className="hm-input" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          <input className="hm-input" value={name} onChange={(e) => setName(e.target.value)} />
 
           <label className="hm-label" style={{ marginTop: 14 }}>{t("movements.amountLabel")}</label>
           <input type="number" className="hm-input" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />

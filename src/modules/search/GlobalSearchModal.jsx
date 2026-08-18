@@ -66,7 +66,6 @@ export function GlobalSearchModal({ state, houseId, canSeeEconomy, members, getP
       <div className="hm-card" style={{ padding: "6px 8px", display: "flex", alignItems: "center", gap: 10 }}>
         <Search size={18} style={{ color: "var(--ink-soft)", marginLeft: 8, flexShrink: 0 }} />
         <input
-          autoFocus
           className="hm-input"
           style={{ border: "none", fontSize: 15, padding: "10px 4px" }}
           placeholder={t("search.placeholder")}

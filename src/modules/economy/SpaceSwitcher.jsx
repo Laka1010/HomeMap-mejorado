@@ -215,7 +215,6 @@ export function CreateSharedSpaceModal({ houseId, onClose, onCreated }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("spaces.namePlaceholder")}
-            autoFocus
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
           />
 

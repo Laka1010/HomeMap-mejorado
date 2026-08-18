@@ -16,7 +16,6 @@ export function StepName({ data, onChange, onNext }) {
       <h2 className="hm-display wizard-title">{t("wizard.stepNameTitle")}</h2>
       <div className="wizard-input-wrapper">
         <input
-          autoFocus
           type="text"
           inputMode="text"
           autoComplete="off"

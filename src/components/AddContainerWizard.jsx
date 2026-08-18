@@ -70,7 +70,6 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
                 <h2 className="hm-display wizard-title">{t("wizard.addContainerNameTitle")}</h2>
                 <div className="wizard-input-wrapper">
                   <input
-                    autoFocus
                     type="text"
                     className="hm-input wizard-big-input"
                     placeholder={t("wizard.addContainerNamePlaceholder")}

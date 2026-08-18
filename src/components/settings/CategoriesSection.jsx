@@ -51,7 +51,7 @@ export function CategoriesSection({ categories = [], onChange }) {
           <div key={idx} className="hm-card hm-card--p16" style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {editingIndex === idx ? (
-                <input className="hm-input" value={cat} onChange={(e) => handleEdit(idx, e.target.value)} autoFocus />
+                <input className="hm-input" value={cat} onChange={(e) => handleEdit(idx, e.target.value)} />
               ) : (
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{cat}</div>
               )}

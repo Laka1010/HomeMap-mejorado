@@ -6,6 +6,7 @@ import { PayBillModal } from "./PayBillModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { EXPENSE_CATEGORIES } from "./economyCategories";
 
 export default function BillsSection({ currentHome, spaceId, spaces, state, dispatch, user }) {
   const { t } = useTranslation();
@@ -337,7 +338,9 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
                   <input type="date" className="hm-input" value={editValues.due_date ? editValues.due_date.slice(0,10) : ''} onChange={(e)=> setEditValues({...editValues, due_date: e.target.value})} />
 
                   <label className="hm-label">{t("bills.categoryLabel")}</label>
-                  <input className="hm-input" value={editValues.category} onChange={(e)=> setEditValues({...editValues, category: e.target.value})} />
+                  <select className="hm-input" value={editValues.category || EXPENSE_CATEGORIES[0]} onChange={(e)=> setEditValues({...editValues, category: e.target.value})}>
+                    {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
 
                   <label className="hm-label">{t("bills.repetitionLabel")}</label>
                   <select className="hm-input" value={editValues.frequency || "once"} onChange={(e)=> setEditValues({...editValues, frequency: e.target.value})}>
@@ -410,7 +413,7 @@ function AddBillModal({ spaceId, userId, onClose, onCreated }) {
         name: name.trim(),
         amount: parsedAmount,
         due_date: dueDate,
-        category: category.trim() || "Otros",
+        category: category || EXPENSE_CATEGORIES[0],
         frequency,
         notes: notes.trim() || null,
         status: "pending",
@@ -437,7 +440,7 @@ function AddBillModal({ spaceId, userId, onClose, onCreated }) {
         </div>
         <div className="hm-modal-body">
           <label className="hm-label">{t("bills.nameLabel")}</label>
-          <input className="hm-input" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          <input className="hm-input" value={name} onChange={(e) => setName(e.target.value)} />
 
           <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.amountLabel")}</label>
           <input type="number" className="hm-input" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -446,7 +449,9 @@ function AddBillModal({ spaceId, userId, onClose, onCreated }) {
           <input type="date" className="hm-input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
 
           <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.categoryLabel")}</label>
-          <input className="hm-input" value={category} onChange={(e) => setCategory(e.target.value)} />
+          <select className="hm-input" value={category || EXPENSE_CATEGORIES[0]} onChange={(e) => setCategory(e.target.value)}>
+            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
 
           <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.repetitionLabel")}</label>
           <select className="hm-input" value={frequency} onChange={(e) => setFrequency(e.target.value)}>

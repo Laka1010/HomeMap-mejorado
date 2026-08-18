@@ -614,7 +614,6 @@ function DetailsStep({ name, setName, photo, setPhoto, error, fileInputRef, onFi
         <div>
           <label className="wg-label">{t("onboarding.welcomeGate.homeNameLabel")}</label>
           <input
-            autoFocus
             className="wg-input"
             style={{ marginTop: 8 }}
             placeholder={t("onboarding.welcomeGate.homeNamePlaceholder")}
@@ -855,7 +854,6 @@ function JoinStep({ onBack, onSubmit }) {
         <div>
           <label className="wg-label">{t("onboarding.welcomeGate.inviteCodeLabel")}</label>
           <input
-            autoFocus
             className="wg-input wg-input-code"
             style={{ marginTop: 8 }}
             placeholder="HM-X49K"

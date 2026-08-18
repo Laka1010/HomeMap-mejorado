@@ -4,7 +4,7 @@ import { useDragToDismiss } from "../hooks/useDragToDismiss";
 import { useTranslation } from "../i18n";
 
 // ActionCenter: Floating Action Button + Bottom Sheet
-export function ActionCenter({ currentTab, openModal, currentHome, position = "center" }) {
+export function ActionCenter({ currentTab, openModal, currentHome, canSeeEconomy = true, position = "center" }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(() => setOpen(false));
@@ -31,7 +31,7 @@ export function ActionCenter({ currentTab, openModal, currentHome, position = "c
     { key: "task", icon: "✅", color: "#8A5CFF", title: t("actionCenter.task"), subtitle: t("actionCenter.taskSubtitle"), modal: "addTask" },
     { key: "movement", icon: "💸", color: "#C94B4B", title: t("actionCenter.movement"), subtitle: t("actionCenter.movementSubtitle"), modal: "addMovement" },
     { key: "bill", icon: "📄", color: "#E69B3C", title: t("actionCenter.bill"), subtitle: t("actionCenter.billSubtitle"), modal: "addBill" },
-  ];
+  ].filter((a) => canSeeEconomy || !["movement", "bill"].includes(a.key));
 
   // Contextual ordering based on currentTab
   const orderedActions = () => {

@@ -102,7 +102,6 @@ export function AccountModal({ spaceId, userId, account, onClose, onSaved, onDel
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("accounts.namePlaceholder")}
-            autoFocus
           />
 
           <label className="hm-label" style={{ marginTop: 14 }}>{t("accounts.typeLabel")}</label>

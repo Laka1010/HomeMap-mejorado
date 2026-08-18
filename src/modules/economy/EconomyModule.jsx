@@ -91,26 +91,34 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
             de alto) hacía que el grid "saltara" de 2x2 a 3+1 y todo se
             desplazara. Con 2 columnas fijas siempre, sean 4 o 5 pestañas. */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => goToPage(tab.key)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "none",
-                background: currentPage === tab.key ? "var(--accent)" : "var(--surface-alt)",
-                color: currentPage === tab.key ? "var(--accent-ink)" : "var(--ink)",
-                cursor: "pointer",
-                fontWeight: 600,
-                fontSize: 13,
-                whiteSpace: "nowrap",
-                textAlign: "center",
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {tabs.map((tab) => {
+            const isActive = currentPage === tab.key;
+            // Solo "movements" lleva el aro de seleccionado (prueba aislada);
+            // el resto de pestañas quedan exactamente como estaban. El
+            // feedback al pulsar ya es global (button:active en App.jsx).
+            const isMovements = tab.key === "movements";
+            return (
+              <button
+                key={tab.key}
+                onClick={() => goToPage(tab.key)}
+                className={isMovements && isActive ? "hm-tab-movements--active" : undefined}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: isActive ? "var(--accent)" : "var(--surface-alt)",
+                  color: isActive ? "var(--accent-ink)" : "var(--ink)",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  whiteSpace: "nowrap",
+                  textAlign: "center",
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -140,7 +140,7 @@ export function TransferModal({ spaceId, spaces, accounts, initialToSpaceId, onC
           {((mode === "transfer" && canTransfer) || (mode === "contribute" && canContribute)) && (
             <>
               <label className="hm-label" style={{ marginTop: 14 }}>{t("transfers.amountLabel")}</label>
-              <input className="hm-input" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
+              <input className="hm-input" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
 
               <label className="hm-label" style={{ marginTop: 14 }}>{t("transfers.noteLabel")}</label>
               <input className="hm-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("transfers.notePlaceholder")} />

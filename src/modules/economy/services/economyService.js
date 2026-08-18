@@ -342,6 +342,28 @@ export const economyService = {
   },
 
   /**
+   * Gasto vinculado a una compra (integración Compras -> Finanzas), o null
+   * si esa compra no tiene ningún gasto asociado.
+   * A diferencia del resto de este servicio, SÍ lanza en error (mismo
+   * contrato divergente que payBillFromAccount, ver su comentario): esto se
+   * usa para decidir si es seguro borrar una compra sin preguntar por su
+   * gasto vinculado, así que un fallo de red/consulta no puede confundirse
+   * en silencio con "no tiene gasto" — el llamante debe abortar el borrado.
+   * @param {string} purchaseId
+   * @returns {Promise<Object|null>}
+   */
+  async getExpenseByPurchaseId(purchaseId) {
+    const { data, error } = await supabase
+      .from("economy_expenses")
+      .select("*")
+      .eq("shopping_purchase_id", purchaseId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
+  },
+
+  /**
    * Crea un nuevo ingreso
    * @param {Object} income - Datos del ingreso
    * @returns {Promise<Object>}
