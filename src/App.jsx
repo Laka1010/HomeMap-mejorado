@@ -35,7 +35,6 @@ import { OnboardingManager } from "./components/onboarding/OnboardingManager";
 import { WelcomeGate } from "./components/onboarding/WelcomeGate";
 import { BrandMark } from "./components/BrandMark";
 import { DependencyGateModal } from "./components/DependencyGateModal";
-import { checkDependency } from "./dependencyGuard";
 import { supabase } from "./supabaseClient";
 import { securityEventsService } from "./services/securityEventsService";
 import { houseService, MAX_HOMES_PER_USER } from "./services/houseService";
@@ -62,12 +61,15 @@ const CalendarModule = lazy(() => import("./modules/calendar/CalendarModule").th
 const EconomyModule = lazy(() => import("./modules/economy/EconomyModule").then((m) => ({ default: m.EconomyModule })));
 import { computeFrequentProducts } from "./modules/shopping/frequentProducts";
 import { uploadReceiptImage } from "./services/receiptService";
-import { notificationsService } from "./services/notificationsService";
 import { useDragToDismiss } from "./hooks/useDragToDismiss";
 import { useAuthSession, mapSupabaseUser, USER_STORAGE_KEY } from "./hooks/useAuthSession";
 import { useTheme } from "./hooks/useTheme";
+import { useTaskRetention } from "./hooks/useTaskRetention";
+import { useNotificationsEngine } from "./hooks/useNotificationsEngine";
+import { useHomesAndMembers } from "./hooks/useHomesAndMembers";
+import { useAppModals } from "./hooks/useAppModals";
+import { useHomeNavigation } from "./hooks/useHomeNavigation";
 import { NotificationCenter } from "./components/NotificationCenter";
-import { evaluateNotifications } from "./notifications/engine";
 import { buildNotificationActionHandlers } from "./notifications/notificationActions";
 import { PRIORITY_LEVELS } from "./modules/shopping/shoppingMeta";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "./modules/economy/economyCategories";
@@ -2365,15 +2367,16 @@ function AddShoppingListModal({ purchases, onCreate, onClose }) {
 function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const { t } = useTranslation();
   const { user, setUser, authLoading, passwordRecovery, setPasswordRecovery } = useAuthSession();
-  const [homes, setHomes] = useState([]);
-  const [homesLoaded, setHomesLoaded] = useState(false);
-  const [homesLoadError, setHomesLoadError] = useState(false);
+  const {
+    homes, setHomes,
+    homesLoaded, setHomesLoaded,
+    homesLoadError, setHomesLoadError,
+    houseMembers, setHouseMembers,
+    currentHomeId, setCurrentHomeId,
+    activeHome,
+  } = useHomesAndMembers(user?.id);
   const [shareMembers, setShareMembers] = useState([]);
-  const [houseMembers, setHouseMembers] = useState([]);
   const [isExporting, setIsExporting] = useState(false);
-
-  const [currentHomeId, setCurrentHomeId] = useState("");
-  const activeHome = homes.find((h) => h.id === currentHomeId) || null;
   // Los niños no ven ni economía ni notificaciones (que a menudo son sobre
   // facturas/gastos), así que esta misma flag gatea ambas cosas.
   const canSeeEconomy = !activeHome || activeHome.myRole !== "child";
@@ -2387,26 +2390,25 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     const desiredLocale = state?.profile?.language || "es";
     if (desiredLocale !== appLocale) onLocaleChange(desiredLocale);
   }, [state?.profile?.language, appLocale, onLocaleChange]);
-  const [route, setRoute] = useState({ tab: "inicio" });
-  const [prevTab, setPrevTab] = useState(null); /* UX: store previous tab to enable sensible back navigation */
-  const [micasaView, setMicasaView] = useState({});
-  const [cajasView, setCajasView] = useState({});
   // Inyectado en el buscador global (módulo aparte, sin acceso a los
   // helpers internos de este archivo) para que pueda construir la ruta de
   // objetos/cajas sin duplicar la lógica de habitación/zona/caja.
   const getEntityPath = useCallback((entity) => (state ? locationPath(state, entity) : []), [state]);
-  const [organizationTab, setOrganizationTab] = useState("compras");
-  const [modal, setModal] = useState(null); // {type, payload}
-  const [notice, setNotice] = useState(null);
+  const {
+    route, setRoute,
+    prevTab, setPrevTab,
+    micasaView, setMicasaView,
+    cajasView, setCajasView,
+    organizationTab, setOrganizationTab,
+    mapTabToNewPillar, goTo, selectTab,
+  } = useHomeNavigation(canSeeEconomy);
   const { prefersDark } = useTheme(state?.profile?.theme, state?.profile?.darkMode);
-  const [confirmDialog, setConfirmDialog] = useState(null); // {title, message, onConfirm, onCancel}
-  /**
-   * Se guarda aparte del `modal` normal (no como otro `modal.type`) para que
-   * la pantalla de información del miembro se apile encima de "Configuración
-   * de la casa" en vez de sustituirla — al cerrarla, la lista de miembros
-   * sigue abierta detrás, tal como se dejó.
-   */
-  const [viewingMember, setViewingMember] = useState(null);
+  const {
+    modal, setModal, openModal, closeModal,
+    notice, setNotice, showNotice,
+    confirmDialog, setConfirmDialog,
+    viewingMember, setViewingMember,
+  } = useAppModals(state, homes);
   const [currencyLoading, setCurrencyLoading] = useState(false);
   /**
    * BillsSection/EconomyOverview/MovementsSection cargan sus datos en un
@@ -2419,7 +2421,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * pestaña de Economía activa, que vuelve a pedir los datos.
    */
   const [economyVersion, setEconomyVersion] = useState(0);
-  const noticeTimerRef = useRef(null);
 
   const refreshHomes = async () => {
     try {
@@ -2601,12 +2602,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   }, [user?.id]);
 
   useEffect(() => {
-    if (route.tab === "economia" && !canSeeEconomy) {
-      setRoute({ tab: "inicio" });
-    }
-  }, [route.tab, canSeeEconomy]);
-
-  useEffect(() => {
     if (modal?.type !== "shareHome" || !activeHome?.id) {
       setShareMembers([]);
       return;
@@ -2621,49 +2616,13 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     return () => { cancelled = true; };
   }, [modal?.type, activeHome?.id]);
 
-  useEffect(() => {
-    if (!activeHome?.id) {
-      setHouseMembers([]);
-      return;
-    }
-    let cancelled = false;
-    houseService.getHouseMembers(activeHome.id)
-      .then((members) => { if (!cancelled) setHouseMembers(members); })
-      .catch((error) => {
-        console.error("Error loading house members:", error);
-      });
-    return () => { cancelled = true; };
-  }, [activeHome?.id]);
-
-  const [notifications, setNotifications] = useState([]);
-  const refreshNotifications = async () => {
-    if (!activeHome?.id || !user?.id) {
-      setNotifications([]);
-      return;
-    }
-    try {
-      setNotifications(await notificationsService.fetchActive(activeHome.id, user.id));
-    } catch (error) {
-      console.error("Error loading notifications:", error);
-    }
-  };
-  useEffect(() => {
-    refreshNotifications();
-  }, [activeHome?.id, user?.id]);
-
-  const markNotificationRead = async (id) => {
-    try { await notificationsService.markRead(id); await refreshNotifications(); } catch (error) { console.error("Error marking notification read:", error); }
-  };
-  const archiveNotification = async (id) => {
-    try { await notificationsService.archive(id); await refreshNotifications(); } catch (error) { console.error("Error archiving notification:", error); }
-  };
-  const deleteNotification = async (id) => {
-    try { await notificationsService.remove(id); await refreshNotifications(); } catch (error) { console.error("Error deleting notification:", error); }
-  };
-  const snoozeNotification = async (id) => {
-    const until = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
-    try { await notificationsService.snooze(id, until); await refreshNotifications(); } catch (error) { console.error("Error snoozing notification:", error); }
-  };
+  const {
+    notifications,
+    markNotificationRead,
+    archiveNotification,
+    deleteNotification,
+    snoozeNotification,
+  } = useNotificationsEngine(state, activeHome?.id, user?.id, loaded);
 
   const handleNotificationAction = (notification) => {
     const handlers = buildNotificationActionHandlers({ dispatch, openModal, goTo, setOrganizationTab });
@@ -2672,92 +2631,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     markNotificationRead(notification.id);
     closeModal();
   };
-
-  /**
-   * Reevalúa el motor de notificaciones cuando cambia el estado de la casa
-   * (reactivo, sin instrumentar cada handler existente) y además cada
-   * cierto tiempo mientras la app sigue abierta, para capturar condiciones
-   * que dependen solo del paso del tiempo (p.ej. una tarea que pasa a
-   * vencida sin que el usuario haga nada). El ref evita cerrar sobre un
-   * `state` obsoleto dentro del intervalo periódico.
-   */
-  const notificationEvalArgsRef = useRef(null);
-  notificationEvalArgsRef.current = { state, houseId: activeHome?.id, userId: user?.id, settings: state?.settings?.notifications };
-
-  useEffect(() => {
-    if (!activeHome?.id || !loaded || !state) return;
-    const timeout = setTimeout(() => {
-      evaluateNotifications(notificationEvalArgsRef.current).then(refreshNotifications).catch((error) => {
-        console.error("Error evaluando notificaciones:", error);
-      });
-    }, 1500);
-    return () => clearTimeout(timeout);
-  }, [state, activeHome?.id, loaded]);
-
-  useEffect(() => {
-    if (!activeHome?.id) return;
-    const interval = setInterval(() => {
-      evaluateNotifications(notificationEvalArgsRef.current).then(refreshNotifications).catch((error) => {
-        console.error("Error evaluando notificaciones (periódico):", error);
-      });
-    }, 15 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [activeHome?.id]);
-
-  /**
-   * Borra tareas marcadas como hechas una vez pasan los días de retención
-   * configurables (state.settings.taskRetentionDays). Igual que el motor de
-   * notificaciones: reevalúa al cambiar el estado y además periódicamente,
-   * para cubrir el caso de la app abierta cruzando el límite de días sin que
-   * el usuario toque nada. El ref evita cerrar sobre un ajuste obsoleto.
-   */
-  const taskRetentionRef = useRef(DEFAULT_TASK_RETENTION_DAYS);
-  taskRetentionRef.current = Number(state?.settings?.taskRetentionDays) || DEFAULT_TASK_RETENTION_DAYS;
-
-  const cleanupExpiredTasks = () => {
-    const cutoff = Date.now() - taskRetentionRef.current * 24 * 60 * 60 * 1000;
-    let removedIds = [];
-    dispatch((s) => {
-      const tasks = Array.isArray(s.tasks) ? s.tasks : [];
-      const keep = [];
-      removedIds = [];
-      tasks.forEach((task) => {
-        if (task.status === "done" && task.completedAt && new Date(task.completedAt).getTime() <= cutoff) {
-          removedIds.push(task.id);
-        } else {
-          keep.push(task);
-        }
-      });
-      if (removedIds.length === 0) return s;
-      return { ...s, tasks: keep };
-    });
-    removedIds.forEach((id) => {
-      taskService.deleteTask(id).catch((error) => console.error("Error eliminando tarea vencida:", error));
-    });
-  };
-
-  useEffect(() => {
-    if (!activeHome?.id || !loaded || !state) return;
-    cleanupExpiredTasks();
-  }, [state?.tasks, state?.settings?.taskRetentionDays, activeHome?.id, loaded]);
-
-  useEffect(() => {
-    if (!activeHome?.id) return;
-    const interval = setInterval(cleanupExpiredTasks, 60 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [activeHome?.id]);
-
-  useEffect(() => {
-    if (user && (!homes || homes.length === 0)) {
-      setCurrentHomeId("");
-    }
-  }, [homes, user]);
-
-  useEffect(() => {
-    if (homes.length > 0 && !currentHomeId) {
-      setCurrentHomeId(homes[0].id);
-    }
-  }, [homes, currentHomeId]);
 
   useEffect(() => {
     if (!user || !state) return;
@@ -2781,16 +2654,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     }));
   }, [user, state, setState]);
 
-  useEffect(() => () => {
-    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
-  }, []);
-
     const dispatch = (updater) => setState((s) => updater(s));
-    const showNotice = (message, action) => {
-      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
-      setNotice({ message, action: action || null });
-      noticeTimerRef.current = setTimeout(() => setNotice(null), action ? 4200 : 2600);
-    };
+    useTaskRetention(state, dispatch, activeHome?.id, loaded);
 
     const handleLogin = (userData) => {
       setUser(mapSupabaseUser(userData));
@@ -2928,65 +2793,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     await refreshHomes();
     setCurrentHomeId(house.id);
   };
-
-  const goTo = (r) => {
-    // Normaliza claves de ruta heredadas (micasa/cajas/tareas/compras/...) al
-    // pilar nuevo correspondiente, igual que ya hace `selectTab` — si no, el
-    // contenido se renderiza igual (hay bloques de compatibilidad), pero ni
-    // el bottom-nav ni el selector de Organización quedan resaltados porque
-    // comparan contra la clave nueva.
-    const newTab = mapTabToNewPillar(r.tab);
-    /* Preserve previous tab when navigating to detail-like screens */
-    if (route?.tab && route.tab !== "objectDetail" && route.tab !== newTab) setPrevTab(route.tab);
-    if (r.tab === "micasa") setMicasaView({ roomId: r.roomId, zoneId: r.zoneId });
-    if (r.tab === "cajas") setCajasView({ containerId: r.containerId });
-    if (["compras", "tareas", "notas", "calendario"].includes(r.tab)) setOrganizationTab(r.tab);
-    setRoute({ ...r, tab: newTab });
-  };
-  // Mapeo de rutas antiguas a nuevas (backwards compatibility)
-  const mapTabToNewPillar = (key) => {
-    const mappings = {
-      // Hogar
-      "micasa": "hogar",
-      "cajas": "hogar",
-      // Organización
-      "compras": "organizacion",
-      "tareas": "organizacion",
-      // Economía
-      "facturas": "economia",
-      // Mantener como está
-      "inicio": "inicio",
-      "hogar": "hogar",
-      "organizacion": "organizacion",
-      "economia": "economia",
-    };
-    return mappings[key] || key;
-  };
-
-  const selectTab = (key) => {
-    const newKey = mapTabToNewPillar(key);
-    if (route?.tab && route.tab !== newKey) setPrevTab(route.tab);
-    // Reset view state when switching pillars
-    if (newKey === "hogar") {
-      if (key === "micasa") setMicasaView({});
-      if (key === "cajas") setCajasView({});
-    }
-    setRoute({ tab: newKey });
-    window.scrollTo(0, 0);
-  };
-
-  const openModal = (type, payload, opts) => {
-    const missing = checkDependency(type, { rooms: state?.rooms, shoppingLists: state?.shoppingLists, homes });
-    if (missing) {
-      setModal({ type: "dependencyGate", payload: { missing, target: { type, payload } } });
-      return;
-    }
-    setModal({ type, payload, returnTo: opts?.returnTo });
-  };
-  // Vuelve a la pantalla de la que se vino (p.ej. Miembros/Compartir casa
-  // abiertos desde Perfil deben devolver a Perfil, no saltar a Inicio) en vez
-  // de cerrar del todo, cuando el modal se abrió con `returnTo`.
-  const closeModal = () => setModal((current) => (current?.returnTo ? { type: current.returnTo } : null));
 
   // Botón físico "atrás" de Android: orden de prioridad — diálogo de
   // confirmación abierto → modal abierto → un nivel arriba en Cajas/MiCasa →
