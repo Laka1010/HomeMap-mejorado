@@ -26,6 +26,16 @@ export const EXPENSE_CATEGORIES = [
   "Otros",
 ];
 
+/**
+ * Categoría neutra por defecto cuando el usuario no elige ninguna. NO se usa
+ * `EXPENSE_CATEGORIES[0]`/`INCOME_CATEGORIES[0]` para eso: el primer
+ * elemento es una categoría real ("Alimentación"/"Salario"), así que todo lo
+ * que se registraba rápido sin tocar el desplegable aterrizaba ahí y
+ * falseaba `getExpensesByCategory`, las estadísticas y el progreso de los
+ * objetivos por categoría.
+ */
+export const DEFAULT_CATEGORY = "Otros";
+
 export const INCOME_CATEGORIES = [
   "Salario",
   "Regalos recibidos",

@@ -50,7 +50,14 @@ export function useHomeNavigation(canSeeEconomy) {
     const newTab = mapTabToNewPillar(r.tab);
     /* Preserve previous tab when navigating to detail-like screens */
     if (route?.tab && route.tab !== "objectDetail" && route.tab !== newTab) setPrevTab(route.tab);
-    if (r.tab === "micasa") setMicasaView({ roomId: r.roomId, zoneId: r.zoneId });
+    // `cajasView` se limpia al navegar a una habitación/zona porque el pilar
+    // Hogar decide qué pintar mirando `cajasView.containerId` (caja abierta)
+    // antes que `micasaView`: sin esto, volver a una habitación desde una
+    // caja seguiría mostrando la caja.
+    if (r.tab === "micasa") {
+      setMicasaView({ roomId: r.roomId, zoneId: r.zoneId });
+      setCajasView({});
+    }
     if (r.tab === "cajas") setCajasView({ containerId: r.containerId });
     if (["compras", "tareas", "notas", "calendario"].includes(r.tab)) setOrganizationTab(r.tab);
     setRoute({ ...r, tab: newTab });

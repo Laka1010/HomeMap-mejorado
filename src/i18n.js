@@ -146,7 +146,6 @@ const translations = {
     },
     addShopping: {
       name: "Nombre",
-      category: "Categoría",
       width: "Ancho (cm)",
       height: "Alto (cm)",
       depth: "Fondo (cm)",
@@ -269,6 +268,7 @@ const translations = {
       noResultsTitle: "No se ha detectado nada",
       noResultsSubtitle: "Prueba con una foto más cercana o mejor iluminada.",
       saveObjects: "Guardar {{count}} objeto(s)",
+      uploading: "Subiendo la foto…",
       analyzing: "Analizando imagen…",
       recognizing: "Reconociendo objetos…",
       classifying: "Clasificando categorías…",
@@ -773,7 +773,6 @@ lucas.mesas.10@gmail.com`,
       listNamePlaceholder: "Ej. Supermercado",
       frequentProductsLabel: "Sueles comprar",
       frequentProductsHint: "Basado en tu historial de compras. Toca para añadirlos a la lista.",
-      editCategoriesTitle: "Editar categorías",
       purchaseHistoryTitle: "Historial de compras",
       addBillTitle: "Añadir factura",
       billNamePlaceholder: "Ej. Agua",
@@ -782,9 +781,7 @@ lucas.mesas.10@gmail.com`,
       add: "Añadir",
       registerExpenseTitle: "Registrar gasto",
       editExpenseTitle: "Editar gasto",
-      registerIncomeTitle: "Registrar ingreso",
       expenseNamePlaceholder: "Ej. Mercadona",
-      incomeNamePlaceholder: "Ej. Nómina",
       categoryLabel: "Categoría",
       categoryExpensePlaceholder: "Alimentación",
       register: "Registrar",
@@ -1359,7 +1356,17 @@ lucas.mesas.10@gmail.com`,
       save: "Guardar",
       updateError: "No se pudo actualizar.",
       deleteError: "No se pudo eliminar.",
-      fromPurchase: "Generado desde una compra",
+      fromPurchaseTag: "Compras",
+      fromPurchaseDetail: "Este gasto se generó automáticamente al cerrar una compra en Compras. Los productos y cantidades están en el historial de Compras; aquí solo vive el dinero.",
+      deleteKeepsPurchase: "La compra seguirá en el historial de Compras.",
+      transfersTab: "Transferencias",
+      transfersCreatedInAccounts: "Se crean desde Cuentas",
+      noTransfers: "No hay transferencias para mostrar.",
+      transferTitle: "Transferencia",
+      transferContribution: "Aportación",
+      transferIn: "Entrada",
+      transferOut: "Salida",
+      transferInternal: "Entre cuentas",
     },
     bills: {
       filterPending: "Pendientes",
@@ -1410,7 +1417,6 @@ lucas.mesas.10@gmail.com`,
       payError: "No se pudo pagar la factura.",
     },
     shoppingModule: {
-      noCategory: "Sin categoría",
       history: "Historial",
       scanReceipt: "Escanear ticket",
       scanReceiptComingSoonTitle: "Muy pronto",
@@ -1423,7 +1429,6 @@ lucas.mesas.10@gmail.com`,
       noProducts: "Sin productos",
       pendingOfTotal: "{{pending}} de {{total}} por comprar",
       checkoutMode: "Modo compra",
-      editCategories: "Editar categorías",
       emptyListTitle: "Esta lista está vacía",
       emptyListSubtitle: "Añade productos para empezar a organizar tus compras.",
       noProductsInCategory: "No hay productos en esta categoría.",
@@ -1486,8 +1491,47 @@ lucas.mesas.10@gmail.com`,
       scanReceipt: "Escanear ticket",
       quantityUnit: "{{count}} unidad(es)",
     },
+    timeAgo: {
+      now: "ahora",
+      minutes: "hace {{count}} min",
+      hours: "hace {{count}} h",
+      yesterday: "ayer",
+      days: "hace {{count}} días",
+    },
+    // Textos de las notificaciones que genera src/notifications/rules/*.js.
+    // Las reglas guardan la clave y sus variables en la fila (title_key /
+    // title_vars), no el texto ya montado, para que el centro de actividad
+    // pueda pintarlas en el idioma activo en cada momento.
+    notifications: {
+      taskOverdueTitle: "Tienes una tarea pendiente desde hace {{days}} día(s)",
+      taskOverdueTitleOne: "Tienes una tarea pendiente desde hace 1 día",
+      taskTodayTitle: "Hoy toca: {{title}}",
+      taskTodayBody: "Marcada como importante para hoy.",
+      completeTaskAction: "Completar tarea",
+      shoppingAlmostDoneTitle: "Solo queda {{count}} producto para completar \"{{list}}\"",
+      shoppingAlmostDoneTitlePlural: "Solo quedan {{count}} productos para completar \"{{list}}\"",
+      shoppingReadyTitle: "Parece que ya tienes suficiente para hacer la compra",
+      shoppingReadyBody: "{{count}} productos marcados como muy necesarios.",
+      openShoppingAction: "Abrir compra",
+      financeNoExpenseTitle: "Aún no has registrado ningún gasto esta semana",
+      financeNoExpenseBody: "Registra tus gastos para llevar un control real de la economía del hogar.",
+      logExpenseAction: "Registrar gasto",
+      financeSpentLessTitle: "Este mes has gastado un {{percent}}% menos que el anterior",
+      financeSpentMoreTitle: "Este mes has gastado un {{percent}}% más que el anterior",
+      financeComparisonBody: "Comparado con el mismo número de días del mes pasado.",
+      calendarEventSoonBody: "{{type}} programada en las próximas {{hours}} horas.",
+      openCalendarAction: "Ver calendario",
+      economyAccessRequested: "{{name}} quiere ver tu economía personal.",
+      economyAccessGranted: "{{name}} ha compartido su economía contigo.",
+      economyAccessAccepted: "{{name}} ha aceptado tu solicitud para compartir su economía.",
+      economyAccessRejected: "{{name}} ha rechazado tu solicitud.",
+      economyAccessRevoked: "{{name}} ha dejado de compartir su economía contigo.",
+      viewAction: "Ver",
+      viewRequestAction: "Ver solicitud",
+    },
     notificationCenter: {
       markRead: "Leída",
+      delete: "Eliminar",
       snoozeAria: "Posponer un día",
       archiveAria: "Archivar",
       deleteAria: "Eliminar",
@@ -1685,7 +1729,6 @@ lucas.mesas.10@gmail.com`,
     },
     addShopping: {
       name: "Name",
-      category: "Category",
       width: "Width (cm)",
       height: "Height (cm)",
       depth: "Depth (cm)",
@@ -1808,6 +1851,7 @@ lucas.mesas.10@gmail.com`,
       noResultsTitle: "Nothing was detected",
       noResultsSubtitle: "Try a closer or better-lit photo.",
       saveObjects: "Save {{count}} object(s)",
+      uploading: "Uploading photo…",
       analyzing: "Analyzing image…",
       recognizing: "Recognizing objects…",
       classifying: "Classifying categories…",
@@ -2312,7 +2356,6 @@ lucas.mesas.10@gmail.com`,
       listNamePlaceholder: "E.g. Supermarket",
       frequentProductsLabel: "You usually buy",
       frequentProductsHint: "Based on your purchase history. Tap to add them to the list.",
-      editCategoriesTitle: "Edit categories",
       purchaseHistoryTitle: "Purchase history",
       addBillTitle: "Add bill",
       billNamePlaceholder: "E.g. Water",
@@ -2321,9 +2364,7 @@ lucas.mesas.10@gmail.com`,
       add: "Add",
       registerExpenseTitle: "Log expense",
       editExpenseTitle: "Edit expense",
-      registerIncomeTitle: "Log income",
       expenseNamePlaceholder: "E.g. Supermarket",
-      incomeNamePlaceholder: "E.g. Payroll",
       categoryLabel: "Category",
       categoryExpensePlaceholder: "Food",
       register: "Log",
@@ -2898,7 +2939,17 @@ lucas.mesas.10@gmail.com`,
       save: "Save",
       updateError: "We couldn't update it.",
       deleteError: "We couldn't delete it.",
-      fromPurchase: "Generated from a purchase",
+      fromPurchaseTag: "Shopping",
+      fromPurchaseDetail: "This expense was created automatically when a purchase was closed in Shopping. Products and quantities live in the Shopping history; only the money lives here.",
+      deleteKeepsPurchase: "The purchase will stay in the Shopping history.",
+      transfersTab: "Transfers",
+      transfersCreatedInAccounts: "Created from Accounts",
+      noTransfers: "No transfers to show.",
+      transferTitle: "Transfer",
+      transferContribution: "Contribution",
+      transferIn: "In",
+      transferOut: "Out",
+      transferInternal: "Between accounts",
     },
     bills: {
       filterPending: "Pending",
@@ -2949,7 +3000,6 @@ lucas.mesas.10@gmail.com`,
       payError: "Couldn't pay the bill.",
     },
     shoppingModule: {
-      noCategory: "No category",
       history: "History",
       scanReceipt: "Scan receipt",
       scanReceiptComingSoonTitle: "Coming soon",
@@ -2962,7 +3012,6 @@ lucas.mesas.10@gmail.com`,
       noProducts: "No products",
       pendingOfTotal: "{{pending}} of {{total}} to buy",
       checkoutMode: "Shopping mode",
-      editCategories: "Edit categories",
       emptyListTitle: "This list is empty",
       emptyListSubtitle: "Add products to start organizing your shopping.",
       noProductsInCategory: "No products in this category.",
@@ -3025,8 +3074,47 @@ lucas.mesas.10@gmail.com`,
       scanReceipt: "Scan receipt",
       quantityUnit: "{{count}} unit(s)",
     },
+    timeAgo: {
+      now: "now",
+      minutes: "{{count}} min ago",
+      hours: "{{count}} h ago",
+      yesterday: "yesterday",
+      days: "{{count}} days ago",
+    },
+    // Text for the notifications generated by src/notifications/rules/*.js.
+    // The rules store the key and its variables on the row (title_key /
+    // title_vars) instead of the rendered string, so the activity centre can
+    // render them in whatever language is active at the time.
+    notifications: {
+      taskOverdueTitle: "You have a task pending for {{days}} days",
+      taskOverdueTitleOne: "You have a task pending since yesterday",
+      taskTodayTitle: "Due today: {{title}}",
+      taskTodayBody: "Marked as important for today.",
+      completeTaskAction: "Complete task",
+      shoppingAlmostDoneTitle: "Only {{count}} item left to finish \"{{list}}\"",
+      shoppingAlmostDoneTitlePlural: "Only {{count}} items left to finish \"{{list}}\"",
+      shoppingReadyTitle: "Looks like you have enough for a shopping run",
+      shoppingReadyBody: "{{count}} items marked as really needed.",
+      openShoppingAction: "Open shopping list",
+      financeNoExpenseTitle: "You haven't logged any expense this week",
+      financeNoExpenseBody: "Log your expenses to keep real track of the household economy.",
+      logExpenseAction: "Log expense",
+      financeSpentLessTitle: "You've spent {{percent}}% less this month than last",
+      financeSpentMoreTitle: "You've spent {{percent}}% more this month than last",
+      financeComparisonBody: "Compared with the same number of days last month.",
+      calendarEventSoonBody: "{{type}} scheduled within the next {{hours}} hours.",
+      openCalendarAction: "Open calendar",
+      economyAccessRequested: "{{name}} wants to see your personal finances.",
+      economyAccessGranted: "{{name}} has shared their finances with you.",
+      economyAccessAccepted: "{{name}} accepted your request to share their finances.",
+      economyAccessRejected: "{{name}} turned down your request.",
+      economyAccessRevoked: "{{name}} stopped sharing their finances with you.",
+      viewAction: "View",
+      viewRequestAction: "View request",
+    },
     notificationCenter: {
       markRead: "Read",
+      delete: "Delete",
       snoozeAria: "Snooze for a day",
       archiveAria: "Archive",
       deleteAria: "Delete",
@@ -3092,18 +3180,44 @@ function getValue(obj, path) {
   return path.split(".").reduce((current, key) => current?.[key], obj);
 }
 
+/**
+ * Resuelve una clave en el idioma pedido y, si allí no existe (o apunta a un
+ * grupo en vez de a un texto), cae a español antes de rendirse. Sin esta
+ * cascada, una clave que faltara solo en `en` se le enseñaba al usuario tal
+ * cual ("toast.expenseSaveError"), que es peor que verla en español.
+ */
+function resolveTranslation(locale, path) {
+  const direct = getValue(translations[locale], path);
+  if (typeof direct === "string") return direct;
+  const fallback = getValue(translations.es, path);
+  if (typeof fallback === "string") return fallback;
+  return null;
+}
+
+/**
+ * Sustituye {{clave}} por su valor con split/join en vez de
+ * `String.replace(regexp, valor)`: en esa forma, `replace` interpreta `$&`,
+ * `$1`, `$'`... que aparezcan DENTRO del propio valor como patrones de
+ * sustitución, así que un nombre de casa o de producto que contuviera `$&`
+ * se renderizaba mal. split/join trata el valor como texto literal y de paso
+ * evita construir (y escapar) una expresión regular por cada variable.
+ */
+function interpolate(text, vars) {
+  return Object.keys(vars || {}).reduce(
+    (current, key) => current.split(`{{${key}}}`).join(String(vars[key] ?? "")),
+    text,
+  );
+}
+
 export function I18nProvider({ locale, setLocale, children }) {
   const value = useMemo(
     () => ({
       locale: locale || "es",
       setLocale: setLocale || (() => {}),
       t: (path, vars) => {
-        const translation = getValue(translations[locale] || translations.es, path);
-        if (!translation) return path;
-        return Object.keys(vars || {}).reduce(
-          (text, key) => text.replace(new RegExp(`\\{\\{${key}\\}}`, "g"), vars[key]),
-          translation,
-        );
+        const translation = resolveTranslation(locale, path);
+        if (translation === null) return path;
+        return interpolate(translation, vars);
       },
     }),
     [locale, setLocale],

@@ -76,7 +76,7 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
       if (cancelledRef.current || !result) return;
 
       setStore(normalizeStoreName(result.store));
-      setDate(result.date || new Date().toISOString().slice(0, 10));
+      setDate(result.date || toLocalDateString(new Date()));
       setItems(result.items.map((it) => ({ ...it, id: Math.random().toString(36).slice(2, 9) })));
       setTaxAmount(result.taxAmount ?? "");
       setDiscountAmount(result.discountAmount ?? "");

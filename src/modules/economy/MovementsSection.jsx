@@ -1,12 +1,28 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, TrendingUp, TrendingDown, ShoppingCart } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, ArrowLeftRight, ShoppingCart } from "lucide-react";
 import { economyService } from "./services/economyService";
 import { accountsService } from "./services/accountsService";
+import { transfersService } from "./services/transfersService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "./economyCategories";
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY } from "./economyCategories";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 
+/**
+ * Movimientos = "qué ha pasado con mi dinero": las tres formas en que el
+ * dinero se mueve — entra (ingresos), sale (gastos) y cambia de sitio
+ * (transferencias/aportaciones entre cuentas o Spaces).
+ *
+ * Lo que NO es esta pantalla: un sitio donde registrar compras. Los
+ * productos, cantidades y listas viven en Compras; cuando una compra se
+ * cierra con importe > 0 genera aquí su gasto automáticamente (ver
+ * registerPurchaseExpense en App.jsx) y se marca con el distintivo "Compras"
+ * — mismo dato, un único origen, sin doble registro.
+ *
+ * Las transferencias se listan pero no se crean aquí: nacen en Cuentas
+ * (AccountsSection -> TransferModal), que es donde el usuario elige cuenta
+ * origen y destino. Este listado es solo lectura para no duplicar ese alta.
+ */
 export default function MovementsSection({ currentHome, spaceId, user, initialType = "expenses" }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
@@ -15,6 +31,10 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState([]);
+  // Ids de TODAS las cuentas del Space (incluidas las archivadas), no solo
+  // las activas de `accounts`: se usan para saber si una transferencia entra
+  // o sale de este Space, y una cuenta archivada sigue teniendo histórico.
+  const [spaceAccountIds, setSpaceAccountIds] = useState(() => new Set());
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -35,7 +55,10 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
 
   useEffect(() => {
     if (!spaceId) return;
-    accountsService.listAccounts(spaceId).then((list) => setAccounts(list.filter((a) => a.status === "active"))).catch(() => {});
+    accountsService.listAccounts(spaceId).then((list) => {
+      setAccounts(list.filter((a) => a.status === "active"));
+      setSpaceAccountIds(new Set(list.map((a) => a.id)));
+    }).catch(() => {});
   }, [spaceId]);
 
   const loadItems = async () => {
@@ -51,6 +74,16 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
     prevTypeRef.current = type;
     setLoading(true);
     try {
+      if (type === "transfers") {
+        const rows = await transfersService.listTransfersForSpace(spaceId);
+        // Se normaliza created_at -> date para reutilizar tal cual
+        // filterByPeriod y el pintado de la fila, en vez de duplicar ambos
+        // solo porque esta tabla llama distinto a su fecha.
+        const normalized = (rows || []).map((tr) => ({ ...tr, date: (tr.created_at || "").slice(0, 10) }));
+        setItems(filterByPeriod(normalized, period));
+        return;
+      }
+
       const data = type === "expenses"
         ? await economyService.getAllExpensesBySpace(spaceId, 200)
         : await economyService.getAllIncomeBySpace(spaceId, 200);
@@ -124,8 +157,18 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
   const confirmRemoveItem = async () => {
     if (!selected) return;
     try {
-      if (type === "expenses") await economyService.deleteExpense(selected.id);
-      else await economyService.deleteIncome(selected.id);
+      // El servicio devuelve false cuando el DELETE no llegó a tocar ninguna
+      // fila (RLS, o la fila ya no existe); sin comprobarlo, la pantalla se
+      // cerraba como si hubiera funcionado y el movimiento reaparecía al
+      // recargar.
+      const deleted = type === "expenses"
+        ? await economyService.deleteExpense(selected.id)
+        : await economyService.deleteIncome(selected.id);
+      if (!deleted) {
+        setActionError(t("movements.deleteError"));
+        setConfirmingDelete(false);
+        return;
+      }
       await loadItems();
       closeDetail();
     } catch (err) {
@@ -135,8 +178,8 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
     }
   };
 
-  const accent = type === "expenses" ? "var(--danger)" : "var(--success)";
-  const accentSoft = type === "expenses" ? "var(--danger-soft)" : "var(--success-soft)";
+  const accent = type === "expenses" ? "var(--danger)" : type === "income" ? "var(--success)" : "var(--ink-soft)";
+  const accentSoft = type === "expenses" ? "var(--danger-soft)" : type === "income" ? "var(--success-soft)" : "var(--surface-alt)";
 
   const periodPill = (active) => ({
     padding: "6px 12px",
@@ -154,12 +197,12 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Header: toggle + add */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: 4, background: "var(--surface-alt)", borderRadius: 999, padding: 4 }}>
+        <div className="hm-scroll" style={{ display: "flex", gap: 4, background: "var(--surface-alt)", borderRadius: 999, padding: 4, maxWidth: "100%", overflowX: "auto" }}>
           <button
             onClick={() => setType("expenses")}
             style={{
-              padding: "8px 16px", borderRadius: 999, border: "none", cursor: "pointer",
-              fontWeight: 700, fontSize: 13.5,
+              padding: "8px 14px", borderRadius: 999, border: "none", cursor: "pointer",
+              fontWeight: 700, fontSize: 13.5, whiteSpace: "nowrap", flexShrink: 0,
               background: type === "expenses" ? "var(--danger)" : "transparent",
               color: type === "expenses" ? "#fff" : "var(--ink-soft)",
             }}
@@ -169,21 +212,40 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
           <button
             onClick={() => setType("income")}
             style={{
-              padding: "8px 16px", borderRadius: 999, border: "none", cursor: "pointer",
-              fontWeight: 700, fontSize: 13.5,
+              padding: "8px 14px", borderRadius: 999, border: "none", cursor: "pointer",
+              fontWeight: 700, fontSize: 13.5, whiteSpace: "nowrap", flexShrink: 0,
               background: type === "income" ? "var(--success)" : "transparent",
               color: type === "income" ? "#fff" : "var(--ink-soft)",
             }}
           >
             {t("movements.incomeTab")}
           </button>
+          <button
+            onClick={() => setType("transfers")}
+            style={{
+              padding: "8px 14px", borderRadius: 999, border: "none", cursor: "pointer",
+              fontWeight: 700, fontSize: 13.5, whiteSpace: "nowrap", flexShrink: 0,
+              background: type === "transfers" ? "var(--accent)" : "transparent",
+              color: type === "transfers" ? "var(--accent-ink)" : "var(--ink-soft)",
+            }}
+          >
+            {t("movements.transfersTab")}
+          </button>
         </div>
-        <button
-          className="hm-btn hm-btn-primary hm-btn--compact"
-          onClick={() => setShowAdd(true)}
-        >
-          <Plus size={15} /> {t("movements.add")}
-        </button>
+        {/* Transferencias es solo lectura aquí: se crean en Cuentas, donde
+            existe el selector de cuenta origen/destino. Mostrar un "Añadir"
+            que abriera un formulario distinto sería un segundo sitio para la
+            misma operación. */}
+        {type !== "transfers" ? (
+          <button
+            className="hm-btn hm-btn-primary hm-btn--compact"
+            onClick={() => setShowAdd(true)}
+          >
+            <Plus size={15} /> {t("movements.add")}
+          </button>
+        ) : (
+          <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{t("movements.transfersCreatedInAccounts")}</span>
+        )}
       </div>
 
       {/* Period pills */}
@@ -201,42 +263,73 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
 
         {!loading && items.length === 0 && (
           <div style={{ padding: 24, textAlign: "center", color: "var(--ink-soft)", fontSize: 13.5 }}>
-            {type === "expenses" ? t("movements.noExpenses") : t("movements.noIncome")}
+            {type === "expenses" ? t("movements.noExpenses") : type === "income" ? t("movements.noIncome") : t("movements.noTransfers")}
           </div>
         )}
 
         {items.length > 0 && (
           <div style={{ opacity: loading ? 0.5 : 1, transition: "opacity 0.15s ease" }}>
-            {items.map((item, idx) => (
-              <div
-                key={item.id}
-                onClick={() => !loading && openDetail(item)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "10px 0",
-                  borderBottom: idx < items.length - 1 ? "1px solid var(--border)" : "none",
-                  cursor: "pointer",
-                }}
-              >
-                <div className="hm-row-icon" style={{ background: accentSoft, color: accent }}>
-                  {type === "expenses" ? <TrendingDown size={17} /> : <TrendingUp size={17} />}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                    <span style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
-                    {type === "expenses" && item.shopping_purchase_id ? (
-                      <ShoppingCart size={11} style={{ color: "var(--ink-soft)", flexShrink: 0 }} title={t("movements.fromPurchase")} />
-                    ) : null}
+            {items.map((item, idx) => {
+              // Una transferencia no "es" gasto ni ingreso: el signo y el
+              // color dependen de si sale de una cuenta de este Space o
+              // entra en ella, no del tipo de movimiento.
+              const isTransfer = type === "transfers";
+              // Si las dos cuentas son de este Space el dinero no ha entrado
+              // ni salido, solo ha cambiado de sitio: mostrarlo con signo
+              // (como si fuera salida) haría creer que hay menos dinero.
+              const internal = isTransfer && spaceAccountIds.has(item.from_account_id) && spaceAccountIds.has(item.to_account_id);
+              const outgoing = isTransfer && !internal && spaceAccountIds.has(item.from_account_id);
+              const rowAccent = !isTransfer ? accent : internal ? "var(--ink-soft)" : outgoing ? "var(--danger)" : "var(--success)";
+              const title = isTransfer
+                ? (item.note || (item.kind === "contribution" ? t("movements.transferContribution") : t("movements.transferTitle")))
+                : item.name;
+              const transferDirection = internal ? t("movements.transferInternal") : outgoing ? t("movements.transferOut") : t("movements.transferIn");
+              const subtitle = isTransfer
+                ? `${transferDirection} · ${item.date}`
+                : `${item.category || "Otros"} · ${item.date}`;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => { if (!loading && !isTransfer) openDetail(item); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "10px 0",
+                    borderBottom: idx < items.length - 1 ? "1px solid var(--border)" : "none",
+                    cursor: isTransfer ? "default" : "pointer",
+                  }}
+                >
+                  <div className="hm-row-icon" style={{ background: accentSoft, color: accent }}>
+                    {isTransfer ? <ArrowLeftRight size={17} /> : type === "expenses" ? <TrendingDown size={17} /> : <TrendingUp size={17} />}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{item.category || "Otros"} · {item.date}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      <span style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
+                      {/* El origen "Compras" se etiqueta con texto, no solo
+                          con un icono + title: en móvil no hay hover, así
+                          que el tooltip nunca llegaba a verse y el gasto
+                          parecía uno más creado a mano. */}
+                      {type === "expenses" && item.shopping_purchase_id ? (
+                        <span
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0,
+                            padding: "1px 7px", borderRadius: 999, fontSize: 10.5, fontWeight: 700,
+                            background: "var(--surface-alt)", color: "var(--ink-soft)",
+                          }}
+                        >
+                          <ShoppingCart size={10} /> {t("movements.fromPurchaseTag")}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{subtitle}</div>
+                  </div>
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: rowAccent, whiteSpace: "nowrap" }}>
+                    {isTransfer ? (internal ? "" : outgoing ? "-" : "+") : type === "expenses" ? "-" : "+"}{formatCurrency(item.amount)}
+                  </div>
                 </div>
-                <div style={{ fontSize: 14.5, fontWeight: 700, color: accent, whiteSpace: "nowrap" }}>
-                  {type === "expenses" ? "-" : "+"}{formatCurrency(item.amount)}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -259,6 +352,12 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
                     <div style={{ fontWeight: 700, color: accent }}>{formatCurrency(selected.amount)}</div>
                   </div>
                   <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("movements.dateLabel")} <strong>{selected.date}</strong></div>
+                  {selected.shopping_purchase_id ? (
+                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--surface-alt)", padding: "10px 12px", borderRadius: 10 }}>
+                      <ShoppingCart size={14} style={{ color: "var(--ink-soft)", flexShrink: 0, marginTop: 2 }} />
+                      <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{t("movements.fromPurchaseDetail")}</div>
+                    </div>
+                  ) : null}
                   {selected.notes && (
                     <div>
                       <div style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 6 }}>{t("movements.notesLabel")}</div>
@@ -277,6 +376,9 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6, background: "var(--danger-soft)", padding: 12, borderRadius: 12 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600 }}>{type === "expenses" ? t("movements.confirmDeleteExpense") : t("movements.confirmDeleteIncome")} {t("movements.cannotUndo")}</div>
+                      {selected.shopping_purchase_id ? (
+                        <div style={{ fontSize: 12.5, fontWeight: 500 }}>{t("movements.deleteKeepsPurchase")}</div>
+                      ) : null}
                       <div style={{ display: "flex", gap: 8 }}>
                         <button className="hm-btn hm-btn-soft" onClick={() => setConfirmingDelete(false)}>{t("movements.cancel")}</button>
                         <button className="hm-btn hm-btn--danger" onClick={confirmRemoveItem}>{t("movements.confirmYesDelete")}</button>
@@ -296,7 +398,7 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
                   <input type="date" className="hm-input" value={editValues.date ? editValues.date.slice(0, 10) : ""} onChange={(e) => setEditValues({ ...editValues, date: e.target.value })} />
 
                   <label className="hm-label">{t("movements.categoryLabel")}</label>
-                  <select className="hm-input" value={editValues.category || (type === "expenses" ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0])} onChange={(e) => setEditValues({ ...editValues, category: e.target.value })}>
+                  <select className="hm-input" value={editValues.category || DEFAULT_CATEGORY} onChange={(e) => setEditValues({ ...editValues, category: e.target.value })}>
                     {(type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
 
@@ -343,7 +445,10 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated 
   const categories = type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState(categories[0]);
+  // "Otros" y no categories[0]: el primer elemento es una categoría real
+  // ("Alimentación"/"Salario"), así que quien no toque el desplegable acaba
+  // falseando las estadísticas por categoría. Ver DEFAULT_CATEGORY.
+  const [category, setCategory] = useState(DEFAULT_CATEGORY);
   const [accountId, setAccountId] = useState(accounts.find((a) => a.is_default)?.id || accounts[0]?.id || "");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");

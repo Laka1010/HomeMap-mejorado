@@ -14,9 +14,17 @@ function notificationFromRow(row) {
     type: row.type,
     priority: row.priority,
     dedupeKey: row.dedupe_key,
+    // title/body siguen llegando (respaldo en español, y lo único que tienen
+    // las filas creadas antes de la migración 20260819_069); el texto que se
+    // pinta sale de *Key + *Vars cuando existen — ver notificationText().
     title: row.title,
+    titleKey: row.title_key,
+    titleVars: row.title_vars,
     body: row.body,
+    bodyKey: row.body_key,
+    bodyVars: row.body_vars,
     action: row.action,
+    actionLabelKey: row.action_label_key,
     entityRef: row.entity_ref,
     status: row.status,
     snoozedUntil: row.snoozed_until,
@@ -59,8 +67,13 @@ export const notificationsService = {
       priority: c.priority,
       dedupe_key: c.dedupeKey,
       title: c.title,
+      title_key: c.titleKey || null,
+      title_vars: c.titleVars || null,
       body: c.body || null,
+      body_key: c.bodyKey || null,
+      body_vars: c.bodyVars || null,
       action: c.action || null,
+      action_label_key: c.action?.labelKey || null,
       entity_ref: c.entityRef || null,
       ...(c.forceUnread ? { status: "unread" } : {}),
     }));
@@ -88,6 +101,37 @@ export const notificationsService = {
     if (error) throw error;
   },
 
+  /**
+   * Marca de golpe todo lo no leído que ve este usuario — lo usa el centro de
+   * actividad al abrirse, para que el punto rojo del icono desaparezca sin que
+   * haya que ir notificación por notificación.
+   *
+   * Se repite el mismo filtro de destinatario que `fetchActive`
+   * (user_id nulo = para toda la casa, o dirigida a este usuario) en vez de
+   * confiar solo en RLS: así este UPDATE nunca puede tocar una fila que el
+   * usuario no está viendo en pantalla.
+   *
+   * OJO con las de user_id nulo: son de la casa entera y tienen un único
+   * `status`, así que al leerlas también se apagan para el resto de miembros.
+   * No es nuevo (el botón "Leída" de antes hacía exactamente lo mismo);
+   * marcar por usuario exigiría una tabla de lecturas aparte.
+   */
+  async markAllRead(houseId, userId) {
+    const { error } = await supabase
+      .from("notifications")
+      .update({ status: "read", read_at: new Date().toISOString() })
+      .eq("house_id", houseId)
+      .eq("status", "unread")
+      .or(`user_id.is.null,user_id.eq.${userId}`);
+    if (error) throw error;
+  },
+
+  /**
+   * Archivado/posponer manuales: ya no hay ningún botón que los dispare (el
+   * centro de actividad se dejó en dos acciones, ver NotificationCenter),
+   * pero el estado 'archived' sigue siendo parte del modelo — es lo que usa
+   * `resolveStale` cuando la condición de una regla deja de cumplirse.
+   */
   async archive(id) {
     const { error } = await supabase.from("notifications").update({ status: "archived", archived_at: new Date().toISOString() }).eq("id", id);
     if (error) throw error;

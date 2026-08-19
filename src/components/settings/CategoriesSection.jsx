@@ -21,8 +21,17 @@ export function CategoriesSection({ categories = [], onChange }) {
     update(copy);
   };
 
+  /**
+   * Al borrar hay que recolocar `editingIndex`, que es una POSICIÓN y no un
+   * identificador: borrar una categoría situada por encima de la que se está
+   * editando dejaba el input abierto sobre otra categoría distinta (la que
+   * pasa a ocupar ese índice), y borrar la que se editaba dejaba a la
+   * siguiente en modo edición sin haberlo pedido.
+   */
   const handleDelete = (idx) => {
     const copy = local.filter((_, i) => i !== idx);
+    if (editingIndex === idx) setEditingIndex(-1);
+    else if (editingIndex > idx) setEditingIndex(editingIndex - 1);
     update(copy);
   };
 

@@ -6,7 +6,8 @@ import { PayBillModal } from "./PayBillModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
-import { EXPENSE_CATEGORIES } from "./economyCategories";
+import { EXPENSE_CATEGORIES, DEFAULT_CATEGORY } from "./economyCategories";
+import { toLocalDateString } from "../../utils/dates";
 
 export default function BillsSection({ currentHome, spaceId, spaces, state, dispatch, user }) {
   const { t } = useTranslation();
@@ -108,7 +109,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
   // solo se refresca la lista y el estado optimista al terminar.
   const handleBillPaid = async () => {
     if (dispatch && payingBill) {
-      dispatch((s) => ({ ...s, bills: (s.bills || []).map((b) => (b.id === payingBill.id ? { ...b, status: "paid", paid_date: new Date().toISOString().slice(0, 10) } : b)) }));
+      dispatch((s) => ({ ...s, bills: (s.bills || []).map((b) => (b.id === payingBill.id ? { ...b, status: "paid", paid_date: toLocalDateString(new Date()) } : b)) }));
     }
     setPayingBill(null);
     await loadBills();
@@ -338,7 +339,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
                   <input type="date" className="hm-input" value={editValues.due_date ? editValues.due_date.slice(0,10) : ''} onChange={(e)=> setEditValues({...editValues, due_date: e.target.value})} />
 
                   <label className="hm-label">{t("bills.categoryLabel")}</label>
-                  <select className="hm-input" value={editValues.category || EXPENSE_CATEGORIES[0]} onChange={(e)=> setEditValues({...editValues, category: e.target.value})}>
+                  <select className="hm-input" value={editValues.category || DEFAULT_CATEGORY} onChange={(e)=> setEditValues({...editValues, category: e.target.value})}>
                     {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
 
@@ -413,7 +414,7 @@ function AddBillModal({ spaceId, userId, onClose, onCreated }) {
         name: name.trim(),
         amount: parsedAmount,
         due_date: dueDate,
-        category: category || EXPENSE_CATEGORIES[0],
+        category: category || DEFAULT_CATEGORY,
         frequency,
         notes: notes.trim() || null,
         status: "pending",
@@ -449,7 +450,7 @@ function AddBillModal({ spaceId, userId, onClose, onCreated }) {
           <input type="date" className="hm-input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
 
           <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.categoryLabel")}</label>
-          <select className="hm-input" value={category || EXPENSE_CATEGORIES[0]} onChange={(e) => setCategory(e.target.value)}>
+          <select className="hm-input" value={category || DEFAULT_CATEGORY} onChange={(e) => setCategory(e.target.value)}>
             {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
 

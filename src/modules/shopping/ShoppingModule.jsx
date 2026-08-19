@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Check, Clock3, Flame, History, Plus, Receipt, ShoppingCart, Sparkles, Star, Tag, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Clock3, Flame, History, Plus, Receipt, ShoppingCart, Sparkles, Star, Trash2 } from "lucide-react";
 import { ModuleCard } from "../core/ModuleCard";
 import { FavoriteStar } from "../../components/FavoriteStar";
 import { shoppingService } from "../../services/shoppingService";
@@ -53,9 +53,12 @@ function ShoppingItemCard({ item, onToggle, onToggleFavorite }) {
   const { t } = useTranslation();
   return (
     <ModuleCard
+      // El emoji se sigue derivando de la categoría (cuando el producto trae
+      // una, p.ej. importado de un ticket), pero su nombre ya no se escribe
+      // debajo: en una lista de la compra ocupaba una línea por producto sin
+      // aportar nada que el propio nombre no dijera ya.
       icon={CategoryEmojiIcon({ emoji: getCategoryIcon(item.category) })}
       title={item.name}
-      subtitle={item.category || t("shoppingModule.noCategory")}
       badge={
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <FavoriteStar active={item.favorite} onToggle={() => onToggleFavorite(item.id)} size={15} />
@@ -117,7 +120,6 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
   const shoppingItems = Array.isArray(state.shoppingItems) ? state.shoppingItems : [];
   const shoppingLists = Array.isArray(state.shoppingLists) ? state.shoppingLists : [];
   const [activeListId, setActiveListId] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
   const [checkoutMode, setCheckoutMode] = useState(false);
@@ -136,19 +138,9 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
     [activeList, shoppingItems]
   );
 
-  const categories = useMemo(() => {
-    const houseCats = Array.isArray(state.categories) ? state.categories : [];
-    const fromItems = Array.from(new Set(listItems.map((item) => item.category).filter(Boolean)));
-    const merged = [...houseCats, ...fromItems.filter((c) => !houseCats.includes(c))];
-    return ["all", ...merged];
-  }, [state.categories, listItems]);
-
-  const categoryFilteredItems = selectedCategory === "all"
-    ? listItems
-    : listItems.filter((item) => item.category === selectedCategory);
   const visibleItems = favoritesOnly
-    ? categoryFilteredItems.filter((item) => item.favorite)
-    : categoryFilteredItems;
+    ? listItems.filter((item) => item.favorite)
+    : listItems;
 
   const pendingItems = visibleItems.filter((item) => !item.completed);
   const completedItems = visibleItems.filter((item) => item.completed);
@@ -156,11 +148,10 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
   const laterItems = pendingItems.filter((item) => !isUrgent(item.priority));
 
   const frequentSuggestions = useMemo(() => {
-    if (selectedCategory !== "all") return [];
     const purchases = Array.isArray(state.shoppingPurchases) ? state.shoppingPurchases : [];
     const pendingNames = listItems.filter((i) => !i.completed).map((i) => i.name);
     return computeFrequentProducts(purchases, { excludeNames: pendingNames, limit: 6 });
-  }, [state.shoppingPurchases, listItems, selectedCategory]);
+  }, [state.shoppingPurchases, listItems]);
 
   const togglePurchased = (itemId) => {
     const item = shoppingItems.find((i) => i.id === itemId);
@@ -304,28 +295,23 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
           {listItems.length > 0 && (
             <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => setCheckoutMode(true)}><ShoppingCart size={13} /> {t("shoppingModule.checkoutMode")}</button>
           )}
+          {listItems.length > 0 && (
+            <button
+              className={"hm-btn hm-btn--compact " + (favoritesOnly ? "hm-btn-primary" : "hm-btn-soft")}
+              style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }}
+              onClick={() => setFavoritesOnly((v) => !v)}
+            >
+              <Star size={13} fill={favoritesOnly ? "currentColor" : "none"} /> {t("common.favoritesFilter")}
+            </button>
+          )}
           <button className="hm-btn hm-btn-primary hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => openModal("addShopping", { listId: activeList.id })}><Plus size={13} /> {t("shopping.add")}</button>
         </div>
       </div>
 
-      <div className="hm-card hm-card--p14">
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <Tag size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />
-          <select className="hm-input" style={{ flex: 1, minWidth: 120 }} value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
-            {categories.map((category) => (
-              <option key={category} value={category}>{category === "all" ? t("search.allCategories") : category}</option>
-            ))}
-          </select>
-          <button
-            className={"hm-btn hm-btn--compact " + (favoritesOnly ? "hm-btn-primary" : "hm-btn-soft")}
-            style={{ flexShrink: 0, whiteSpace: "nowrap", fontSize: 12.5 }}
-            onClick={() => setFavoritesOnly((v) => !v)}
-          >
-            <Star size={13} fill={favoritesOnly ? "currentColor" : "none"} /> {t("common.favoritesFilter")}
-          </button>
-          <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ flexShrink: 0, whiteSpace: "nowrap", fontSize: 12.5 }} onClick={() => openModal && openModal("editCategories")}>{t("shoppingModule.editCategories")}</button>
-        </div>
-      </div>
+      {/* Antes esta barra era selector de categoría + Favoritos + "Editar
+          categorías". Al quitar las categorías de las listas solo queda el
+          filtro de favoritos, que ya no necesita una tarjeta propia: va suelto
+          junto a las acciones de la cabecera. */}
 
       {listItems.length === 0 ? (
         <EmptyState

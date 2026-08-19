@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { Archive, Bell, Check, Clock, History, Trash2 } from "lucide-react";
+import { Bell, History, Trash2 } from "lucide-react";
 import { getCategoryMeta, getPriorityMeta } from "../notifications/meta";
+import { notificationTitle, notificationBody, notificationActionLabel } from "../notifications/notificationText";
 import { timeAgoShort } from "../utils/dates";
 import { EmptyState } from "./EmptyState";
 import { useTranslation } from "../i18n";
@@ -19,12 +20,11 @@ function findRelatedActivity(activity, entityRef) {
   return activity.find((a) => a.entityType === entityRef.type && a.entityId === entityRef.id) || null;
 }
 
-function NotificationRow({ notification, activity, onAction, onMarkRead, onArchive, onDelete, onSnooze }) {
-  const { t } = useTranslation();
+function NotificationRow({ notification, activity, unread, onAction, onDelete }) {
+  const { t, locale } = useTranslation();
   const category = getCategoryMeta(notification.category);
   const priority = getPriorityMeta(notification.priority);
   const CategoryIcon = category.icon;
-  const unread = notification.status === "unread";
   const relatedActivity = findRelatedActivity(activity, notification.entityRef);
 
   return (
@@ -38,10 +38,10 @@ function NotificationRow({ notification, activity, onAction, onMarkRead, onArchi
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
-            <div style={{ fontWeight: unread ? 700 : 600, fontSize: 13.5 }}>{notification.title}</div>
-            <div style={{ fontSize: 11, color: "var(--ink-soft)", whiteSpace: "nowrap", flexShrink: 0 }}>{timeAgoShort(notification.createdAt)}</div>
+            <div style={{ fontWeight: unread ? 700 : 600, fontSize: 13.5 }}>{notificationTitle(t, notification)}</div>
+            <div style={{ fontSize: 11, color: "var(--ink-soft)", whiteSpace: "nowrap", flexShrink: 0 }}>{timeAgoShort(notification.createdAt, t, locale)}</div>
           </div>
-          {notification.body ? <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginTop: 3 }}>{notification.body}</div> : null}
+          {notificationBody(t, notification) ? <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginTop: 3 }}>{notificationBody(t, notification)}</div> : null}
 
           {relatedActivity ? (
             <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 12, color: "var(--ink-soft)" }}>
@@ -52,25 +52,19 @@ function NotificationRow({ notification, activity, onAction, onMarkRead, onArchi
             </div>
           ) : null}
 
+          {/* Solo dos acciones: la propia de la notificación ("Ver", "Abrir
+              compra", "Completar tarea"...) y eliminar. Marcar como leída ya
+              no es un botón — abrir este panel cuenta como haberlas visto (ver
+              markAllNotificationsRead) — y archivar/posponer se quitaron para
+              no llenar la fila de iconos que casi nadie usaba. */}
           <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
             {notification.action ? (
               <button className="hm-btn hm-btn-primary hm-btn--compact" onClick={() => onAction(notification)}>
-                {notification.action.label}
+                {notificationActionLabel(t, notification)}
               </button>
             ) : null}
-            {unread ? (
-              <button className="hm-btn hm-btn-soft hm-btn--compact" onClick={() => onMarkRead(notification.id)}>
-                <Check size={12} /> {t("notificationCenter.markRead")}
-              </button>
-            ) : null}
-            <button className="hm-btn hm-btn-ghost hm-btn--compact" onClick={() => onSnooze(notification.id)} title={t("notificationCenter.snoozeAria")}>
-              <Clock size={12} />
-            </button>
-            <button className="hm-btn hm-btn-ghost hm-btn--compact" onClick={() => onArchive(notification.id)} title={t("notificationCenter.archiveAria")}>
-              <Archive size={12} />
-            </button>
             <button className="hm-btn hm-btn-ghost hm-btn--compact hm-text-danger" onClick={() => onDelete(notification.id)} title={t("notificationCenter.deleteAria")}>
-              <Trash2 size={12} />
+              <Trash2 size={12} /> {t("notificationCenter.delete")}
             </button>
           </div>
         </div>
@@ -82,8 +76,13 @@ function NotificationRow({ notification, activity, onAction, onMarkRead, onArchi
 /**
  * Centro de actividad: las críticas siempre se ven primero, el resto debajo
  * — todo en línea, sin agrupar detrás de un "resumen" que haya que desplegar.
+ *
+ * `unreadIds` es una foto fija del momento en que se abrió el panel, no el
+ * `status` actual: al abrirlo se marcan todas como leídas en el servidor, y
+ * sin esa foto las notificaciones nuevas perderían el resaltado justo cuando
+ * el usuario las está mirando.
  */
-export function NotificationCenter({ notifications = [], activity = [], onAction, onMarkRead, onArchive, onDelete, onSnooze }) {
+export function NotificationCenter({ notifications = [], activity = [], unreadIds, onAction, onDelete }) {
   const { t } = useTranslation();
   const { critical, others } = useMemo(() => {
     const critical = notifications.filter((n) => n.priority === "critical");
@@ -92,21 +91,18 @@ export function NotificationCenter({ notifications = [], activity = [], onAction
   }, [notifications]);
 
   const isEmpty = critical.length === 0 && others.length === 0;
+  const wasUnread = (n) => (unreadIds ? unreadIds.has(n.id) : n.status === "unread");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {isEmpty ? (
         <EmptyState card icon={Bell} title={t("notificationCenter.allCaughtUpTitle")} subtitle={t("notificationCenter.allCaughtUpSubtitle")} />
       ) : (
-        <>
-          {(critical.length > 0 || others.length > 0) && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {[...critical, ...others].map((n) => (
-                <NotificationRow key={n.id} notification={n} activity={activity} onAction={onAction} onMarkRead={onMarkRead} onArchive={onArchive} onDelete={onDelete} onSnooze={onSnooze} />
-              ))}
-            </div>
-          )}
-        </>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[...critical, ...others].map((n) => (
+            <NotificationRow key={n.id} notification={n} activity={activity} unread={wasUnread(n)} onAction={onAction} onDelete={onDelete} />
+          ))}
+        </div>
       )}
     </div>
   );

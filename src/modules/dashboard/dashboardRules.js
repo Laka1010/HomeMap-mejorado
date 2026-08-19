@@ -1,3 +1,5 @@
+import { toLocalDateString } from "../../utils/dates";
+
 /**
  * Reglas puras del dashboard de Inicio — sin React, sin fetch, fáciles de
  * testear. Cada función recibe datos ya cargados y devuelve una estructura
@@ -10,8 +12,17 @@
  */
 const URGENT_SHOPPING_THRESHOLD = 3;
 
+/**
+ * Clave YYYY-MM-DD del día, en hora LOCAL. Usa toLocalDateString y no
+ * `toISOString().slice(0,10)`: ese convierte a UTC primero, así que en zonas
+ * adelantadas a UTC (Madrid) a partir de las 22:00 "hoy" ya devolvía la
+ * fecha de mañana — el widget "Hoy" mostraba las tareas del día siguiente y
+ * las de hoy pasaban a contar como atrasadas. Las fechas con las que se
+ * compara (task.date, bill.due_date) son días de calendario locales, no
+ * instantes, así que el lado izquierdo también tiene que serlo.
+ */
 export function todayKey(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+  return toLocalDateString(date);
 }
 
 /**
@@ -106,7 +117,11 @@ export function computeHomeInsight({
     const top = [...unread].sort(
       (a, b) => (INSIGHT_PRIORITY_RANK[a.priority] ?? 3) - (INSIGHT_PRIORITY_RANK[b.priority] ?? 3)
     )[0];
-    return { kind: "notification", priority: top.priority, category: top.category, title: top.title };
+    // Se devuelve la notificación entera, no su `title` ya montado: el texto
+    // vive ahora en title_key/title_vars y solo la interfaz (que sí tiene el
+    // `t` del idioma activo) puede traducirlo. Estas reglas siguen siendo
+    // puras y sin dependencias de React/i18n.
+    return { kind: "notification", priority: top.priority, category: top.category, notification: top };
   }
 
   if (canSeeEconomy) {

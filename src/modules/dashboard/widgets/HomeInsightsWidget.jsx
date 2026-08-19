@@ -1,6 +1,7 @@
 import { Lightbulb, PartyPopper, Home, Wallet, ShoppingCart, TrendingDown } from "lucide-react";
 import { useTranslation } from "../../../i18n";
 import { getCategoryMeta, getPriorityMeta } from "../../../notifications/meta";
+import { notificationTitle } from "../../../notifications/notificationText";
 import { computeHomeInsight } from "../dashboardRules";
 import { WidgetCard } from "./WidgetCard";
 
@@ -23,7 +24,7 @@ export function HomeInsightsWidget({ notifications, tasks, shoppingItems, shoppi
     const priorityMeta = getPriorityMeta(insight.priority);
     Icon = getCategoryMeta(insight.category).icon;
     color = priorityMeta.color;
-    text = insight.title;
+    text = notificationTitle(t, insight.notification);
   } else if (insight.kind === "billDueTomorrow") {
     Icon = Wallet;
     color = "var(--pin)";

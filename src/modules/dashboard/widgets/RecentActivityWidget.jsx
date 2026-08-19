@@ -9,7 +9,7 @@ import { WidgetCard } from "./WidgetCard";
  * (p.ej. facturas creadas) se filtran cuando canSeeEconomy es false.
  */
 export function RecentActivityWidget({ activity, canSeeEconomy = true }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const visibleActivity = canSeeEconomy
     ? activity
     : (Array.isArray(activity) ? activity : []).filter((entry) => entry.category !== "finanzas");
@@ -22,7 +22,7 @@ export function RecentActivityWidget({ activity, canSeeEconomy = true }) {
         {items.map((entry) => (
           <div key={entry.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13.5 }}>
             <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.title}</span>
-            <span style={{ color: "var(--ink-soft)", fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>{timeAgoShort(entry.when)}</span>
+            <span style={{ color: "var(--ink-soft)", fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>{timeAgoShort(entry.when, t, locale)}</span>
           </div>
         ))}
       </div>

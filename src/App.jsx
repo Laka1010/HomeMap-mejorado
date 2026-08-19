@@ -20,7 +20,6 @@ const HouseSettingsScreen = lazy(() => import("./components/settings/HouseSettin
 const AccountHub = lazy(() => import("./components/settings/AccountHub").then((m) => ({ default: m.AccountHub })));
 const MemberDetailScreen = lazy(() => import("./components/settings/MemberDetailScreen").then((m) => ({ default: m.MemberDetailScreen })));
 const SecurityCenter = lazy(() => import("./modules/security/SecurityCenter").then((m) => ({ default: m.SecurityCenter })));
-import { CategoriesSection } from "./components/settings/CategoriesSection";
 import { AppHeader } from "./components/AppHeader";
 import { NotificationSection } from "./components/settings/NotificationSection";
 import { detectObjects } from "./services/visionService";
@@ -72,7 +71,7 @@ import { useHomeNavigation } from "./hooks/useHomeNavigation";
 import { NotificationCenter } from "./components/NotificationCenter";
 import { buildNotificationActionHandlers } from "./notifications/notificationActions";
 import { PRIORITY_LEVELS } from "./modules/shopping/shoppingMeta";
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "./modules/economy/economyCategories";
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY } from "./modules/economy/economyCategories";
 import { normalizeText, fuzzyMatch, fuzzyMatchAny } from "./utils/textMatch";
 import { ActionCenter } from "./components/ActionCenter";
 import { GlobalSearchModal } from "./modules/search/GlobalSearchModal";
@@ -954,7 +953,13 @@ function StatChip({ value, label }) {
 /* ADD / EDIT FORMS (Wizards)                                            */
 /* -------------------------------------------------------------------- */
 
-function AddShoppingModal({ onClose, onSave, categories = [], openSettings }) {
+/**
+ * `category` sigue en el formulario aunque ya no haya selector: se guarda
+ * siempre vacía desde aquí, pero la columna sigue viva y la rellenan otras
+ * vías (el escaneo de tickets, y repetir una compra del historial), que son
+ * las que alimentan el emoji del icono en la lista.
+ */
+function AddShoppingModal({ onClose, onSave }) {
   const { t } = useTranslation();
   const [form, setForm] = useState({ name: "", price: "", category: "", notes: "", priority: "week" });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -983,19 +988,6 @@ function AddShoppingModal({ onClose, onSave, categories = [], openSettings }) {
             <p.icon size={14} /> {p.label}
           </button>
         ))}
-      </div>
-
-      <div style={{ display: "flex", gap: 8, alignItems: "flex-end", marginTop: 14 }}>
-        <div style={{ flex: 1 }}>
-          <label className="hm-label">{t("addShopping.category") || "Categoría"}</label>
-          <select className="hm-input" value={form.category} onChange={set("category")}>
-            <option value="">{t("search.allCategories") || "Sin categoría"}</option>
-            {(Array.isArray(categories) ? categories : []).map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <button className="hm-btn hm-btn-soft" onClick={() => openSettings && openSettings()}>
-          {t("quickAdd.editCategoriesTitle")}
-        </button>
       </div>
 
       <label className="hm-label" style={{ marginTop: 14 }}>{t("addShopping.price")}</label>
@@ -1261,6 +1253,20 @@ const ANALYSIS_MESSAGES = {
   classifying: "Clasificando categorías…",
 };
 const ANALYSIS_PROGRESS = { uploading: 30, analyzing: 68, classifying: 92 };
+/**
+ * Pasos que emite visionService/claudeVision -> clave i18n. Se mapea con esta
+ * tabla explícita en vez de concatenar `"scan." + paso`: `t()` devuelve la
+ * propia clave cuando no la encuentra, y esa cadena es truthy, así que el
+ * `|| t("scan.analyzing")` que había como red de seguridad nunca llegaba a
+ * ejecutarse — el paso "uploading" (el inicial, y el único sin traducción)
+ * se le enseñaba al usuario como el literal "scan.uploading".
+ */
+const SCAN_STEP_KEYS = {
+  uploading: "scan.uploading",
+  analyzing: "scan.analyzing",
+  recognizing: "scan.recognizing",
+  classifying: "scan.classifying",
+};
 
 function ScanSpaceModal({ onClose, onImport, state }) {
   const { t } = useTranslation();
@@ -1445,7 +1451,7 @@ function ScanSpaceModal({ onClose, onImport, state }) {
           )}
           <div style={{ textAlign: "center" }}>
             <div style={{ width: 44, height: 44, margin: "0 auto 16px", borderRadius: "50%", border: "3px solid var(--accent-soft)", borderTopColor: "var(--accent)", animation: "hmSpin 0.9s linear infinite" }} />
-            <p style={{ fontWeight: 700, margin: "0 0 4px" }}>{t("scan." + analysisStep) || t("scan.analyzing")}</p>
+            <p style={{ fontWeight: 700, margin: "0 0 4px" }}>{t(SCAN_STEP_KEYS[analysisStep] || "scan.analyzing")}</p>
             <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: 0 }}>{t("scanSpace.aiStatus")}</p>
           </div>
           <div style={{ marginTop: 22, height: 8, borderRadius: 999, background: "var(--surface-alt)", overflow: "hidden" }}>
@@ -2034,9 +2040,14 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateObject, houseId 
     const childObjects = state.objects.filter((o) => o.containerId === activeContainer.id);
     const childContainers = state.containers.filter((c) => c.parentId === activeContainer.id);
     const parentContainer = activeContainer.parentId ? getContainer(state, activeContainer.parentId) : null;
+    // Al salir de una caja de primer nivel se vuelve a la habitación de la que
+    // se vino (el pilar Hogar repinta MiCasa con `micasaView` intacto), así
+    // que el botón muestra el nombre de esa habitación y no un genérico
+    // "Cajas" que llevaría a pensar que se va a la lista de cajas.
+    const parentRoom = !parentContainer && activeContainer.roomId ? getRoom(state, activeContainer.roomId) : null;
     return (
       <div className="hm-fade-in">
-        <button className="hm-btn hm-btn-ghost" style={{ paddingLeft: 0, marginBottom: 8 }} onClick={() => setView(parentContainer ? { containerId: parentContainer.id } : {})}><ArrowLeft size={16} />{parentContainer ? parentContainer.name : t("room.boxesSection")}</button>
+        <button className="hm-btn hm-btn-ghost" style={{ paddingLeft: 0, marginBottom: 8 }} onClick={() => setView(parentContainer ? { containerId: parentContainer.id } : {})}><ArrowLeft size={16} />{parentContainer ? parentContainer.name : (parentRoom?.name || t("room.boxesSection"))}</button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
@@ -2239,9 +2250,28 @@ const BottomNav = memo(function BottomNav({ active, onSelect, nav = NAV }) {
   );
 });
 
-function NotificationsModal({ notifications, activity, onAction, onMarkRead, onArchive, onDelete, onSnooze, onClose }) {
+function NotificationsModal({ notifications, activity, onAction, onDelete, onMarkAllRead, onClose }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  /**
+   * Abrir el panel ya cuenta como haber visto las notificaciones: se marcan
+   * todas como leídas para que el contador rojo del icono desaparezca sin
+   * tener que pulsar nada.
+   *
+   * `unreadIds` congela cuáles estaban sin leer JUSTO al abrir (inicializador
+   * de useState, que solo corre en el primer render). Sin esa foto, el
+   * refresco posterior las devolvería ya como "read" y perderían el resaltado
+   * mientras el usuario las está leyendo.
+   */
+  const [unreadIds] = useState(
+    () => new Set(notifications.filter((n) => n.status === "unread").map((n) => n.id))
+  );
+  useEffect(() => {
+    onMarkAllRead?.();
+    // Solo al abrir: las dependencias se dejan vacías a propósito para no
+    // relanzar el UPDATE en cada refresco de la lista.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
       <div className="hm-modal hm-scroll" style={{ maxWidth: 540, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
@@ -2256,11 +2286,9 @@ function NotificationsModal({ notifications, activity, onAction, onMarkRead, onA
           <NotificationCenter
             notifications={notifications}
             activity={activity}
+            unreadIds={unreadIds}
             onAction={onAction}
-            onMarkRead={onMarkRead}
-            onArchive={onArchive}
             onDelete={onDelete}
-            onSnooze={onSnooze}
           />
         </div>
       </div>
@@ -2619,9 +2647,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const {
     notifications,
     markNotificationRead,
-    archiveNotification,
+    markAllNotificationsRead,
     deleteNotification,
-    snoozeNotification,
   } = useNotificationsEngine(state, activeHome?.id, user?.id, loaded);
 
   const handleNotificationAction = (notification) => {
@@ -2820,7 +2847,10 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         closeModal();
         return;
       }
-      if (route?.tab === "cajas" && cajasView?.containerId) {
+      // Una caja abierta vive dentro del pilar "hogar" (route.tab nunca vale
+      // "cajas", ver mapTabToNewPillar), y se comprueba ANTES que micasaView
+      // porque el pilar la pinta con esa misma prioridad.
+      if (route?.tab === "hogar" && cajasView?.containerId) {
         const activeContainer = getContainer(state, cajasView.containerId);
         setCajasView(activeContainer?.parentId ? { containerId: activeContainer.parentId } : {});
         return;
@@ -3099,7 +3129,11 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         created_by: user.id,
         name: store || t("actionCenter.shopping"),
         amount,
-        category: EXPENSE_CATEGORIES[0],
+        // "Otros", no EXPENSE_CATEGORIES[0]: una compra puede ser de
+        // cualquier cosa (ferretería, ropa...) y aquí el usuario no llega a
+        // elegir categoría, así que asignar "Alimentación" sería inventarse
+        // un dato. El toast ofrece "Editar" para afinarla.
+        category: DEFAULT_CATEGORY,
         shopping_purchase_id: purchaseId,
       });
       setEconomyVersion((v) => v + 1);
@@ -3383,8 +3417,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       created_by: user.id,
       name: b.name,
       amount: b.amount,
-      due_date: b.dueDate || new Date().toISOString().slice(0, 10),
-      category: b.category || EXPENSE_CATEGORIES[0],
+      due_date: b.dueDate || toLocalDateString(new Date()),
+      category: b.category || DEFAULT_CATEGORY,
       frequency: b.frequency || "once",
     }).catch((error) => {
       console.error("Error creating bill:", error);
@@ -3392,6 +3426,17 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     });
   };
 
+  /**
+   * Alta manual de un gasto (Movimientos): dinero que sale, sin lista ni
+   * productos detrás. NUNCA escribe shopping_purchase_id — el único camino
+   * que puede vincular un gasto con una compra es registerPurchaseExpense,
+   * disparado desde Compras al cerrar una compra con importe > 0. Así la
+   * separación conceptual (Compras = qué he comprado / Movimientos = qué ha
+   * pasado con mi dinero) también es una invariante del código, y no solo
+   * de la UI: no existe forma de crear "a mano" un gasto que finja venir de
+   * una compra, ni de generar un segundo gasto para una compra que ya tiene
+   * el suyo.
+   */
   const addExpense = (e) => {
     setEconomyVersion((v) => v + 1);
     showNotice(t("toast.expenseRegistered", { name: e.name || (e.amount ? formatAmount(e.amount) : '') }));
@@ -3401,8 +3446,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       created_by: user.id,
       name: e.name,
       amount: e.amount,
-      category: e.category || "Otros",
-      shopping_purchase_id: e.purchaseId || null,
+      category: e.category || DEFAULT_CATEGORY,
     }).catch((error) => {
       console.error("Error creating expense:", error);
       showNotice(t("toast.expenseSaveError"));
@@ -3427,6 +3471,12 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     showNotice(t("toast.expenseRegistered", { name: updates.name || (updates.amount ? formatAmount(updates.amount) : '') }));
   };
 
+  /**
+   * Alta de un ingreso. Su única UI es AddMovementModal (el interruptor
+   * Gasto/Ingreso): el modal suelto "addIncome" que existía aquí estaba
+   * muerto — ningún openModal lo abría — y era un segundo formulario para
+   * lo mismo, así que se ha eliminado en vez de dejarlo como vía paralela.
+   */
   const addIncome = (inc) => {
     setEconomyVersion((v) => v + 1);
     showNotice(t("toast.incomeRegistered", { name: inc.name || (inc.amount ? formatAmount(inc.amount) : '') }));
@@ -3436,7 +3486,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       created_by: user.id,
       name: inc.name,
       amount: inc.amount,
-      category: inc.category || "Otros",
+      category: inc.category || DEFAULT_CATEGORY,
     }).catch((error) => {
       console.error("Error creating income:", error);
       showNotice(t("toast.incomeSaveError"));
@@ -3473,7 +3523,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           const nextPath = locationPath(s, { ...o, ...normalized });
           const locationHistory = [
             ...(o.locationHistory || []),
-            { date: new Date().toISOString().slice(0, 10), path: nextPath },
+            { date: toLocalDateString(new Date()), path: nextPath },
           ];
           persistedPatch = { ...normalized, locationHistory };
           return { ...o, ...normalized, locationHistory };
@@ -3504,7 +3554,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           purchaseDate: "",
           price: "",
           notes: d.notes || `Importado con IA desde escaneo de espacio (confianza ${Math.round((d.confidence ?? 0.75) * 100)}%).`,
-          createdAt: new Date().toISOString().slice(0, 10),
+          createdAt: toLocalDateString(new Date()),
           photo: null,
           locationHistory: [],
         };
@@ -3660,8 +3710,18 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               />
             )}
              
-            {/* 🏡 HOGAR - Rooms, Zones, Containers, Objects */}
-            {route.tab === "hogar" && <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} onUpdateCategories={updateCategories} houseId={currentHome?.id} />}
+            {/* 🏡 HOGAR - Rooms, Zones, Containers, Objects
+                Una caja abierta (`cajasView.containerId`) se pinta en lugar de
+                MiCasa dentro del MISMO pilar: `goTo({tab:"cajas"})` normaliza a
+                "hogar" (ver mapTabToNewPillar), así que no existe una ruta
+                "cajas" propia donde montar <Cajas>. Al cerrar la caja, Cajas
+                hace setView({}) y se vuelve solo a la habitación de la que se
+                vino, que sigue intacta en `micasaView`. */}
+            {route.tab === "hogar" && (
+              cajasView?.containerId
+                ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />
+                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} onUpdateCategories={updateCategories} houseId={currentHome?.id} />
+            )}
 
             {/* ✅ ORGANIZACIÓN - Shopping, Tasks, Calendar */}
             {route.tab === "organizacion" && (
@@ -3729,14 +3789,15 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               </div>
             )}
 
-            {/* BACKWARDS COMPATIBILITY - Old routes still work */}
-            {route.tab === "micasa" && <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} onUpdateCategories={updateCategories} houseId={currentHome?.id} />}
-            {route.tab === "cajas" && <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />}
-            <Suspense fallback={null}>
-              {route.tab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}
-              {route.tab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onTaskCompleted={logTaskCompleted} />}
-              {route.tab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} />}
-            </Suspense>
+            {/* Nota: aquí vivía un bloque "BACKWARDS COMPATIBILITY" que
+                comprobaba route.tab contra las claves antiguas (micasa,
+                cajas, compras, tareas, calendario). Era código muerto:
+                goTo/selectTab normalizan SIEMPRE la clave con
+                mapTabToNewPillar antes de setRoute, y los únicos setRoute
+                directos usan "inicio" o prevTab (que ya guarda valores
+                normalizados), así que route.tab nunca puede tomar ninguna de
+                ellas. La compatibilidad real la da mapTabToNewPillar, no
+                estas ramas. */}
 
             {/* Object Detail */}
             {route.tab === "objectDetail" && <ObjectDetail state={state} objectId={route.objectId} onBack={() => setRoute({ tab: prevTab || "inicio" })} onDelete={deleteObject} onMove={moveObject} onUpdateObject={updateObject} dispatch={dispatch} houseId={currentHome?.id} />}
@@ -3829,10 +3890,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           notifications={notifications}
           activity={state.activity}
           onAction={handleNotificationAction}
-          onMarkRead={markNotificationRead}
-          onArchive={archiveNotification}
           onDelete={deleteNotification}
-          onSnooze={snoozeNotification}
+          onMarkAllRead={markAllNotificationsRead}
           onClose={closeModal}
         />
       )}
@@ -3912,16 +3971,13 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         <AddContainerWizard state={state} onClose={closeModal} onSave={addContainer} defaults={modal.payload} />
       )}
       {modal?.type === "addObject" && <AddObjectWizard state={state} defaults={modal.payload} onClose={closeModal} onSave={addObject} />}
-      {modal?.type === "addShopping" && <AddShoppingModal onClose={closeModal} onSave={(item) => addShopping({ ...item, listId: modal.payload?.listId || null })} categories={state.categories} openSettings={() => openModal("editCategories")} /> }
+      {modal?.type === "addShopping" && <AddShoppingModal onClose={closeModal} onSave={(item) => addShopping({ ...item, listId: modal.payload?.listId || null })} /> }
 
-      {modal?.type === "editCategories" && (
-        <Modal title={t("quickAdd.editCategoriesTitle")} onClose={closeModal}>
-          <CategoriesSection
-            categories={state.categories}
-            onChange={updateCategories}
-          />
-        </Modal>
-      )}
+      {/* El modal "editCategories" se quitó al sacar las categorías de las
+          listas de la compra: sus dos únicos accesos estaban ahí. Las
+          categorías se siguen gestionando (y se siguen usando en el
+          inventario) desde Configuración de la casa, que monta el mismo
+          CategoriesSection. */}
 
       {modal?.type === "addTask" && (
         <Modal title={t("quickAdd.createTaskTitle")} onClose={closeModal}>
@@ -4057,7 +4113,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.dueDateLabel")}</label>
           <input className="hm-input" type="date" id="ac-bill-due" />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.categoryLabel")}</label>
-          <select className="hm-input" id="ac-bill-category" defaultValue={EXPENSE_CATEGORIES[0]}>
+          <select className="hm-input" id="ac-bill-category" defaultValue={DEFAULT_CATEGORY}>
             {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.repeatLabel")}</label>
@@ -4098,7 +4154,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.amountLabel")}</label>
           <input className="hm-input" type="number" placeholder="0.00" id="ac-exp-amount" defaultValue={modal.payload?.amount || ""} />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.categoryLabel")}</label>
-          <select className="hm-input" id="ac-exp-cat" defaultValue={EXPENSE_CATEGORIES.includes(modal.payload?.category) ? modal.payload.category : EXPENSE_CATEGORIES[0]}>
+          <select className="hm-input" id="ac-exp-cat" defaultValue={EXPENSE_CATEGORIES.includes(modal.payload?.category) ? modal.payload.category : DEFAULT_CATEGORY}>
             {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
@@ -4106,7 +4162,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             <button className="hm-btn hm-btn-primary" onClick={() => {
               const name = document.getElementById("ac-exp-name").value || t("quickAdd.registerExpenseTitle");
               const amount = parseFloat(document.getElementById("ac-exp-amount").value || 0);
-              const category = document.getElementById("ac-exp-cat").value || "Otros";
+              const category = document.getElementById("ac-exp-cat").value || DEFAULT_CATEGORY;
               if (modal.payload?.expenseId) {
                 updateExpenseFromModal(modal.payload.expenseId, { name, amount, category });
               } else {
@@ -4117,27 +4173,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         </Modal>
       )}
 
-      {modal?.type === "addIncome" && (
-        <Modal title={t("quickAdd.registerIncomeTitle")} onClose={closeModal}>
-          <label className="hm-label">{t("quickAdd.nameLabel")}</label>
-          <input className="hm-input" placeholder={t("quickAdd.incomeNamePlaceholder")} id="ac-inc-name" />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.amountLabel")}</label>
-          <input className="hm-input" type="number" placeholder="0.00" id="ac-inc-amount" />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.categoryLabel")}</label>
-          <select className="hm-input" id="ac-inc-cat" defaultValue={INCOME_CATEGORIES[0]}>
-            {INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
-            <button className="hm-btn hm-btn-primary" onClick={() => {
-              const name = document.getElementById("ac-inc-name").value || t("quickAdd.registerIncomeTitle");
-              const amount = parseFloat(document.getElementById("ac-inc-amount").value || 0);
-              const category = document.getElementById("ac-inc-cat").value || "Otros";
-              addIncome({ name, amount, category });
-            }}>{t("quickAdd.register")}</button>
-          </div>
-        </Modal>
-      )}
       {modal?.type === "scan" && <ScanSpaceModal state={state} onClose={closeModal} onImport={importScanned} />}
       <OnboardingManager
         user={user}

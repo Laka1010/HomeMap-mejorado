@@ -58,7 +58,7 @@ export function AddObjectWizard({ state, onClose, onSave, defaults = {} }) {
     const newObject = {
       id: "o-" + Math.random().toString(36).slice(2, 10),
       ...data,
-      createdAt: new Date().toISOString().slice(0, 10),
+      createdAt: toLocalDateString(new Date()),
       locationHistory: [],
     };
     onSave(newObject);

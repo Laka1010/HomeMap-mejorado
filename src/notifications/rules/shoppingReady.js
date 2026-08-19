@@ -13,9 +13,17 @@ export const rule = {
       priority: "important",
       dedupeKey: "shopping_ready",
       title: "Parece que ya tienes suficiente para hacer la compra",
+      titleKey: "notifications.shoppingReadyTitle",
       body: `${urgentPending.length} productos marcados como muy necesarios.`,
+      bodyKey: "notifications.shoppingReadyBody",
+      bodyVars: { count: urgentPending.length },
       entityRef: { type: "shoppingItems" },
-      action: { type: "open_shopping", label: "Abrir compra", payload: {} },
+      action: {
+        type: "open_shopping",
+        label: "Abrir compra",
+        labelKey: "notifications.openShoppingAction",
+        payload: {},
+      },
     }];
   },
 };

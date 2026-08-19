@@ -281,14 +281,24 @@ export const economyService = {
    * @param {string} billId
    * @returns {Promise<boolean>}
    */
+  /**
+   * Los DELETE devuelven las filas borradas con `.select("id")` y se comprueba
+   * que haya al menos una, en vez de fiarse de `!error`: si RLS bloquea el
+   * borrado (o el id no existe), PostgREST responde 200 sin error y con 0
+   * filas afectadas, así que `!error` daba `true` para un borrado que nunca
+   * ocurrió. deleteShoppingPurchase en App.jsx usa ese booleano para decidir
+   * si sigue adelante, y con el contrato viejo borraba la compra dejando vivo
+   * el gasto que creía haber eliminado.
+   */
   async deleteBill(billId) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("economy_bills")
       .delete()
-      .eq("id", billId);
+      .eq("id", billId)
+      .select("id");
 
     if (error) console.error("Error deleting bill:", error);
-    return !error;
+    return !error && (data?.length ?? 0) > 0;
   },
 
   /**
@@ -331,14 +341,16 @@ export const economyService = {
    * @param {string} expenseId
    * @returns {Promise<boolean>}
    */
+  /** Mismo contrato que deleteBill: true solo si se borró una fila real. */
   async deleteExpense(expenseId) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("economy_expenses")
       .delete()
-      .eq("id", expenseId);
+      .eq("id", expenseId)
+      .select("id");
 
     if (error) console.error("Error deleting expense:", error);
-    return !error;
+    return !error && (data?.length ?? 0) > 0;
   },
 
   /**
@@ -403,14 +415,16 @@ export const economyService = {
    * @param {string} incomeId
    * @returns {Promise<boolean>}
    */
+  /** Mismo contrato que deleteBill: true solo si se borró una fila real. */
   async deleteIncome(incomeId) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("economy_income")
       .delete()
-      .eq("id", incomeId);
+      .eq("id", incomeId)
+      .select("id");
 
     if (error) console.error("Error deleting income:", error);
-    return !error;
+    return !error && (data?.length ?? 0) > 0;
   },
 
   /**

@@ -20,10 +20,18 @@ export const rule = {
         category: rule.category,
         priority: "important",
         dedupeKey: `calendar_event_soon:${e.type}:${e.id}`,
+        // El título es el del propio evento (texto del usuario): no se traduce.
         title: e.title,
         body: `${e.type} programada en las próximas ${HOURS_AHEAD} horas.`,
+        bodyKey: "notifications.calendarEventSoonBody",
+        bodyVars: { type: e.type, hours: HOURS_AHEAD },
         entityRef: { type: "calendarEvent", id: e.id },
-        action: { type: "open_calendar", label: "Ver calendario", payload: {} },
+        action: {
+          type: "open_calendar",
+          label: "Ver calendario",
+          labelKey: "notifications.openCalendarAction",
+          payload: {},
+        },
       }));
   },
 };

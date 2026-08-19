@@ -1,3 +1,5 @@
+import { toLocalDateString } from "../../utils/dates";
+
 function startOfWeek(date) {
   const result = new Date(date);
   const day = (date.getDay() + 6) % 7; // lunes=0
@@ -20,10 +22,17 @@ export const rule = {
       type: rule.id,
       category: rule.category,
       priority: "info",
-      dedupeKey: `finance_no_expense:${weekStart.toISOString().slice(0, 10)}`,
+      dedupeKey: `finance_no_expense:${toLocalDateString(weekStart)}`,
       title: "Aún no has registrado ningún gasto esta semana",
+      titleKey: "notifications.financeNoExpenseTitle",
       body: "Registra tus gastos para llevar un control real de la economía del hogar.",
-      action: { type: "log_expense", label: "Registrar gasto", payload: {} },
+      bodyKey: "notifications.financeNoExpenseBody",
+      action: {
+        type: "log_expense",
+        label: "Registrar gasto",
+        labelKey: "notifications.logExpenseAction",
+        payload: {},
+      },
     }];
   },
 };

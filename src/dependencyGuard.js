@@ -20,7 +20,6 @@ export const DEPENDENCY_RULES = {
   addShopping: { resource: "shoppingLists", missing: "shoppingList" },
   addBill: { resource: "homes", missing: "house" },
   addExpense: { resource: "homes", missing: "house" },
-  addIncome: { resource: "homes", missing: "house" },
   addMovement: { resource: "homes", missing: "house" },
 };
 

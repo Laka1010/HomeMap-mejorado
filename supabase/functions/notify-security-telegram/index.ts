@@ -83,7 +83,13 @@ Deno.serve(async (req) => {
 
   let payload: Record<string, unknown> = {};
   try {
-    payload = await req.json();
+    const parsed = await req.json();
+    // `req.json()` también acepta `null`, un array o un número; sin esta
+    // comprobación, un body así hacía que buildMessage lanzara TypeError al
+    // leer `payload.event_label` y la alerta crítica se perdía con un 500.
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      payload = parsed as Record<string, unknown>;
+    }
   } catch {
     // Body ausente o no-JSON: se manda igualmente la alerta con el
     // fallback genérico -- perder el detalle nunca debe impedir avisar de

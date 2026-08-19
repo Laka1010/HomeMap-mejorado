@@ -25,14 +25,20 @@ export const rule = {
     if (Math.abs(diffPercent) < MIN_DIFF_PERCENT) return [];
 
     const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-    const verb = diffPercent < 0 ? "menos" : "más";
+    const spentLess = diffPercent < 0;
+    const percent = Math.abs(diffPercent);
     return [{
       type: rule.id,
       category: rule.category,
       priority: "info",
       dedupeKey: `finance_comparison:${monthKey}`,
-      title: `Este mes has gastado un ${Math.abs(diffPercent)}% ${verb} que el anterior`,
+      // Dos claves distintas en vez de una con un {{verbo}} interpolado: en
+      // inglés "menos"/"más" no son intercambiables dentro de la misma frase.
+      title: `Este mes has gastado un ${percent}% ${spentLess ? "menos" : "más"} que el anterior`,
+      titleKey: spentLess ? "notifications.financeSpentLessTitle" : "notifications.financeSpentMoreTitle",
+      titleVars: { percent },
       body: "Comparado con el mismo número de días del mes pasado.",
+      bodyKey: "notifications.financeComparisonBody",
     }];
   },
 };

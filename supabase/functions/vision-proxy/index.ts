@@ -11,13 +11,22 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 // (escanear objetos/tickets); ajustar si hace falta.
 const DAILY_CALL_LIMIT = 60;
 
+// El prompt pide un OBJETO con la clave "objects" y no un array suelto porque
+// la llamada usa response_format: { type: "json_object" }, que obliga al
+// modelo a devolver un objeto en la raíz. Pedirle un array mientras se le
+// prohíbe devolverlo dejaba el resultado a merced de qué nombre de clave
+// eligiera el modelo para envolverlo: si no acertaba con "objects", el
+// parseo caía al array vacío y el escaneo "no detectaba nada".
 const OBJECT_DETECTION_PROMPT = `
 Analiza esta fotografía de un espacio doméstico (cajón, estantería, caja o habitación).
 Identifica cada objeto individual visible y claramente reconocible.
-Responde ÚNICAMENTE con un array JSON, sin texto adicional, con este formato exacto:
-[
-  { "name": "Nombre del objeto", "category": "Una categoría breve", "confidence": 0.0-1.0 }
-]
+Responde ÚNICAMENTE con un JSON, sin texto adicional, con este formato exacto:
+{
+  "objects": [
+    { "name": "Nombre del objeto", "category": "Una categoría breve", "confidence": 0.0-1.0 }
+  ]
+}
+Si no reconoces ningún objeto, responde { "objects": [] }.
 `.trim();
 
 const KNOWN_STORES = [
@@ -59,16 +68,25 @@ Reglas importantes:
 - "unitPrice" es el precio por unidad, no el total de la línea.
 `.trim();
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-    },
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
   });
+}
+
+// El preflight se responde SIN cuerpo: 204 es un "null body status", así que
+// `new Response(json, { status: 204 })` lanza TypeError por especificación.
+// Como el preflight se atendía antes del try/catch, ese throw salía como un
+// 500 sin cabeceras CORS y el navegador bloqueaba la llamada real.
+function preflightResponse() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
 // Tamaño decodificado aproximado de un data URL base64, sin decodificarlo
@@ -114,7 +132,7 @@ function parseJsonLoosely(rawText: string, fallback: unknown) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return jsonResponse({ ok: true }, 204);
+    return preflightResponse();
   }
 
   if (req.method !== "POST") {
@@ -167,7 +185,7 @@ Deno.serve(async (req) => {
     const prompt = isReceiptMode ? RECEIPT_SCAN_PROMPT : OBJECT_DETECTION_PROMPT;
     const systemMessage = isReceiptMode
       ? "Devuelve solo un JSON válido con un objeto, sin texto adicional."
-      : "Devuelve solo un JSON válido con un array de objetos, sin texto adicional.";
+      : "Devuelve solo un JSON válido con un objeto que tenga la clave \"objects\", sin texto adicional.";
 
     const client = new OpenAI({ apiKey });
     const completion = await client.chat.completions.create({
@@ -185,16 +203,18 @@ Deno.serve(async (req) => {
       ],
     });
 
-    const rawText = completion.choices?.[0]?.message?.content ?? (isReceiptMode ? "{}" : "[]");
+    const rawText = completion.choices?.[0]?.message?.content ?? "{}";
 
     if (isReceiptMode) {
       const parsed = parseJsonLoosely(rawText, {});
       return jsonResponse(parsed);
     }
 
-    const parsed = parseJsonLoosely(rawText, []);
+    // Se sigue aceptando un array suelto: es lo que devolvían las respuestas
+    // anteriores a este cambio y no cuesta nada seguir tolerándolo.
+    const parsed = parseJsonLoosely(rawText, {});
     const objects = Array.isArray(parsed) ? parsed : parsed?.objects ?? [];
-    return jsonResponse(objects);
+    return jsonResponse(Array.isArray(objects) ? objects : []);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     return jsonResponse({ error: message }, 500);

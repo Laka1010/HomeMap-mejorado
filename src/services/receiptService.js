@@ -1,6 +1,7 @@
 import { supabase } from "../supabaseClient";
 import { fileToBase64 } from "./photoUtils.jsx";
 import { normalizeText } from "../utils/textMatch";
+import { toLocalDateString } from "../utils/dates";
 
 /**
  * Servicio de escaneo de tickets con IA.
@@ -19,13 +20,24 @@ export const KNOWN_STORES = [
   "Dia", "Bonpreu", "Esclat", "Caprabo", "Alcampo",
 ];
 
-/** Si el nombre detectado se parece a uno conocido, lo normaliza a su forma canónica. */
+/**
+ * Si el nombre detectado se parece a uno conocido, lo normaliza a su forma
+ * canónica.
+ *
+ * La comparación es por PALABRA COMPLETA, no por subcadena: con
+ * `target.includes(normalized)` cualquier tienda cuyo nombre contuviera "dia"
+ * ("Mediamarkt Diagonal", "Farmacia Diaz"...) se renombraba a "Dia", y lo
+ * mismo con "aldi" dentro de otras palabras. Los nombres de tienda cortos de
+ * KNOWN_STORES hacen que ese falso positivo sea la norma, no el caso raro.
+ */
 export function normalizeStoreName(detected) {
   if (!detected) return "";
   const target = normalizeText(detected);
+  if (!target) return detected;
+  const words = target.split(/[^a-z0-9]+/).filter(Boolean);
   const match = KNOWN_STORES.find((s) => {
     const normalized = normalizeText(s);
-    return target === normalized || target.includes(normalized);
+    return target === normalized || words.includes(normalized);
   });
   return match || detected;
 }
@@ -84,7 +96,7 @@ function buildMockResult() {
   const total = round2(subtotal - discountAmount + taxAmount);
   return {
     store: template.store,
-    date: new Date().toISOString().slice(0, 10),
+    date: toLocalDateString(new Date()),
     items,
     taxAmount,
     discountAmount,
@@ -123,7 +135,7 @@ export async function extractReceipt(imageFile, { onProgress, isCancelled } = {}
   const items = itemsWithTotals(data.items || []);
   return {
     store: data.store || "",
-    date: data.date || new Date().toISOString().slice(0, 10),
+    date: data.date || toLocalDateString(new Date()),
     items,
     taxAmount: data.taxAmount ?? null,
     discountAmount: data.discountAmount ?? null,

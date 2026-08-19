@@ -24,15 +24,25 @@ export function useNotificationsEngine(state, activeHomeId, userId, loaded) {
   const markNotificationRead = async (id) => {
     try { await notificationsService.markRead(id); await refreshNotifications(); } catch (error) { console.error("Error marking notification read:", error); }
   };
-  const archiveNotification = async (id) => {
-    try { await notificationsService.archive(id); await refreshNotifications(); } catch (error) { console.error("Error archiving notification:", error); }
-  };
   const deleteNotification = async (id) => {
     try { await notificationsService.remove(id); await refreshNotifications(); } catch (error) { console.error("Error deleting notification:", error); }
   };
-  const snoozeNotification = async (id) => {
-    const until = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
-    try { await notificationsService.snooze(id, until); await refreshNotifications(); } catch (error) { console.error("Error snoozing notification:", error); }
+
+  /**
+   * Lo llama el centro de actividad al abrirse: entrar ya cuenta como haber
+   * visto lo que hay, así que el contador rojo del icono se apaga solo.
+   * Sale pronto si no hay nada sin leer, para no lanzar un UPDATE por cada
+   * vez que se abre el panel.
+   */
+  const markAllNotificationsRead = async () => {
+    if (!activeHomeId || !userId) return;
+    if (!notifications.some((n) => n.status === "unread")) return;
+    try {
+      await notificationsService.markAllRead(activeHomeId, userId);
+      await refreshNotifications();
+    } catch (error) {
+      console.error("Error marking all notifications read:", error);
+    }
   };
 
   /**
@@ -70,8 +80,7 @@ export function useNotificationsEngine(state, activeHomeId, userId, loaded) {
     notifications,
     refreshNotifications,
     markNotificationRead,
-    archiveNotification,
+    markAllNotificationsRead,
     deleteNotification,
-    snoozeNotification,
   };
 }

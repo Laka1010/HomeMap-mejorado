@@ -39,8 +39,19 @@ export function useHomesAndMembers(userId) {
     }
   }, [homes, userId]);
 
+  /**
+   * Selecciona una casa cuando no hay ninguna elegida Y ADEMÁS descarta un
+   * `currentHomeId` que ya no está en la lista (te han expulsado de la casa,
+   * o el owner la ha borrado desde otro dispositivo). Sin esta segunda
+   * comprobación el id obsoleto sobrevivía a `refreshHomes`: `activeHome`
+   * pasaba a null (miembros/notificaciones/retención vacíos) mientras
+   * `currentHome` en App.jsx caía a `homes[0]`, así que la app enseñaba el
+   * contenido cacheado de la casa vieja y escribía las altas nuevas en otra
+   * casa distinta.
+   */
   useEffect(() => {
-    if (homes.length > 0 && !currentHomeId) {
+    if (homes.length === 0) return;
+    if (!currentHomeId || !homes.some((h) => h.id === currentHomeId)) {
       setCurrentHomeId(homes[0].id);
     }
   }, [homes, currentHomeId]);
