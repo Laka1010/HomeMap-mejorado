@@ -40,11 +40,12 @@ function CategoryEmojiIcon({ emoji }) {
 }
 
 function PriorityBadge({ priority }) {
+  const { t } = useTranslation();
   const meta = getPriorityMeta(priority);
   const Icon = meta.icon;
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: meta.color, fontWeight: 700, fontSize: 11.5, whiteSpace: "nowrap" }}>
-      <Icon size={12} /> {meta.label}
+      <Icon size={12} /> {t(meta.labelKey)}
     </span>
   );
 }

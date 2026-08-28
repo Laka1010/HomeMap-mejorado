@@ -31,8 +31,8 @@ export function toDateKey(dateValue) {
   return `${year}-${month}-${day}`;
 }
 
-export function formatDayLabel(date) {
-  return date.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+export function formatDayLabel(date, locale = "es") {
+  return date.toLocaleDateString(locale === "en" ? "en-GB" : "es-ES", { day: "numeric", month: "short" });
 }
 
 /** Devuelve los 7 Date (lunes -> domingo) de la semana que contiene `anchorDate`. */
@@ -59,12 +59,12 @@ export function getDaysUntil(dueDate) {
   return Math.ceil(diff / (1000 * 3600 * 24));
 }
 
-export function billDueLabel(dueDate) {
+export function billDueLabel(dueDate, t) {
   const days = getDaysUntil(dueDate);
-  if (days === 0) return "Vence hoy";
-  if (days === 1) return "Vence mañana";
-  if (days < 0) return `Venció hace ${Math.abs(days)} día${Math.abs(days) === 1 ? "" : "s"}`;
-  return `Vence en ${days} días`;
+  if (days === 0) return t("calendarModule.billDueToday");
+  if (days === 1) return t("calendarModule.billDueTomorrow");
+  if (days < 0) return t("calendarModule.billOverdue", { count: Math.abs(days) });
+  return t("calendarModule.billDueInDays", { count: days });
 }
 
 /**

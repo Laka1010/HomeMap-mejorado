@@ -21,7 +21,7 @@ const CATEGORY_META = {
  */
 export function GlobalSearchModal({ state, houseId, canSeeEconomy, members, getPath, goTo, onOpenMembers, onClose }) {
   const { t } = useTranslation();
-  const { query, setQuery, groups } = useGlobalSearch({ state, houseId, canSeeEconomy, members, getPath });
+  const { query, setQuery, groups } = useGlobalSearch({ state, houseId, canSeeEconomy, members, getPath, t });
 
   const handleSelect = (entry) => {
     switch (entry.type) {

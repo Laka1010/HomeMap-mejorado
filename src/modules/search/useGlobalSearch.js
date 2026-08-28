@@ -9,7 +9,7 @@ import { buildSearchIndex, searchGrouped } from "./searchEngine";
  * vez al montar el buscador (es decir, al abrirlo) en vez de mantenerlas
  * cargadas siempre — quien nunca abre la búsqueda no genera ese fetch.
  */
-export function useGlobalSearch({ state, houseId, canSeeEconomy, members = [], getPath }) {
+export function useGlobalSearch({ state, houseId, canSeeEconomy, members = [], getPath, t }) {
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 150);
   const [bills, setBills] = useState([]);
@@ -27,8 +27,8 @@ export function useGlobalSearch({ state, houseId, canSeeEconomy, members = [], g
   }, [houseId, canSeeEconomy]);
 
   const index = useMemo(
-    () => buildSearchIndex(state, { bills, members, canSeeEconomy, getPath }),
-    [state, bills, members, canSeeEconomy, getPath]
+    () => buildSearchIndex(state, { bills, members, canSeeEconomy, getPath, t }),
+    [state, bills, members, canSeeEconomy, getPath, t]
   );
 
   const groups = useMemo(() => searchGrouped(index, debouncedQuery), [index, debouncedQuery]);

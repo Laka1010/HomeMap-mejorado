@@ -5,26 +5,28 @@ import { accountsService } from "./services/accountsService";
 import { transfersService } from "./services/transfersService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
+import { intlLocale } from "../../utils/dates";
+import { categoryLabel } from "./economyCategories";
 
 function monthKeyOf(dateStr) {
   return dateStr ? String(dateStr).slice(0, 7) : null;
 }
 
-function lastNMonths(n) {
+function lastNMonths(n, locale) {
   const now = new Date();
   const months = [];
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     months.push({
       key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-      label: d.toLocaleDateString("es-ES", { month: "short" }).replace(".", ""),
+      label: d.toLocaleDateString(intlLocale(locale), { month: "short" }).replace(".", ""),
     });
   }
   return months;
 }
 
 export default function StatisticsSection({ spaceId }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { formatRounded: formatCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
@@ -69,7 +71,7 @@ export default function StatisticsSection({ spaceId }) {
     return () => { cancelled = true; };
   }, [spaceId]);
 
-  const months = useMemo(() => lastNMonths(6), []);
+  const months = useMemo(() => lastNMonths(6, locale), [locale]);
   const currentMonthKey = months[months.length - 1]?.key;
 
   const monthly = useMemo(() => months.map((m) => {
@@ -209,7 +211,7 @@ export default function StatisticsSection({ spaceId }) {
             {topCategories.map((cat) => (
               <div key={cat.name}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600 }}>{cat.name}</span>
+                  <span style={{ fontWeight: 600 }}>{categoryLabel(cat.name, t)}</span>
                   <span style={{ color: "var(--ink-soft)" }}>{formatCurrency(cat.amount)}</span>
                 </div>
                 <div style={{ height: 8, borderRadius: 999, background: "var(--surface-alt)", overflow: "hidden" }}>

@@ -40,9 +40,9 @@ export function getCategoryIcon(category) {
 }
 
 export const PRIORITY_LEVELS = [
-  { key: "urgent", label: "Muy necesario", icon: AlertTriangle, color: "var(--danger)", soft: "var(--danger-soft)" },
-  { key: "week", label: "Esta semana", icon: Clock, color: "var(--pin)", soft: "var(--pin-soft)" },
-  { key: "no_rush", label: "Sin prisa", icon: Leaf, color: "var(--success)", soft: "var(--success-soft)" },
+  { key: "urgent", labelKey: "shopping.priorityUrgent", icon: AlertTriangle, color: "var(--danger)", soft: "var(--danger-soft)" },
+  { key: "week", labelKey: "shopping.priorityWeek", icon: Clock, color: "var(--pin)", soft: "var(--pin-soft)" },
+  { key: "no_rush", labelKey: "shopping.priorityNoRush", icon: Leaf, color: "var(--success)", soft: "var(--success-soft)" },
 ];
 
 const PRIORITY_BY_KEY = Object.fromEntries(PRIORITY_LEVELS.map((p) => [p.key, p]));

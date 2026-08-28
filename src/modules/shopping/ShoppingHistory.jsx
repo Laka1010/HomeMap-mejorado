@@ -3,15 +3,16 @@ import { Calendar, Receipt, RotateCcw, Store, Trash2 } from "lucide-react";
 import { getReceiptSignedUrl } from "../../services/receiptService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
+import { intlLocale } from "../../utils/dates";
 
-function formatDate(dateStr) {
+function formatDate(dateStr, locale) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString(intlLocale(locale), { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function ShoppingHistory({ purchases = [], onRepeat, onDelete }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const [confirmingId, setConfirmingId] = useState(null);
   const [openingReceiptId, setOpeningReceiptId] = useState(null);
@@ -48,7 +49,7 @@ export function ShoppingHistory({ purchases = [], onRepeat, onDelete }) {
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 14.5 }}>
                   <Calendar size={14} style={{ color: "var(--ink-soft)" }} />
-                  {formatDate(purchase.completedAt)}
+                  {formatDate(purchase.completedAt, locale)}
                 </div>
                 {purchase.store ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--ink-soft)", marginTop: 4 }}>

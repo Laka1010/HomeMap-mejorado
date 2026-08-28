@@ -1,4 +1,5 @@
 import { fuzzyMatchAny } from "../../utils/textMatch";
+import { categoryLabel } from "../economy/economyCategories";
 
 /**
  * Motor del buscador global: sin React, sin red, sin IA — solo construye un
@@ -8,7 +9,8 @@ import { fuzzyMatchAny } from "../../utils/textMatch";
  * necesaria para construir la ruta de objetos y cajas; así este módulo no
  * depende de App.jsx y es fácil de testear en aislamiento.
  */
-export function buildSearchIndex(state, { bills = [], members = [], canSeeEconomy = true, getPath } = {}) {
+export function buildSearchIndex(state, { bills = [], members = [], canSeeEconomy = true, getPath, t } = {}) {
+  const billCategory = (value) => (t ? categoryLabel(value, t) : value);
   const index = [];
   const path = (entity) => (getPath ? getPath(entity) : []);
 
@@ -82,9 +84,9 @@ export function buildSearchIndex(state, { bills = [], members = [], canSeeEconom
         type: "bill",
         id: bill.id,
         title: bill.name,
-        subtitle: bill.category || null,
+        subtitle: bill.category ? billCategory(bill.category) : null,
         path: null,
-        searchable: [bill.name, bill.category, bill.notes],
+        searchable: [bill.name, bill.category, billCategory(bill.category), bill.notes],
         raw: bill,
       });
     });

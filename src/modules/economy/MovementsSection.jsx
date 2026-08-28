@@ -5,7 +5,7 @@ import { accountsService } from "./services/accountsService";
 import { transfersService } from "./services/transfersService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY } from "./economyCategories";
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "./economyCategories";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 
 /**
@@ -286,7 +286,7 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
               const transferDirection = internal ? t("movements.transferInternal") : outgoing ? t("movements.transferOut") : t("movements.transferIn");
               const subtitle = isTransfer
                 ? `${transferDirection} · ${item.date}`
-                : `${item.category || "Otros"} · ${item.date}`;
+                : `${categoryLabel(item.category || "Otros", t)} · ${item.date}`;
               return (
                 <div
                   key={item.id}
@@ -341,14 +341,14 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
               <div className="hm-modal-handle" />
             </div>
             <div className="hm-modal-header">
-              <button className="hm-modal-close" onClick={closeDetail} aria-label="Cerrar">✕</button>
+              <button className="hm-modal-close" onClick={closeDetail} aria-label={t("common.close")}>✕</button>
               <h3 className="hm-display hm-modal-title">{selected.name}</h3>
             </div>
             <div className="hm-modal-body">
               {!isEditing ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontSize: 14, color: "var(--ink-soft)" }}>{selected.category || "Otros"}</div>
+                    <div style={{ fontSize: 14, color: "var(--ink-soft)" }}>{categoryLabel(selected.category || "Otros", t)}</div>
                     <div style={{ fontWeight: 700, color: accent }}>{formatCurrency(selected.amount)}</div>
                   </div>
                   <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("movements.dateLabel")} <strong>{selected.date}</strong></div>
@@ -399,7 +399,7 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
 
                   <label className="hm-label">{t("movements.categoryLabel")}</label>
                   <select className="hm-input" value={editValues.category || DEFAULT_CATEGORY} onChange={(e) => setEditValues({ ...editValues, category: e.target.value })}>
-                    {(type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map((c) => <option key={c} value={c}>{c}</option>)}
+                    {(type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
                   </select>
 
                   {accounts.length > 0 && (
@@ -501,7 +501,7 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated 
 
           <label className="hm-label" style={{ marginTop: 14 }}>{t("movements.categoryLabel")}</label>
           <select className="hm-input" value={category} onChange={(e) => setCategory(e.target.value)}>
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            {categories.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
           </select>
 
           {accounts.length > 0 && (

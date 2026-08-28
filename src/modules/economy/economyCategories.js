@@ -42,3 +42,34 @@ export const INCOME_CATEGORIES = [
   "Extraordinario",
   "Otros",
 ];
+
+/**
+ * Los valores de arriba se guardan en la BD tal cual (en español) — es la
+ * clave canónica con la que comparan objetivos, iconos (ENTRY_ICONS) y
+ * estadísticas. Para PINTARLOS en el idioma activo se traducen aquí con
+ * `economyCategory.<slug>`. Si el valor no está en el catálogo (una categoría
+ * antigua de texto libre, o el nombre de un objetivo de ahorro) se devuelve
+ * sin tocar.
+ */
+const CATEGORY_LABEL_KEYS = {
+  "Alimentación": "economyCategory.food",
+  "Transporte": "economyCategory.transport",
+  "Vivienda": "economyCategory.housing",
+  "Suministros": "economyCategory.utilities",
+  "Salud": "economyCategory.health",
+  "Educación": "economyCategory.education",
+  "Ocio": "economyCategory.leisure",
+  "Ropa": "economyCategory.clothing",
+  "Suscripciones": "economyCategory.subscriptions",
+  "Regalos": "economyCategory.gifts",
+  "Otros": "economyCategory.other",
+  "Salario": "economyCategory.salary",
+  "Regalos recibidos": "economyCategory.giftsReceived",
+  "Extraordinario": "economyCategory.windfall",
+};
+
+/** Etiqueta localizada de una categoría de Economía (el valor guardado sigue en español). */
+export function categoryLabel(value, t) {
+  const key = CATEGORY_LABEL_KEYS[value];
+  return key ? t(key) : (value || "");
+}

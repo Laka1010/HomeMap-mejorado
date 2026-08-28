@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { economyService } from "../economy/services/economyService";
 import { buildLocalEvents } from "./buildLocalEvents";
-import { toDateKey, formatDayLabel, getWeekDates, addDays, billDueLabel, EVENT_CATEGORY_META } from "./calendarUtils";
+import { toDateKey, getWeekDates, addDays, billDueLabel, EVENT_CATEGORY_META } from "./calendarUtils";
 import { EmptyState } from "../../components/EmptyState";
 import { useTranslation } from "../../i18n";
+import { intlLocale } from "../../utils/dates";
 
-const WEEKDAY_LETTERS = ["L", "M", "X", "J", "V", "S", "D"];
 const SWIPE_THRESHOLD = 40;
 
 /**
@@ -18,7 +18,7 @@ const SWIPE_THRESHOLD = 40;
  * reutilice el mismo `eventsByDate` de abajo, sin duplicar la agregación.
  */
 export function CalendarModule({ state, currentHome, canSeeEconomy = true }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [bills, setBills] = useState([]);
   const touchStartX = useRef(null);
@@ -56,7 +56,12 @@ export function CalendarModule({ state, currentHome, canSeeEconomy = true }) {
   }, [events]);
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
-  const monthLabel = selectedDate.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+  const dateLocale = intlLocale(locale);
+  const monthLabel = selectedDate.toLocaleDateString(dateLocale, { month: "long", year: "numeric" });
+  const weekdayLetters = useMemo(
+    () => weekDates.map((d) => d.toLocaleDateString(dateLocale, { weekday: "narrow" })),
+    [weekDates, dateLocale],
+  );
   const todayKey = toDateKey(new Date());
   const selectedKey = toDateKey(selectedDate);
 
@@ -121,7 +126,7 @@ export function CalendarModule({ state, currentHome, canSeeEconomy = true }) {
                 }}
               >
                 <span style={{ fontSize: 10.5, fontWeight: 700, color: isSelected ? "rgba(255,255,255,0.8)" : "var(--ink-soft)" }}>
-                  {WEEKDAY_LETTERS[i]}
+                  {weekdayLetters[i]}
                 </span>
                 <span
                   className={isSelected ? "" : "hm-display"}
@@ -151,7 +156,7 @@ export function CalendarModule({ state, currentHome, canSeeEconomy = true }) {
             const meta = EVENT_CATEGORY_META[event.type] || EVENT_CATEGORY_META.Tarea;
             const Icon = meta.icon;
             const subtitle = event.type === "Factura"
-              ? billDueLabel(event.date)
+              ? billDueLabel(event.date, t)
               : event.time || t("calendarModule.noTime");
             return (
               <div

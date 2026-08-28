@@ -103,7 +103,7 @@ export function StepAnalyze({ data, onChange, onNext }) {
 
       <div className="ai-result-card">
         <div className="ai-result-header">
-          <div className="ai-badge">IA Vision</div>
+          <div className="ai-badge">{t("wizard.stepAnalyzeBadge")}</div>
           <div className="ai-confidence">{t("wizard.stepAnalyzeConfidence", { percent: Math.round(prediction.confidence * 100) })}</div>
         </div>
 

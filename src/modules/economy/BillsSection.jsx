@@ -6,11 +6,11 @@ import { PayBillModal } from "./PayBillModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
-import { EXPENSE_CATEGORIES, DEFAULT_CATEGORY } from "./economyCategories";
-import { toLocalDateString } from "../../utils/dates";
+import { EXPENSE_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "./economyCategories";
+import { toLocalDateString, intlLocale } from "../../utils/dates";
 
 export default function BillsSection({ currentHome, spaceId, spaces, state, dispatch, user }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const FREQUENCY_LABELS = {
     once: t("bills.once"),
@@ -238,7 +238,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
               <FavoriteStar active={bill.favorite} onToggle={() => toggleFavorite(bill)} size={15} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{bill.name}</div>
-                <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{bill.category || "Otros"} · {bill.due_date ? new Date(bill.due_date).toLocaleDateString() : "-"}</div>
+                <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{categoryLabel(bill.category || "Otros", t)} · {bill.due_date ? new Date(bill.due_date).toLocaleDateString(intlLocale(locale)) : "-"}</div>
                 {statusText && <div style={{ fontSize: 11.5, color: statusColor, fontWeight: 700, marginTop: 2 }}>{statusText}</div>}
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
@@ -283,12 +283,12 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
               {!isEditing ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontSize: 14, color: "var(--ink-soft)" }}>{selectedBill.category} • {FREQUENCY_LABELS[selectedBill.frequency] || t("bills.once")}</div>
+                    <div style={{ fontSize: 14, color: "var(--ink-soft)" }}>{categoryLabel(selectedBill.category, t)} • {FREQUENCY_LABELS[selectedBill.frequency] || t("bills.once")}</div>
                     <div style={{ fontWeight: 700 }}>{formatCurrency(selectedBill.amount)}</div>
                   </div>
 
                   <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                    {t("bills.dueDateLabel")} <strong>{selectedBill.due_date ? new Date(selectedBill.due_date).toLocaleDateString() : '-'}</strong>
+                    {t("bills.dueDateLabel")} <strong>{selectedBill.due_date ? new Date(selectedBill.due_date).toLocaleDateString(intlLocale(locale)) : '-'}</strong>
                   </div>
 
                   {selectedBill.attachment_url && (
@@ -340,7 +340,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
 
                   <label className="hm-label">{t("bills.categoryLabel")}</label>
                   <select className="hm-input" value={editValues.category || DEFAULT_CATEGORY} onChange={(e)=> setEditValues({...editValues, category: e.target.value})}>
-                    {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
                   </select>
 
                   <label className="hm-label">{t("bills.repetitionLabel")}</label>
@@ -451,7 +451,7 @@ function AddBillModal({ spaceId, userId, onClose, onCreated }) {
 
           <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.categoryLabel")}</label>
           <select className="hm-input" value={category || DEFAULT_CATEGORY} onChange={(e) => setCategory(e.target.value)}>
-            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
           </select>
 
           <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.repetitionLabel")}</label>

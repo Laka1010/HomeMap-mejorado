@@ -8,6 +8,7 @@ import { toLocalDateString } from "../../utils/dates";
 import { GoalsSection } from "./GoalsSection";
 import { AccountsSection } from "./AccountsSection";
 import { accountsService } from "./services/accountsService";
+import { categoryLabel } from "./economyCategories";
 import { computeInsights } from "./insightsEngine";
 import { InsightsBar } from "./InsightsBar";
 
@@ -219,7 +220,7 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.name}</div>
-                    <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{entry.category || "Otros"} · {entry.date}</div>
+                    <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{categoryLabel(entry.category || "Otros", t)} · {entry.date}</div>
                   </div>
                   <div style={{ fontSize: 14.5, fontWeight: 700, color: isIncome ? "var(--success)" : "var(--danger)", whiteSpace: "nowrap" }}>
                     {isIncome ? "+" : "-"}{formatCurrency(entry.amount)}

@@ -72,7 +72,7 @@ import { useHomeNavigation } from "./hooks/useHomeNavigation";
 import { NotificationCenter } from "./components/NotificationCenter";
 import { buildNotificationActionHandlers } from "./notifications/notificationActions";
 import { PRIORITY_LEVELS } from "./modules/shopping/shoppingMeta";
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY } from "./modules/economy/economyCategories";
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "./modules/economy/economyCategories";
 import { normalizeText, fuzzyMatch, fuzzyMatchAny } from "./utils/textMatch";
 import { toLocalDateString } from "./utils/dates";
 import { ActionCenter } from "./components/ActionCenter";
@@ -985,7 +985,7 @@ function AddShoppingModal({ onClose, onSave }) {
       <label className="hm-label">{t("addShopping.name")}</label>
       <input className="hm-input" value={form.name} onChange={set("name")} />
 
-      <label className="hm-label" style={{ marginTop: 14 }}>Prioridad</label>
+      <label className="hm-label" style={{ marginTop: 14 }}>{t("quickAdd.priorityLabel")}</label>
       <div style={{ display: "flex", gap: 8 }}>
         {PRIORITY_LEVELS.map((p) => (
           <button
@@ -995,7 +995,7 @@ function AddShoppingModal({ onClose, onSave }) {
             style={{ flex: 1, borderColor: form.priority === p.key ? p.color : "var(--border)", color: form.priority === p.key ? p.color : "var(--ink)" }}
             onClick={() => setForm((f) => ({ ...f, priority: p.key }))}
           >
-            <p.icon size={14} /> {p.label}
+            <p.icon size={14} /> {t(p.labelKey)}
           </button>
         ))}
       </div>
@@ -1084,7 +1084,7 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
       <input className="hm-input" type="number" step="0.01" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
       <label className="hm-label" style={{ marginTop: 14 }}>{t("addMovement.categoryLabel")}</label>
       <select className="hm-input" value={category || categoryOptions[0]} onChange={(e) => setCategory(e.target.value)}>
-        {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+        {categoryOptions.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
       </select>
 
       <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" disabled={!name.trim()} onClick={submit}>
@@ -1527,7 +1527,7 @@ function ScanSpaceModal({ onClose, onImport, state }) {
           </select>
 
           <div className="hm-card-flat" style={{ padding: 12, display: "grid", gap: 6 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Ruta</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("moveObject.routeLabel")}</div>
             <div style={{ fontSize: 13, color: "var(--ink)" }}>{locationSummary() || t("scanSpace.locationPlaceholder")}</div>
           </div>
 
@@ -2971,7 +2971,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
   const currentHome = (homes && homes.length > 0)
     ? (homes.find(h => h.id === currentHomeId) || homes[0])
-    : { name: "Sin casa", inviteCode: "", myRole: null };
+    : { name: t("ajustes.noHomeFallback"), inviteCode: "", myRole: null };
 
   // meta opcional: { category, entityType, entityId }. entityType/entityId
   // permiten que una notificación con el mismo entity_ref (ver
@@ -4178,7 +4178,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           <input className="hm-input" type="date" id="ac-bill-due" />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.categoryLabel")}</label>
           <select className="hm-input" id="ac-bill-category" defaultValue={DEFAULT_CATEGORY}>
-            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
           </select>
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.repeatLabel")}</label>
           <select className="hm-input" id="ac-bill-frequency" defaultValue="once">
@@ -4219,7 +4219,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           <input className="hm-input" type="number" placeholder="0.00" id="ac-exp-amount" defaultValue={modal.payload?.amount || ""} />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.categoryLabel")}</label>
           <select className="hm-input" id="ac-exp-cat" defaultValue={EXPENSE_CATEGORIES.includes(modal.payload?.category) ? modal.payload.category : DEFAULT_CATEGORY}>
-            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
           </select>
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>

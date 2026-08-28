@@ -23,6 +23,25 @@ export function toLocalDateString(date) {
  * el widget de actividad reciente, donde antes un usuario en inglés veía
  * "hace 5 min" y "ayer" en medio de una interfaz traducida.
  */
+/**
+ * Etiqueta BCP-47 para `Intl` / `toLocaleDateString` a partir del idioma de
+ * la app ("es" | "en"). Centralizado aquí para no repetir el ternario
+ * `locale === "en" ? "en-..." : "es-ES"` por media docena de pantallas (y
+ * para no volver a olvidarse de alguna, que era como el calendario y el
+ * historial de compras acababan siempre en español).
+ */
+export function intlLocale(locale) {
+  return locale === "en" ? "en-GB" : "es-ES";
+}
+
+/** Fecha corta localizada (por defecto "28 ago" / "28 Aug"). */
+export function formatShortDate(dateStr, locale = "es", options = { day: "2-digit", month: "short" }) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(intlLocale(locale), options);
+}
+
 export function timeAgoShort(dateStr, t, locale = "es") {
   const diffMs = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diffMs / 60000);
@@ -33,5 +52,5 @@ export function timeAgoShort(dateStr, t, locale = "es") {
   const days = Math.floor(hours / 24);
   if (days === 1) return t("timeAgo.yesterday");
   if (days < 7) return t("timeAgo.days", { count: days });
-  return new Date(dateStr).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES", { day: "2-digit", month: "short" });
+  return new Date(dateStr).toLocaleDateString(intlLocale(locale), { day: "2-digit", month: "short" });
 }
