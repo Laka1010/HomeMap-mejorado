@@ -33,6 +33,7 @@ import { ShareHomeModal } from "./components/home/ShareHomeModal";
 import { OnboardingManager } from "./components/onboarding/OnboardingManager";
 import { WelcomeGate } from "./components/onboarding/WelcomeGate";
 import { BrandMark } from "./components/BrandMark";
+import { PurchaseCompleteAnimation } from "./modules/shopping/PurchaseCompleteAnimation";
 import { DependencyGateModal } from "./components/DependencyGateModal";
 import { supabase } from "./supabaseClient";
 import { securityEventsService } from "./services/securityEventsService";
@@ -2449,6 +2450,14 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * pestaña de Economía activa, que vuelve a pedir los datos.
    */
   const [economyVersion, setEconomyVersion] = useState(0);
+  /**
+   * Recibo animado de "compra completada" (ver PurchaseCompleteAnimation).
+   * Una sola ranura de estado a propósito: aunque se cierren dos compras
+   * seguidas (o se pulse dos veces "Finalizar"), nunca puede haber dos
+   * overlays a la vez — el segundo disparo sustituye al primero. Se pone a
+   * null solo desde onDone, así que la animación siempre se limpia.
+   */
+  const [purchaseCelebration, setPurchaseCelebration] = useState(null);
 
   const refreshHomes = async () => {
     try {
@@ -3153,6 +3162,24 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   };
 
   /**
+   * Lanza el recibo animado. Solo se llama cuando la compra ya está creada
+   * en shopping_purchases: es un efecto puramente visual y no participa en
+   * la operación (no se espera, no puede fallarla y no retrasa el gasto
+   * automático). El importe se formatea aquí porque este componente vive
+   * fuera del CurrencyProvider; si la compra no tiene importe se pasa null y
+   * el recibo simplemente no enseña un total.
+   */
+  const celebratePurchase = ({ listId, store, itemCount, amount }) => {
+    const listName = (state?.shoppingLists || []).find((l) => l.id === listId)?.name;
+    setPurchaseCelebration({
+      id: uid(),
+      title: store || listName || null,
+      itemCount,
+      amountText: amount > 0 ? formatAmount(amount) : null,
+    });
+  };
+
+  /**
    * Integración Modo compra -> Historial -> Finanzas. Archiva los productos
    * ya marcados como comprados de una lista en shopping_purchases y los
    * retira de la lista activa; si la compra tiene importe, registra el
@@ -3173,6 +3200,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         shoppingPurchases: [purchase, ...(s.shoppingPurchases || [])],
       }));
       logActivity(t("activity.purchaseCompleted", { name: user?.name, count: items.length }), { entityType: "shoppingList", entityId: listId });
+      celebratePurchase({ listId, store, itemCount: items.length, amount });
       Promise.all(items.map((item) => shoppingService.deleteItem(item.id))).catch((error) => {
         console.error("Error clearing purchased shopping items:", error);
       });
@@ -3229,6 +3257,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           console.error("Error clearing purchased shopping items:", error);
         });
       }
+      celebratePurchase({ listId, store, itemCount: items.length, amount: Number(total) || 0 });
 
       if (total > 0) {
         await registerPurchaseExpense({ store, amount: Number(total), purchaseId: purchase.id });
@@ -3680,6 +3709,18 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         </div>
 
         <ToastHost notice={notice} onDismiss={() => setNotice(null)} />
+
+        {/* `key` remonta la animación si se completa otra compra mientras
+            aún se está reproduciendo, en vez de dejarla a medias. */}
+        {purchaseCelebration && (
+          <PurchaseCompleteAnimation
+            key={purchaseCelebration.id}
+            title={purchaseCelebration.title}
+            itemCount={purchaseCelebration.itemCount}
+            amountText={purchaseCelebration.amountText}
+            onDone={() => setPurchaseCelebration(null)}
+          />
+        )}
 
         <div className="hm-scroll" style={{ flex: 1, minWidth: 0, height: "calc(100svh - 104px)", overflowY: "auto", paddingRight: 4, WebkitOverflowScrolling: "touch" }}>
           <AppHeader

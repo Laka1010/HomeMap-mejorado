@@ -1416,6 +1416,14 @@ lucas.mesas.10@gmail.com`,
       confirmPay: "Pagar",
       payError: "No se pudo pagar la factura.",
     },
+    /** Recibo animado que aparece al cerrar una compra (PurchaseCompleteAnimation). */
+    purchaseCelebration: {
+      title: "Compra completada",
+      items: "{{count}} productos",
+      itemsOne: "1 producto",
+      total: "Total",
+      brand: "Haven",
+    },
     shoppingModule: {
       history: "Historial",
       scanReceipt: "Escanear ticket",
@@ -2998,6 +3006,13 @@ lucas.mesas.10@gmail.com`,
       chooseAccountLabel: "Account",
       confirmPay: "Pay",
       payError: "Couldn't pay the bill.",
+    },
+    purchaseCelebration: {
+      title: "Purchase complete",
+      items: "{{count}} items",
+      itemsOne: "1 item",
+      total: "Total",
+      brand: "Haven",
     },
     shoppingModule: {
       history: "History",
