@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Plus, Check, Lock } from "lucide-react";
+import { ChevronDown, Plus, Check, Lock, X } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { financialSpacesService } from "./services/financialSpacesService";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
@@ -76,7 +76,7 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
               <div className="hm-modal-handle" />
             </div>
             <div className="hm-modal-header">
-              <button className="hm-modal-close" onClick={closePicker} aria-label={t("spaces.cancel")}>✕</button>
+              <button className="hm-modal-close" onClick={closePicker} aria-label={t("spaces.cancel")}><X size={20} /></button>
               <h3 className="hm-display hm-modal-title">{t("spaces.workspaceLabel")}</h3>
             </div>
             <div className="hm-modal-body">
@@ -205,7 +205,7 @@ export function CreateSharedSpaceModal({ houseId, onClose, onCreated }) {
           <div className="hm-modal-handle" />
         </div>
         <div className="hm-modal-header">
-          <button className="hm-modal-close" onClick={onClose} aria-label={t("spaces.cancel")}>✕</button>
+          <button className="hm-modal-close" onClick={onClose} aria-label={t("spaces.cancel")}><X size={20} /></button>
           <h3 className="hm-display hm-modal-title">{t("spaces.newSharedSpaceTitle")}</h3>
         </div>
         <div className="hm-modal-body">

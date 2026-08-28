@@ -356,7 +356,7 @@ const GlobalStyle = () => (
     .hm-modal-handle-wrap:active .hm-modal-handle { background: var(--ink-soft); }
     .hm-modal-header { padding: 6px 56px 14px; display: flex; align-items: center; justify-content: center; position: relative; text-align: center; }
     .hm-modal-body { padding: var(--space-2) var(--space-5) calc(var(--space-6) + env(safe-area-inset-bottom)); }
-    .hm-modal-close { position: absolute; left: 10px; top: -2px; background: var(--surface-alt); border: none; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-soft); }
+    .hm-modal-close { position: absolute; left: 10px; top: -2px; background: var(--surface-alt); border: none; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-soft); font-size: 18px; line-height: 1; -webkit-tap-highlight-color: transparent; }
     @media (prefers-reduced-motion: reduce) { .hm-modal { animation: none !important; } }
 
     @media (prefers-reduced-motion: reduce) { .hm-fade-in, .hm-pop { animation: none !important; } .hm-tap { transition: none !important; } }
