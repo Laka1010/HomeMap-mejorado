@@ -32,6 +32,21 @@ export const houseService = {
     return data;
   },
 
+  /**
+   * Rota el código de invitación de una casa y devuelve el nuevo. Solo el
+   * admin puede llamarlo (validado en la RPC). Se usa para invalidar un
+   * código que ya se compartió — por ejemplo uno de los antiguos de 4
+   * caracteres, o si alguien ajeno se ha colado.
+   */
+  async regenerateInviteCode(houseId) {
+    const { data, error } = await supabase.rpc("regenerate_invite_code", { p_house_id: houseId });
+    if (error) {
+      logIfPermissionDenied(error, "authz_unauthorized_write", { resourceType: "house", resourceId: houseId });
+      throw error;
+    }
+    return data;
+  },
+
   /** Lista las casas del usuario actual, con su rol y nº de miembros. */
   async listMyHouses() {
     const { data, error } = await supabase

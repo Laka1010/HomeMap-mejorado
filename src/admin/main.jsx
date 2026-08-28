@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { AdminApp } from "./AdminApp";
+import { ErrorBoundary } from "../components/ErrorBoundary.jsx";
 import "./styles/admin-shared.css";
 
 // Deliberadamente SIN registrar el Service Worker (a diferencia de
@@ -9,6 +10,8 @@ import "./styles/admin-shared.css";
 
 ReactDOM.createRoot(document.getElementById("admin-root")).render(
   <React.StrictMode>
-    <AdminApp />
+    <ErrorBoundary>
+      <AdminApp />
+    </ErrorBoundary>
   </React.StrictMode>
 );

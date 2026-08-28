@@ -1,14 +1,29 @@
 import { useState } from "react";
-import { Copy, Check, Share2, Eye, EyeOff } from "lucide-react";
+import { Copy, Check, Share2, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { HouseMembersSection } from "../settings/HouseMembersSection";
 
-export function ShareHomeModal({ home, members, currentUserRole, onRemoveMember, onChangeRole }) {
+export function ShareHomeModal({ home, members, currentUserRole, onRegenerateInviteCode, onRemoveMember, onChangeRole }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [shareStatus, setShareStatus] = useState("");
+  const [confirmingRegen, setConfirmingRegen] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const isAdmin = currentUserRole === "admin";
   const inviteCode = home.inviteCode || t("shareHome.notAvailable");
+
+  const handleRegenerate = async () => {
+    if (!onRegenerateInviteCode || regenerating) return;
+    setRegenerating(true);
+    try {
+      const newCode = await onRegenerateInviteCode();
+      if (newCode) setRevealed(true);
+    } finally {
+      setRegenerating(false);
+      setConfirmingRegen(false);
+    }
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteCode);
@@ -62,6 +77,28 @@ export function ShareHomeModal({ home, members, currentUserRole, onRemoveMember,
           <Share2 size={16} /> {t("shareHome.shareLink")}
         </button>
         {shareStatus && <p className="share-status" role="status">{shareStatus}</p>}
+
+        {isAdmin && onRegenerateInviteCode && (
+          <div className="regen-section">
+            {confirmingRegen ? (
+              <>
+                <p className="regen-warning">{t("shareHome.regenerateWarning")}</p>
+                <div className="regen-actions">
+                  <button type="button" className="hm-btn hm-btn-soft" onClick={() => setConfirmingRegen(false)} disabled={regenerating}>
+                    {t("common.cancel")}
+                  </button>
+                  <button type="button" className="hm-btn hm-btn--danger" onClick={handleRegenerate} disabled={regenerating}>
+                    {regenerating ? t("shareHome.regenerating") : t("shareHome.regenerateConfirm")}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button type="button" className="hm-btn hm-btn-ghost regen-trigger" onClick={() => setConfirmingRegen(true)}>
+                <RefreshCw size={14} /> {t("shareHome.regenerateCode")}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <HouseMembersSection
@@ -138,6 +175,30 @@ export function ShareHomeModal({ home, members, currentUserRole, onRemoveMember,
           font-size: 12.5px;
           text-align: center;
           margin: 8px 0 0;
+        }
+        .regen-section {
+          margin-top: 14px;
+          padding-top: 14px;
+          border-top: 1px solid var(--border);
+        }
+        .regen-trigger {
+          width: 100%;
+          justify-content: center;
+          font-size: 12.5px;
+        }
+        .regen-warning {
+          font-size: 12.5px;
+          color: var(--ink-soft);
+          margin: 0 0 12px;
+          text-align: center;
+        }
+        .regen-actions {
+          display: flex;
+          gap: 8px;
+        }
+        .regen-actions .hm-btn {
+          flex: 1;
+          justify-content: center;
         }
       `}</style>
     </div>

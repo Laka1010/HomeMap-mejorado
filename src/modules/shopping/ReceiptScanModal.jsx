@@ -9,6 +9,7 @@ import {
 } from "../../services/receiptService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
+import { toLocalDateString } from "../../utils/dates";
 
 function round2(n) {
   return Math.round((n + Number.EPSILON) * 100) / 100;

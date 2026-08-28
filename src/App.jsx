@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, Fragment, lazy, Suspense, memo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, useId, Fragment, lazy, Suspense, memo } from "react";
 import {
   Home, Search, Package, ShoppingCart, Settings, Plus, Camera, MapPin,
   ChevronRight, X, Sun, Moon, Sofa, UtensilsCrossed, BedDouble, Bath,
@@ -74,11 +74,13 @@ import { buildNotificationActionHandlers } from "./notifications/notificationAct
 import { PRIORITY_LEVELS } from "./modules/shopping/shoppingMeta";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY } from "./modules/economy/economyCategories";
 import { normalizeText, fuzzyMatch, fuzzyMatchAny } from "./utils/textMatch";
+import { toLocalDateString } from "./utils/dates";
 import { ActionCenter } from "./components/ActionCenter";
 import { GlobalSearchModal } from "./modules/search/GlobalSearchModal";
 import { FavoriteStar } from "./components/FavoriteStar";
 import { PhotoGallery } from "./components/PhotoGallery";
 import { useEntityPhotos } from "./hooks/useEntityPhotos";
+import { useFocusTrap } from "./hooks/useFocusTrap";
 
 /* -------------------------------------------------------------------- */
 /* DESIGN TOKENS — "cartographer" palette: routes, pins, paper           */
@@ -838,13 +840,20 @@ function Route({ path, size = "md" }) {
 function Modal({ title, onClose, children, wide }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
       <div
+        ref={trapRef}
         className={`hm-modal hm-scroll ${wide ? 'hm-modal--wide' : ''}`}
         onClick={(e) => e.stopPropagation()}
         style={sheetStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-label={title ? undefined : t("common.dialogLabel")}
       >
         <div
           ref={handleRef}
@@ -856,7 +865,7 @@ function Modal({ title, onClose, children, wide }) {
         {title ? (
           <div className="hm-modal-header">
             <button className="hm-modal-close" onClick={onClose} aria-label={t("common.close")}><X size={20} /></button>
-            <h3 className="hm-display hm-modal-title">{title}</h3>
+            <h3 id={titleId} className="hm-display hm-modal-title">{title}</h3>
           </div>
         ) : (
           <div style={{ height: 8 }} />
@@ -2498,6 +2507,19 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     }
   };
 
+  const handleRegenerateInviteCode = async (houseId) => {
+    try {
+      const newCode = await houseService.regenerateInviteCode(houseId);
+      await refreshHomes();
+      showNotice(t("toast.inviteCodeRegenerated"));
+      return newCode;
+    } catch (error) {
+      console.error("Error regenerating invite code:", error);
+      showNotice(error?.message || t("toast.inviteCodeRegenerateError"));
+      return null;
+    }
+  };
+
   const refreshHouseMembers = async () => {
     if (!activeHome?.id) return;
     try {
@@ -3983,6 +4005,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
                   isYou: m.user_id === user?.id,
                 }))}
                 currentUserRole={currentHome.myRole}
+                onRegenerateInviteCode={() => handleRegenerateInviteCode(currentHome.id)}
                 onRemoveMember={async (memberId) => {
                   try {
                     await houseService.removeMember(currentHome.id, memberId);

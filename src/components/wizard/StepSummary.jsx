@@ -76,7 +76,7 @@ export function StepSummary({ data, state }) {
             {data.notes && (
               <div className="summary-item summary-item-notes">
                 <FileText size={14} className="summary-item-icon" />
-                <p className="summary-item-text">"{data.notes}"</p>
+                <p className="summary-item-text">&ldquo;{data.notes}&rdquo;</p>
               </div>
             )}
           </div>

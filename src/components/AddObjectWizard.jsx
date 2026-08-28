@@ -9,6 +9,7 @@ import { StepDetails } from "./wizard/StepDetails";
 import { StepSummary } from "./wizard/StepSummary";
 import { useTranslation } from "../i18n";
 import { useDragToDismiss } from "../hooks/useDragToDismiss";
+import { toLocalDateString } from "../utils/dates";
 
 export function AddObjectWizard({ state, onClose, onSave, defaults = {} }) {
   const { t } = useTranslation();
