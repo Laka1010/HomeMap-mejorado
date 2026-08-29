@@ -6,6 +6,9 @@ import { taskService } from "../../services/taskService";
 import { isRepeating, nextRepeatDate, repeatLabelKey } from "./taskRepeat";
 import { useTranslation } from "../../i18n";
 
+// Botones compactos para las acciones de cada tarjeta de tarea.
+const TASK_BTN_SM = { fontSize: 12, height: "auto", minHeight: 0, padding: "5px 9px", gap: 5 };
+
 export function TasksModule({ state, dispatch, openModal, onTaskCompleted }) {
   const { t } = useTranslation();
   const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
@@ -102,21 +105,25 @@ export function TasksModule({ state, dispatch, openModal, onTaskCompleted }) {
                 </div>
                 <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{task.date || t("tasksModule.noDate")}</div>
                 {confirmingDeleteId === task.id ? (
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12.5, color: "var(--danger)" }}>{t("tasksModule.confirmDelete")}</span>
-                    <button className="hm-btn hm-btn-soft hm-btn--compact" onClick={() => setConfirmingDeleteId(null)}>{t("common.no")}</button>
-                    <button className="hm-btn hm-btn--danger hm-btn--compact" onClick={() => deleteTask(task.id)}>{t("common.yes")}</button>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, color: "var(--danger)" }}>{t("tasksModule.confirmDelete")}</span>
+                    <button className="hm-btn hm-btn-soft hm-btn--compact" style={TASK_BTN_SM} onClick={() => setConfirmingDeleteId(null)}>{t("common.no")}</button>
+                    <button className="hm-btn hm-btn--danger hm-btn--compact" style={TASK_BTN_SM} onClick={() => deleteTask(task.id)}>{t("common.yes")}</button>
                   </div>
                 ) : (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button className={(task.status === "done" ? "hm-btn hm-btn-soft" : "hm-btn hm-btn-primary") + " hm-btn--full"} onClick={() => toggleTask(task.id)}>
-                      <Check size={14} /> {task.status === "done" ? t("tasksModule.reopen") : t("tasksModule.markDone")}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      className={(task.status === "done" ? "hm-btn hm-btn-soft" : "hm-btn hm-btn-primary") + " hm-btn--compact"}
+                      style={TASK_BTN_SM}
+                      onClick={() => toggleTask(task.id)}
+                    >
+                      <Check size={13} style={{ width: 13, height: 13 }} /> {task.status === "done" ? t("tasksModule.reopen") : t("tasksModule.markDone")}
                     </button>
-                    <button className="hm-btn hm-btn-soft" onClick={() => openModal("editTask", task)}>
-                      <Edit3 size={14} />
+                    <button className="hm-btn hm-btn-soft hm-btn--compact" style={TASK_BTN_SM} onClick={() => openModal("editTask", task)}>
+                      <Edit3 size={13} style={{ width: 13, height: 13 }} />
                     </button>
-                    <button className="hm-btn hm-btn-soft hm-text-danger" onClick={() => setConfirmingDeleteId(task.id)}>
-                      <Trash2 size={14} />
+                    <button className="hm-btn hm-btn-soft hm-btn--compact hm-text-danger" style={TASK_BTN_SM} onClick={() => setConfirmingDeleteId(task.id)}>
+                      <Trash2 size={13} style={{ width: 13, height: 13 }} />
                     </button>
                   </div>
                 )}

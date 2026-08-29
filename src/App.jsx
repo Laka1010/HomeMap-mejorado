@@ -4047,9 +4047,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       {modal?.type === "addTask" && (
         <Modal title={t("quickAdd.createTaskTitle")} onClose={closeModal}>
           <label className="hm-label">{t("quickAdd.titleLabel")}</label>
-          <input className="hm-input" placeholder={t("quickAdd.taskTitlePlaceholder")} id="ac-task-title" />
+          <input className="hm-input" id="ac-task-title" />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.descriptionLabel")}</label>
-          <input className="hm-input" placeholder={t("quickAdd.descriptionOptional")} id="ac-task-desc" />
+          <input className="hm-input" id="ac-task-desc" />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.dateLabel")}</label>
           <input className="hm-input" type="date" id="ac-task-date" />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.assignedLabel")}</label>
@@ -4076,9 +4076,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       {modal?.type === "editTask" && (
         <Modal title={t("quickAdd.editTaskTitle")} onClose={closeModal}>
           <label className="hm-label">{t("quickAdd.titleLabel")}</label>
-          <input className="hm-input" placeholder={t("quickAdd.taskTitlePlaceholder")} id="ac-edit-task-title" defaultValue={modal.payload?.title || ""} />
+          <input className="hm-input" id="ac-edit-task-title" defaultValue={modal.payload?.title || ""} />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.descriptionLabel")}</label>
-          <input className="hm-input" placeholder={t("quickAdd.descriptionOptional")} id="ac-edit-task-desc" defaultValue={modal.payload?.description || ""} />
+          <input className="hm-input" id="ac-edit-task-desc" defaultValue={modal.payload?.description || ""} />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.priorityLabel")}</label>
           <select className="hm-input" id="ac-edit-task-priority" defaultValue={modal.payload?.priority || "normal"}>
             <option value="baja">{t("quickAdd.priorityLow")}</option>
