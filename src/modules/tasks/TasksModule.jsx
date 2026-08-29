@@ -1,4 +1,5 @@
-import { CalendarDays, Check, ClipboardList, Edit3, Plus } from "lucide-react";
+import { useState } from "react";
+import { CalendarDays, Check, ClipboardList, Edit3, Plus, Trash2 } from "lucide-react";
 import { ModuleCard } from "../core/ModuleCard";
 import { EmptyState } from "../../components/EmptyState";
 import { taskService } from "../../services/taskService";
@@ -7,6 +8,7 @@ import { useTranslation } from "../../i18n";
 
 export function TasksModule({ state, dispatch, openModal, onTaskCompleted }) {
   const { t } = useTranslation();
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
   const priorityLabel = (priority) => (priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : t("tasksModule.priorityNormal"));
   // Texto de repetición para la tarjeta, o "" si la tarea no se repite (en ese
   // caso no se muestra nada). Los valores antiguos de texto libre se enseñan
@@ -49,6 +51,17 @@ export function TasksModule({ state, dispatch, openModal, onTaskCompleted }) {
     if (nextStatus === "done") onTaskCompleted?.(task);
   };
 
+  const deleteTask = (taskId) => {
+    setConfirmingDeleteId(null);
+    dispatch((current) => ({
+      ...current,
+      tasks: (current.tasks || []).filter((tk) => tk.id !== taskId),
+    }));
+    taskService.deleteTask(taskId).catch((error) => {
+      console.error("Error deleting task:", error);
+    });
+  };
+
   const visibleTasks = tasks
     .slice()
     .sort((a, b) => (a.status === "done") - (b.status === "done"));
@@ -88,14 +101,25 @@ export function TasksModule({ state, dispatch, openModal, onTaskCompleted }) {
                   {repeatText(task.repeat) ? ` · ${repeatText(task.repeat)}` : ""}
                 </div>
                 <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{task.date || t("tasksModule.noDate")}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button className={(task.status === "done" ? "hm-btn hm-btn-soft" : "hm-btn hm-btn-primary") + " hm-btn--full"} onClick={() => toggleTask(task.id)}>
-                    <Check size={14} /> {task.status === "done" ? t("tasksModule.reopen") : t("tasksModule.markDone")}
-                  </button>
-                  <button className="hm-btn hm-btn-soft" onClick={() => openModal("editTask", task)}>
-                    <Edit3 size={14} />
-                  </button>
-                </div>
+                {confirmingDeleteId === task.id ? (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12.5, color: "var(--danger)" }}>{t("tasksModule.confirmDelete")}</span>
+                    <button className="hm-btn hm-btn-soft hm-btn--compact" onClick={() => setConfirmingDeleteId(null)}>{t("common.no")}</button>
+                    <button className="hm-btn hm-btn--danger hm-btn--compact" onClick={() => deleteTask(task.id)}>{t("common.yes")}</button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className={(task.status === "done" ? "hm-btn hm-btn-soft" : "hm-btn hm-btn-primary") + " hm-btn--full"} onClick={() => toggleTask(task.id)}>
+                      <Check size={14} /> {task.status === "done" ? t("tasksModule.reopen") : t("tasksModule.markDone")}
+                    </button>
+                    <button className="hm-btn hm-btn-soft" onClick={() => openModal("editTask", task)}>
+                      <Edit3 size={14} />
+                    </button>
+                    <button className="hm-btn hm-btn-soft hm-text-danger" onClick={() => setConfirmingDeleteId(task.id)}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
             </ModuleCard>
           ))}
