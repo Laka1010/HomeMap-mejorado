@@ -3,7 +3,7 @@ import {
   Home, Search, Package, ShoppingCart, Settings, Plus, Camera, MapPin,
   ChevronRight, X, Sun, Moon, Sofa, UtensilsCrossed, BedDouble, Bath,
   Archive, Car, Briefcase, Cable, Watch, Gamepad2, Headphones, Lightbulb,
-  Box as BoxIcon, Ruler, Check, AlertTriangle, Image as ImageIcon, Upload,
+  Box as BoxIcon, Ruler, Check, AlertTriangle, Upload,
   Sparkles, ArrowLeft, Trash2, Filter, ChevronDown, PenSquare, Boxes,
   ClipboardList, Layers, Link as LinkIcon, Calendar, Tag, StickyNote,
   ScanLine, Grid3x3, ExternalLink, MapPinOff, RotateCcw, Zap, Share2, Eye, EyeOff,
@@ -79,8 +79,6 @@ import { toLocalDateString } from "./utils/dates";
 import { ActionCenter } from "./components/ActionCenter";
 import { GlobalSearchModal } from "./modules/search/GlobalSearchModal";
 import { FavoriteStar } from "./components/FavoriteStar";
-import { PhotoGallery } from "./components/PhotoGallery";
-import { useEntityPhotos } from "./hooks/useEntityPhotos";
 import { useFocusTrap } from "./hooks/useFocusTrap";
 import { useSheetGesture } from "./hooks/useSheetGesture";
 
@@ -1664,18 +1662,11 @@ function ScanSpaceModal({ onClose, onImport, state }) {
 /* -------------------------------------------------------------------- */
 /* OBJECT DETAIL                                                        */
 /* -------------------------------------------------------------------- */
-function ObjectDetail({ state, objectId, onBack, onDelete, dispatch, onMove, onUpdateObject, houseId }) {
+function ObjectDetail({ state, objectId, onBack, onDelete, dispatch, onMove, onUpdateObject }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const obj = state.objects.find((o) => o.id === objectId);
   const [moveOpen, setMoveOpen] = useState(false);
-  const gallery = useEntityPhotos({
-    houseId,
-    entityType: "object",
-    entityId: objectId,
-    legacyPhoto: obj?.photo || null,
-    onClearLegacyPhoto: () => onUpdateObject(objectId, { photo: null }),
-  });
 
   if (!obj) return null;
 
@@ -1688,20 +1679,6 @@ function ObjectDetail({ state, objectId, onBack, onDelete, dispatch, onMove, onU
       </button>
 
       <div className="hm-card hm-card--p22">
-        {/* Photo gallery */}
-        <div style={{ marginBottom: 24 }}>
-          <label className="hm-label">{t("common.objectPhotoLabel")}</label>
-          <PhotoGallery
-            photos={gallery.photos}
-            loading={gallery.loading}
-            uploading={gallery.uploading}
-            onAddPhotos={gallery.addPhotos}
-            onDeletePhoto={gallery.deletePhoto}
-          />
-        </div>
-
-        <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "20px 0" }} />
-         
         {/* Object info */}
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 20 }}>
           <div style={{ width: 56, height: 56, borderRadius: 12, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -1796,7 +1773,7 @@ function Dashboard({ state, goTo, openModal, canSeeEconomy, currentHome, houseMe
 /* -------------------------------------------------------------------- */
 /* MI CASA                                                               */
 /* -------------------------------------------------------------------- */
-function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObject, onUpdateCategories, houseId }) {
+function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObject, onUpdateCategories }) {
   const { t } = useTranslation();
   const room = view.roomId ? getRoom(state, view.roomId) : null;
   const zone = view.zoneId ? getZone(state, view.zoneId) : null;
@@ -1818,11 +1795,6 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
     }
     setSelectedCategory(trimmed);
   };
-  // Las habitaciones no tienen foto "legacy" real (esa columna nunca se ha
-  // llegado a rellenar — ver AddRoomWizard), así que la galería aquí solo
-  // gestiona entity_photos.
-  const roomGallery = useEntityPhotos({ houseId, entityType: "room", entityId: room?.id });
-
   // `peek` = habitación tocada en la lista: se pinta la lista con la hoja
   // inferior encima; deslizar la hoja hacia arriba pasa a `{ roomId }` (vista
   // completa de siempre).
@@ -1985,18 +1957,6 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
             <button id="create-zone-cta" className="hm-btn hm-btn-soft" onClick={() => openModal("addZone", { roomId: room.id })}><Plus size={15} />{t("room.addZone")}</button>
             <button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: room.id })}><Plus size={15} />{t("room.addObject")}</button>
           </div>
-        </div>
-
-        <div style={{ marginBottom: 22 }}>
-          <label className="hm-label">{t("photoGallery.roomPhotosLabel")}</label>
-          <PhotoGallery
-            photos={roomGallery.photos}
-            loading={roomGallery.loading}
-            uploading={roomGallery.uploading}
-            onAddPhotos={roomGallery.addPhotos}
-            onDeletePhoto={roomGallery.deletePhoto}
-            height={160}
-          />
         </div>
 
         {zones.length > 0 && (
@@ -2199,10 +2159,9 @@ function ObjectRow({ o, onClick, onToggleFavorite, path }) {
 /* -------------------------------------------------------------------- */
 /* CAJAS                                                                 */
 /* -------------------------------------------------------------------- */
-function Cajas({ state, view, setView, openModal, goTo, onUpdateObject, houseId }) {
+function Cajas({ state, view, setView, openModal, goTo, onUpdateObject }) {
   const { t } = useTranslation();
   const activeContainer = view.containerId ? getContainer(state, view.containerId) : null;
-  const containerGallery = useEntityPhotos({ houseId, entityType: "container", entityId: activeContainer?.id });
 
   if (activeContainer) {
     const childObjects = state.objects.filter((o) => o.containerId === activeContainer.id);
@@ -2227,18 +2186,6 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateObject, houseId 
           <button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: activeContainer.roomId, zoneId: activeContainer.zoneId, containerId: activeContainer.id })}>
             <Plus size={16} /> {t("room.addObjectToBox")}
           </button>
-        </div>
-
-        <div style={{ marginBottom: 18 }}>
-          <label className="hm-label">{t("photoGallery.containerPhotosLabel")}</label>
-          <PhotoGallery
-            photos={containerGallery.photos}
-            loading={containerGallery.loading}
-            uploading={containerGallery.uploading}
-            onAddPhotos={containerGallery.addPhotos}
-            onDeletePhoto={containerGallery.deletePhoto}
-            height={160}
-          />
         </div>
 
         {childContainers.length > 0 && (
@@ -3940,8 +3887,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
                 vino, que sigue intacta en `micasaView`. */}
             {route.tab === "hogar" && (
               cajasView?.containerId
-                ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} houseId={currentHome?.id} />
-                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} onUpdateCategories={updateCategories} houseId={currentHome?.id} />
+                ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} />
+                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} onUpdateCategories={updateCategories} />
             )}
 
             {/* ✅ ORGANIZACIÓN - Shopping, Tasks, Calendar */}
@@ -4021,7 +3968,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
                 estas ramas. */}
 
             {/* Object Detail */}
-            {route.tab === "objectDetail" && <ObjectDetail state={state} objectId={route.objectId} onBack={() => setRoute({ tab: prevTab || "inicio" })} onDelete={deleteObject} onMove={moveObject} onUpdateObject={updateObject} dispatch={dispatch} houseId={currentHome?.id} />}
+            {route.tab === "objectDetail" && <ObjectDetail state={state} objectId={route.objectId} onBack={() => setRoute({ tab: prevTab || "inicio" })} onDelete={deleteObject} onMove={moveObject} onUpdateObject={updateObject} dispatch={dispatch} />}
           </div>
         </div>
       </div>
