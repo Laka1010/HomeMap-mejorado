@@ -7,7 +7,7 @@ import {
   Sparkles, ArrowLeft, Trash2, Filter, ChevronDown, PenSquare, Boxes,
   ClipboardList, Layers, Link as LinkIcon, Calendar, Tag, StickyNote,
   ScanLine, Grid3x3, ExternalLink, MapPinOff, RotateCcw, Zap, Share2, Eye, EyeOff,
-  ShieldCheck, Bell, User, Building2, CheckSquare, TrendingUp, Star
+  ShieldCheck, Bell, User, Building2, CheckSquare, TrendingUp, Star, ChevronUp
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -82,6 +82,7 @@ import { FavoriteStar } from "./components/FavoriteStar";
 import { PhotoGallery } from "./components/PhotoGallery";
 import { useEntityPhotos } from "./hooks/useEntityPhotos";
 import { useFocusTrap } from "./hooks/useFocusTrap";
+import { useSheetGesture } from "./hooks/useSheetGesture";
 
 /* -------------------------------------------------------------------- */
 /* DESIGN TOKENS — "cartographer" palette: routes, pins, paper           */
@@ -1822,14 +1823,20 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
   // gestiona entity_photos.
   const roomGallery = useEntityPhotos({ houseId, entityType: "room", entityId: room?.id });
 
-  if (!room) {
-    // ROOM LIST
+  // `peek` = habitación tocada en la lista: se pinta la lista con la hoja
+  // inferior encima; deslizar la hoja hacia arriba pasa a `{ roomId }` (vista
+  // completa de siempre).
+  const peeking = !!(room && view.peek);
+
+  if (!room || peeking) {
+    // ROOM LIST (+ hoja inferior si `peeking`)
     const favoriteObjects = showFavoritesOnly ? state.objects.filter((o) => o.favorite) : [];
     const categoriesInUse = showCategoryFilter
       ? [...new Set([...(state.categories || []), ...state.objects.map((o) => o.category).filter(Boolean)])].sort((a, b) => a.localeCompare(b))
       : [];
     const categoryObjects = selectedCategory ? state.objects.filter((o) => o.category === selectedCategory) : [];
     return (
+      <>
       <div className="hm-fade-in">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
           <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{t("room.title")}</h1>
@@ -1924,7 +1931,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))", gap: 10 }}>
             {state.rooms.map((r) => (
-              <div key={r.id} className="hm-card hm-tap hm-card--p14" onClick={() => setView({ roomId: r.id })}>
+              <div key={r.id} className="hm-card hm-tap hm-card--p14" onClick={() => setView({ roomId: r.id, peek: true })}>
                 <RoomIcon iconKey={r.icon} size={26} style={{ color: "var(--accent)" }} />
                 <div className="hm-display" style={{ fontWeight: 600, fontSize: 15, marginTop: 10 }}>{r.name}</div>
                 <div style={{ fontSize: 12, color: "var(--ink-soft)", margin: "3px 0 10px" }}>{t("common.objectsCount", { count: roomObjectCount(state, r.id) })}</div>
@@ -1946,6 +1953,16 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
           </div>
         )}
       </div>
+      {peeking && (
+        <RoomSheet
+          room={room}
+          state={state}
+          goTo={goTo}
+          onExpand={() => setView({ roomId: room.id })}
+          onClose={() => setView({})}
+        />
+      )}
+      </>
     );
   }
 
@@ -2074,6 +2091,96 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
           {objectsInZone.map((o) => <ObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} onToggleFavorite={() => toggleObjectFavorite(o)} />)}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Hoja inferior que sube al tocar una habitación en la lista de Hogar: resumen
+ * (cajas + primeros objetos) sin salir de la lista. Se arrastra hacia arriba
+ * (o se toca "Ver habitación") para expandir a la vista completa, y hacia abajo
+ * (o tocando el fondo) para cerrar. Ver useSheetGesture.
+ */
+function RoomSheet({ room, state, goTo, onExpand, onClose }) {
+  const { t } = useTranslation();
+  const { handleRef, handleMouseDown, sheetStyle, isSuppressingClick } = useSheetGesture(onClose, onExpand);
+
+  const directContainers = state.containers.filter((c) => c.roomId === room.id && !c.zoneId && !c.parentId);
+  const looseObjects = state.objects.filter((o) => o.roomId === room.id && !o.zoneId && !o.containerId);
+
+  const guardedGo = (target) => {
+    if (isSuppressingClick()) return;
+    goTo(target);
+  };
+
+  return (
+    <div
+      className="hm-modal-overlay"
+      style={{ zIndex: 1000 }}
+      onClick={() => { if (!isSuppressingClick()) onClose(); }}
+    >
+      <div
+        className="hm-modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{ height: "62dvh", maxHeight: "62dvh", overflowY: "hidden", display: "flex", flexDirection: "column", ...sheetStyle }}
+      >
+        <div ref={handleRef} onMouseDown={handleMouseDown} style={{ touchAction: "none", cursor: "grab", flexShrink: 0 }}>
+          <div className="hm-modal-handle-wrap"><div className="hm-modal-handle" /></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 20px 12px" }}>
+            <RoomIcon iconKey={room.icon} size={22} style={{ color: "var(--accent)", flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="hm-display" style={{ fontWeight: 600, fontSize: 17, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{room.name}</div>
+              <div style={{ fontSize: 11.5, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 3 }}>
+                <ChevronUp size={12} /> {t("room.slideToOpen")}
+              </div>
+            </div>
+            <span className="hm-mono" style={{ fontSize: 12, color: "var(--ink-soft)", flexShrink: 0 }}>
+              {t("common.objectsCount", { count: roomObjectCount(state, room.id) })}
+            </span>
+          </div>
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "4px 20px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
+          {directContainers.length > 0 && (
+            <div>
+              <label className="hm-label">{t("room.boxesInRoom")}</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {directContainers.map((c) => (
+                  <span
+                    key={c.id}
+                    className="hm-card-flat hm-tap hm-card--p14"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                    onClick={() => guardedGo({ tab: "cajas", containerId: c.id })}
+                  >
+                    <span style={{ width: 10, height: 10, borderRadius: 999, background: c.color }} /> {c.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {looseObjects.length > 0 && (
+            <div>
+              <label className="hm-label">{t("room.looseObjectsHeader")}</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {looseObjects.slice(0, 8).map((o) => (
+                  <ObjectRow key={o.id} o={o} onClick={() => guardedGo({ tab: "objectDetail", objectId: o.id })} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {directContainers.length === 0 && looseObjects.length === 0 && (
+            <div style={{ textAlign: "center", color: "var(--ink-soft)", fontSize: 13, padding: "10px 0" }}>
+              {t("room.emptyObjectsTitle")}
+            </div>
+          )}
+
+          <button className="hm-btn hm-btn-soft hm-btn--full" style={{ marginTop: "auto" }} onClick={onExpand}>
+            {t("room.viewRoom")} <ChevronRight size={15} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
