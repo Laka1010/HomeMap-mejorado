@@ -89,7 +89,7 @@ export function TasksModule({ state, dispatch, openModal, onTaskCompleted }) {
           action={<button className="hm-btn hm-btn-primary" onClick={() => openModal("addTask")}><Plus size={15} /> {t("tasksModule.createTask")}</button>}
         />
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
           {visibleTasks.map((task) => (
             <ModuleCard
               key={task.id}
@@ -97,9 +97,8 @@ export function TasksModule({ state, dispatch, openModal, onTaskCompleted }) {
               title={task.title}
               badge={<span>{priorityLabel(task.priority)}</span>}
               accent={task.status === "done"}
-              compact
             >
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
                   {task.assignee || t("tasksModule.unassigned")}
                   {repeatText(task.repeat) ? ` · ${repeatText(task.repeat)}` : ""}
