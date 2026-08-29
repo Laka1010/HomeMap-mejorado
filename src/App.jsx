@@ -7,7 +7,7 @@ import {
   Sparkles, ArrowLeft, Trash2, Filter, ChevronDown, PenSquare, Boxes,
   ClipboardList, Layers, Link as LinkIcon, Calendar, Tag, StickyNote,
   ScanLine, Grid3x3, ExternalLink, MapPinOff, RotateCcw, Zap, Share2, Eye, EyeOff,
-  ShieldCheck, Bell, User, Building2, CheckSquare, TrendingUp, Star, ChevronUp
+  ShieldCheck, Bell, User, Building2, CheckSquare, TrendingUp, Star
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -2130,9 +2130,6 @@ function RoomSheet({ room, state, goTo, onExpand, onClose }) {
             <RoomIcon iconKey={room.icon} size={22} style={{ color: "var(--accent)", flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="hm-display" style={{ fontWeight: 600, fontSize: 17, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{room.name}</div>
-              <div style={{ fontSize: 11.5, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 3 }}>
-                <ChevronUp size={12} /> {t("room.slideToOpen")}
-              </div>
             </div>
             <span className="hm-mono" style={{ fontSize: 12, color: "var(--ink-soft)", flexShrink: 0 }}>
               {t("common.objectsCount", { count: roomObjectCount(state, room.id) })}
