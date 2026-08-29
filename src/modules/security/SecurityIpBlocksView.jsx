@@ -78,7 +78,7 @@ export function SecurityIpBlocksView() {
 
       {showForm && (
         <form onSubmit={submitBlock} className="sc-ip-form">
-          <input className="hm-input" placeholder="Dirección IP (ej. 203.0.113.55)" value={form.ip} onChange={(e) => setForm((f) => ({ ...f, ip: e.target.value }))} />
+          <input className="hm-input" placeholder="Dirección IP" value={form.ip} onChange={(e) => setForm((f) => ({ ...f, ip: e.target.value }))} />
           <textarea className="hm-input" style={{ minHeight: 60 }} placeholder="Motivo (obligatorio)" value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <select className="hm-input" style={{ width: "auto" }} value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}>
