@@ -8,11 +8,12 @@ import { useTranslation } from "../../i18n";
 export function TasksModule({ state, dispatch, openModal, onTaskCompleted }) {
   const { t } = useTranslation();
   const priorityLabel = (priority) => (priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : t("tasksModule.priorityNormal"));
+  // Texto de repetición para la tarjeta, o "" si la tarea no se repite (en ese
+  // caso no se muestra nada). Los valores antiguos de texto libre se enseñan
+  // tal cual hasta que se reguarden desde el formulario.
   const repeatText = (repeat) => {
     if (isRepeating(repeat)) return t(repeatLabelKey(repeat));
-    // Valores antiguos de texto libre: se muestran tal cual hasta que se
-    // reguarden desde el formulario y pasen a uno de los valores nuevos.
-    return repeat && repeat !== "none" ? repeat : t("tasksModule.noRepeat");
+    return repeat && repeat !== "none" ? repeat : "";
   };
   const tasks = Array.isArray(state.tasks) ? state.tasks : [];
   const toggleTask = (taskId) => {
@@ -82,7 +83,10 @@ export function TasksModule({ state, dispatch, openModal, onTaskCompleted }) {
               accent={task.status === "done"}
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{task.assignee || t("tasksModule.unassigned")} · {repeatText(task.repeat)}</div>
+                <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
+                  {task.assignee || t("tasksModule.unassigned")}
+                  {repeatText(task.repeat) ? ` · ${repeatText(task.repeat)}` : ""}
+                </div>
                 <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{task.date || t("tasksModule.noDate")}</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className={(task.status === "done" ? "hm-btn hm-btn-soft" : "hm-btn hm-btn-primary") + " hm-btn--full"} onClick={() => toggleTask(task.id)}>
