@@ -40,6 +40,7 @@ import { securityEventsService } from "./services/securityEventsService";
 import { houseService, MAX_HOMES_PER_USER } from "./services/houseService";
 import { homeContentService } from "./services/homeContentService";
 import { taskService, DEFAULT_TASK_RETENTION_DAYS } from "./services/taskService";
+import { REPEAT_OPTIONS, repeatLabelKey } from "./modules/tasks/taskRepeat";
 import { notesService } from "./services/notesService";
 import { shoppingService } from "./services/shoppingService";
 import { shoppingListsService } from "./services/shoppingListsService";
@@ -4053,6 +4054,10 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           <input className="hm-input" type="date" id="ac-task-date" />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.assignedLabel")}</label>
           <MemberPicker id="ac-task-assignee" members={houseMembers.length ? houseMembers : state.members} selected={[]} />
+          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.repeatLabel")}</label>
+          <select className="hm-input" id="ac-task-repeat" defaultValue="none">
+            {REPEAT_OPTIONS.map((r) => <option key={r} value={r}>{t(repeatLabelKey(r))}</option>)}
+          </select>
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
             <button className="hm-btn hm-btn-primary" onClick={() => {
@@ -4060,7 +4065,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               const description = document.getElementById("ac-task-desc").value || "";
               const date = document.getElementById("ac-task-date").value;
               const assignee = Array.from(document.querySelectorAll("#ac-task-assignee input:checked")).map((el) => el.value).join(", ");
-              addTask({ title, description, date, assignee });
+              const repeatSel = document.getElementById("ac-task-repeat").value;
+              const repeat = repeatSel === "none" ? null : repeatSel;
+              addTask({ title, description, date, assignee, repeat });
             }}>{t("quickAdd.create")}</button>
           </div>
         </Modal>
@@ -4087,7 +4094,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.dateLabel")}</label>
           <input className="hm-input" type="date" id="ac-edit-task-date" defaultValue={modal.payload?.date || ""} />
           <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.repeatLabel")}</label>
-          <input className="hm-input" placeholder={t("quickAdd.repeatPlaceholder")} id="ac-edit-task-repeat" defaultValue={modal.payload?.repeat || ""} />
+          <select className="hm-input" id="ac-edit-task-repeat" defaultValue={REPEAT_OPTIONS.includes(modal.payload?.repeat) ? modal.payload.repeat : "none"}>
+            {REPEAT_OPTIONS.map((r) => <option key={r} value={r}>{t(repeatLabelKey(r))}</option>)}
+          </select>
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
             <button className="hm-btn hm-btn-primary" onClick={() => {
@@ -4096,7 +4105,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               const priority = document.getElementById("ac-edit-task-priority").value;
               const assignee = Array.from(document.querySelectorAll("#ac-edit-task-assignee input:checked")).map((el) => el.value).join(", ");
               const date = document.getElementById("ac-edit-task-date").value;
-              const repeat = document.getElementById("ac-edit-task-repeat").value;
+              const repeatSel = document.getElementById("ac-edit-task-repeat").value;
+              const repeat = repeatSel === "none" ? null : repeatSel;
               editTask(modal.payload.id, { title, description, priority, assignee, date, repeat });
             }}>{t("quickAdd.saveChanges")}</button>
           </div>
