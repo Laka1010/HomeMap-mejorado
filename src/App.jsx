@@ -505,6 +505,52 @@ function getHouseStorageKey(userId, homeId) {
   return userId ? `homemap-house-${userId}:${homeId}` : `homemap-house-${homeId}`;
 }
 
+/**
+ * Preferencias personales (no de la casa) que se arrastran al crear una casa
+ * nueva: el nombre del usuario, el idioma, el tema, las unidades... Así una
+ * casa recién creada hereda lo que ya tienes configurado en tus otras casas
+ * en vez de volver a los valores por defecto / al nombre de la cuenta.
+ */
+const CARRIED_PROFILE_KEYS = ["userName", "lastName", "email", "language", "theme", "darkMode", "units"];
+
+function readCarryOverPreferences(userId, currentHomeId) {
+  try {
+    const prefix = userId ? `homemap-house-${userId}:` : "homemap-house-";
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(prefix)) continue;
+      if (key.slice(prefix.length) === String(currentHomeId)) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const other = JSON.parse(raw);
+      if (other && typeof other === "object" && other.profile) {
+        return { profile: other.profile, settings: other.settings };
+      }
+    }
+  } catch (e) {
+    // localStorage inaccesible o JSON corrupto: se quedan los valores por defecto.
+  }
+  return null;
+}
+
+function seedPreferencesFromSiblingHouse(baseState, userId, currentHomeId) {
+  const carried = readCarryOverPreferences(userId, currentHomeId);
+  if (!carried) return baseState;
+  const next = { ...baseState };
+  if (carried.profile) {
+    const picked = {};
+    for (const k of CARRIED_PROFILE_KEYS) {
+      const v = carried.profile[k];
+      if (v !== undefined && v !== "") picked[k] = v;
+    }
+    next.profile = { ...baseState.profile, ...picked };
+  }
+  if (carried.settings && typeof carried.settings === "object") {
+    next.settings = { ...baseState.settings, ...carried.settings };
+  }
+  return next;
+}
+
 function useHomeMapState(currentHomeId, userId) {
   const { t } = useTranslation();
   const [state, setState] = useState(null);
@@ -520,13 +566,20 @@ function useHomeMapState(currentHomeId, userId) {
     let cancelled = false;
     (async () => {
       let parsed;
+      let hadLocalCache = false;
       try {
         const storageKey = getHouseStorageKey(userId, currentHomeId) || `homemap-house-${currentHomeId}`;
         const raw = localStorage.getItem(storageKey);
+        hadLocalCache = !!raw;
         parsed = raw ? JSON.parse(raw) : buildEmptyState(t);
       } catch (e) {
         console.error("Error state loading:", e);
         parsed = buildEmptyState(t);
+      }
+      if (!hadLocalCache) {
+        // Casa recién abierta en este dispositivo (típicamente recién creada):
+        // hereda las preferencias personales de otra casa del usuario.
+        parsed = seedPreferencesFromSiblingHouse(parsed, userId, currentHomeId);
       }
 
       try {
