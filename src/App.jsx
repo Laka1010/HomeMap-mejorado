@@ -4116,7 +4116,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       {modal?.type === "addNote" && (
         <Modal title={t("quickAdd.newNoteTitle")} onClose={closeModal}>
           <label className="hm-label">{t("quickAdd.noteLabel")}</label>
-          <textarea className="hm-input" rows={3} placeholder={t("quickAdd.notePlaceholder")} id="ac-note-text" />
+          <textarea className="hm-input" rows={3} id="ac-note-text" />
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
             <button className="hm-btn hm-btn-primary" onClick={() => {
