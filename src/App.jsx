@@ -1133,7 +1133,7 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
       </div>
 
       <label className="hm-label">{t("addMovement.nameLabel")}</label>
-      <input className="hm-input" placeholder={isExpense ? t("addMovement.namePlaceholderExpense") : t("addMovement.namePlaceholderIncome")} value={name} onChange={(e) => setName(e.target.value)} />
+      <input className="hm-input" value={name} onChange={(e) => setName(e.target.value)} />
       <label className="hm-label" style={{ marginTop: 14 }}>{t("addMovement.amountLabel")}</label>
       <input className="hm-input" type="number" step="0.01" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
       <label className="hm-label" style={{ marginTop: 14 }}>{t("addMovement.categoryLabel")}</label>
