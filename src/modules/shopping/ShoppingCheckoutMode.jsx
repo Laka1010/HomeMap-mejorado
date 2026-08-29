@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { getPortalTarget } from "../../utils/portalTarget";
 import { Check, PartyPopper, Receipt, X } from "lucide-react";
@@ -19,10 +19,6 @@ export function ShoppingCheckoutMode({ items, onToggle, onFinish, onClose, onSca
   const pending = useMemo(() => items.filter((i) => !i.completed), [items]);
   const completed = useMemo(() => items.filter((i) => i.completed), [items]);
   const total = items.length;
-
-  useEffect(() => {
-    if (total > 0 && pending.length === 0) setCelebrate(true);
-  }, [pending.length, total]);
 
   const finish = () => {
     onFinish(completed, store.trim());
@@ -61,6 +57,11 @@ export function ShoppingCheckoutMode({ items, onToggle, onFinish, onClose, onSca
           <PartyPopper size={48} style={{ color: "var(--accent)" }} />
           <div className="hm-display" style={{ fontSize: 24, fontWeight: 700 }}>{t("shoppingCheckout.completedTitle")}</div>
           <div style={{ color: "var(--ink-soft)", fontSize: 14, maxWidth: 320 }}>{t("shoppingCheckout.completedSubtitle")}</div>
+          {pending.length > 0 ? (
+            <div style={{ color: "var(--warning, var(--ink-soft))", fontSize: 13, maxWidth: 320 }}>
+              {t("shoppingCheckout.remaining", { pending: pending.length, total })}
+            </div>
+          ) : null}
           <input
             className="hm-input"
             style={{ maxWidth: 280 }}
@@ -69,7 +70,10 @@ export function ShoppingCheckoutMode({ items, onToggle, onFinish, onClose, onSca
             onChange={(e) => setStore(e.target.value)}
           />
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-            <button className="hm-btn hm-btn-primary" style={{ minWidth: 200 }} onClick={finish}>
+            <button className="hm-btn hm-btn-soft" onClick={() => setCelebrate(false)}>
+              {t("shoppingCheckout.back")}
+            </button>
+            <button className="hm-btn hm-btn-primary" style={{ minWidth: 160 }} onClick={finish}>
               {t("shoppingCheckout.finish")}
             </button>
             {onScanReceipt ? (
@@ -118,14 +122,13 @@ export function ShoppingCheckoutMode({ items, onToggle, onFinish, onClose, onSca
                   }}>
                     {item.name}
                   </div>
-                  <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("shoppingCheckout.quantityUnit", { count: item.quantity || 1 })}</div>
                 </div>
               </button>
             ))}
           </div>
 
           <div style={{ padding: 16, borderTop: "1px solid var(--border)" }}>
-            <button className="hm-btn hm-btn-primary hm-btn--full" disabled={completed.length === 0} onClick={finish}>
+            <button className="hm-btn hm-btn-primary hm-btn--full" disabled={completed.length === 0} onClick={() => setCelebrate(true)}>
               {t("shoppingCheckout.finish")} {completed.length > 0 ? `(${completed.length})` : ""}
             </button>
           </div>

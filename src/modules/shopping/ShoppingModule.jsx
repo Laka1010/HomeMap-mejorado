@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Check, Clock3, Flame, History, Plus, Receipt, ShoppingCart, Sparkles, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Clock3, Flame, History, Plus, Receipt, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
 import { ModuleCard } from "../core/ModuleCard";
-import { FavoriteStar } from "../../components/FavoriteStar";
 import { shoppingService } from "../../services/shoppingService";
 import { getCategoryIcon, getPriorityMeta, isUrgent } from "./shoppingMeta";
 import { computeFrequentProducts } from "./frequentProducts";
@@ -50,7 +49,7 @@ function PriorityBadge({ priority }) {
   );
 }
 
-function ShoppingItemCard({ item, onToggle, onToggleFavorite }) {
+function ShoppingItemCard({ item, onToggle }) {
   const { t } = useTranslation();
   return (
     <ModuleCard
@@ -60,38 +59,34 @@ function ShoppingItemCard({ item, onToggle, onToggleFavorite }) {
       // aportar nada que el propio nombre no dijera ya.
       icon={CategoryEmojiIcon({ emoji: getCategoryIcon(item.category) })}
       title={item.name}
-      badge={
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <FavoriteStar active={item.favorite} onToggle={() => onToggleFavorite(item.id)} size={15} />
-          <PriorityBadge priority={item.priority} />
-        </span>
-      }
+      badge={<PriorityBadge priority={item.priority} />}
       accent={item.completed}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{t("shoppingModule.quantityUnit", { count: item.quantity || 1 })}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
         {item.notes ? <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{item.notes}</div> : null}
         <button
-          className={(item.completed ? "hm-btn hm-btn-soft" : "hm-btn hm-btn-primary") + " hm-btn--full"}
+          className={(item.completed ? "hm-btn hm-btn-soft" : "hm-btn hm-btn-primary") + " hm-btn--compact"}
+          style={{ fontSize: 12, height: "auto", minHeight: 0, padding: "5px 10px", gap: 5 }}
           onClick={() => onToggle(item.id)}
         >
-          <Check size={14} /> {item.completed ? t("shoppingModule.markPending") : t("shoppingModule.markPurchased")}
+          <Check size={13} style={{ width: 13, height: 13 }} /> {item.completed ? t("shoppingModule.markPending") : t("shoppingModule.markPurchased")}
         </button>
       </div>
     </ModuleCard>
   );
 }
 
-function ItemSection({ icon: Icon, title, items, onToggle, onToggleFavorite, muted }) {
+function ItemSection({ icon: Icon, title, items, onToggle, muted, action }) {
   if (items.length === 0) return null;
   return (
     <div style={muted ? { opacity: 0.7 } : undefined}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, fontWeight: 700, fontSize: 14 }}>
         <Icon size={16} style={{ color: "var(--accent)" }} /> {title}
         <span style={{ fontSize: 12, color: "var(--ink-soft)", fontWeight: 500 }}>({items.length})</span>
+        {action ? <span style={{ marginLeft: "auto" }}>{action}</span> : null}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-        {items.map((item) => <ShoppingItemCard key={item.id} item={item} onToggle={onToggle} onToggleFavorite={onToggleFavorite} />)}
+        {items.map((item) => <ShoppingItemCard key={item.id} item={item} onToggle={onToggle} />)}
       </div>
     </div>
   );
@@ -121,8 +116,8 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
   const shoppingItems = Array.isArray(state.shoppingItems) ? state.shoppingItems : [];
   const shoppingLists = Array.isArray(state.shoppingLists) ? state.shoppingLists : [];
   const [activeListId, setActiveListId] = useState(null);
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
+  const [confirmingClearPurchased, setConfirmingClearPurchased] = useState(false);
   const [checkoutMode, setCheckoutMode] = useState(false);
   const [scanningReceipt, setScanningReceipt] = useState(null); // null | { listId, purchasedItemIds }
 
@@ -139,12 +134,8 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
     [activeList, shoppingItems]
   );
 
-  const visibleItems = favoritesOnly
-    ? listItems.filter((item) => item.favorite)
-    : listItems;
-
-  const pendingItems = visibleItems.filter((item) => !item.completed);
-  const completedItems = visibleItems.filter((item) => item.completed);
+  const pendingItems = listItems.filter((item) => !item.completed);
+  const completedItems = listItems.filter((item) => item.completed);
   const todayItems = pendingItems.filter((item) => isUrgent(item.priority));
   const laterItems = pendingItems.filter((item) => !isUrgent(item.priority));
 
@@ -166,15 +157,19 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
     });
   };
 
-  const toggleFavorite = (itemId) => {
-    const item = shoppingItems.find((i) => i.id === itemId);
-    const nextFavorite = !item?.favorite;
+  // Vaciar de la lista los productos ya comprados (los deja fuera de la lista;
+  // el historial de compras no se toca).
+  const clearPurchased = () => {
+    const ids = completedItems.map((i) => i.id);
+    setConfirmingClearPurchased(false);
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
     dispatch((current) => ({
       ...current,
-      shoppingItems: current.shoppingItems.map((i) => i.id === itemId ? { ...i, favorite: nextFavorite } : i),
+      shoppingItems: (current.shoppingItems || []).filter((i) => !idSet.has(i.id)),
     }));
-    shoppingService.updateItem(itemId, { favorite: nextFavorite }).catch((error) => {
-      console.error("Error updating shopping item favorite:", error);
+    Promise.all(ids.map((id) => shoppingService.deleteItem(id))).catch((error) => {
+      console.error("Error deleting purchased shopping items:", error);
     });
   };
 
@@ -296,23 +291,9 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
           {listItems.length > 0 && (
             <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => setCheckoutMode(true)}><ShoppingCart size={13} /> {t("shoppingModule.checkoutMode")}</button>
           )}
-          {listItems.length > 0 && (
-            <button
-              className={"hm-btn hm-btn--compact " + (favoritesOnly ? "hm-btn-primary" : "hm-btn-soft")}
-              style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }}
-              onClick={() => setFavoritesOnly((v) => !v)}
-            >
-              <Star size={13} fill={favoritesOnly ? "currentColor" : "none"} /> {t("common.favoritesFilter")}
-            </button>
-          )}
           <button className="hm-btn hm-btn-primary hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => openModal("addShopping", { listId: activeList.id })}><Plus size={13} /> {t("shopping.add")}</button>
         </div>
       </div>
-
-      {/* Antes esta barra era selector de categoría + Favoritos + "Editar
-          categorías". Al quitar las categorías de las listas solo queda el
-          filtro de favoritos, que ya no necesita una tarjeta propia: va suelto
-          junto a las acciones de la cabecera. */}
 
       {listItems.length === 0 ? (
         <EmptyState
@@ -322,18 +303,32 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
           subtitle={t("shoppingModule.emptyListSubtitle")}
           action={<button className="hm-btn hm-btn-primary" onClick={() => openModal("addShopping", { listId: activeList.id })}><Plus size={15} /> {t("shopping.addProduct")}</button>}
         />
-      ) : visibleItems.length === 0 ? (
-        <div className="hm-card hm-card--p24 hm-card--center">
-          <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>
-            {favoritesOnly ? t("shoppingModule.noFavoriteItems") : t("shoppingModule.noProductsInCategory")}
-          </div>
-        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-          <ItemSection icon={Flame} title={t("shoppingModule.todaySection")} items={todayItems} onToggle={togglePurchased} onToggleFavorite={toggleFavorite} />
-          <ItemSection icon={Clock3} title={t("shoppingModule.laterSection")} items={laterItems} onToggle={togglePurchased} onToggleFavorite={toggleFavorite} />
+          <ItemSection icon={Flame} title={t("shoppingModule.todaySection")} items={todayItems} onToggle={togglePurchased} />
+          <ItemSection icon={Clock3} title={t("shoppingModule.laterSection")} items={laterItems} onToggle={togglePurchased} />
           <FrequentSuggestions suggestions={frequentSuggestions} onAdd={addFrequentSuggestion} />
-          <ItemSection icon={Check} title={t("shoppingModule.purchasedSection")} items={completedItems} onToggle={togglePurchased} onToggleFavorite={toggleFavorite} muted />
+          <ItemSection
+            icon={Check}
+            title={t("shoppingModule.purchasedSection")}
+            items={completedItems}
+            onToggle={togglePurchased}
+            muted
+            action={confirmingClearPurchased ? (
+              <span style={{ display: "inline-flex", gap: 4 }}>
+                <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 11.5 }} onClick={() => setConfirmingClearPurchased(false)}>{t("shoppingModule.no")}</button>
+                <button className="hm-btn hm-btn--danger hm-btn--compact" style={{ fontSize: 11.5 }} onClick={clearPurchased}>{t("common.yes")}</button>
+              </span>
+            ) : (
+              <button
+                className="hm-btn hm-btn-ghost hm-btn--compact hm-text-danger"
+                style={{ fontSize: 11.5, fontWeight: 600 }}
+                onClick={() => setConfirmingClearPurchased(true)}
+              >
+                <Trash2 size={13} style={{ width: 13, height: 13 }} /> {t("shoppingModule.clearPurchased")}
+              </button>
+            )}
+          />
         </div>
       )}
     </div>
