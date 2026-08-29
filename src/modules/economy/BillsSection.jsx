@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { economyService } from "./services/economyService";
-import { Plus, Calendar, CheckCircle2, Star } from "lucide-react";
-import { FavoriteStar } from "../../components/FavoriteStar";
+import { Plus, Calendar, CheckCircle2 } from "lucide-react";
 import { PayBillModal } from "./PayBillModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
@@ -20,7 +19,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
     every9months: t("bills.every9months"),
     yearly: t("bills.yearly"),
   };
-  const [filter, setFilter] = useState("pending"); // pending | upcoming | paid | favorites
+  const [filter, setFilter] = useState("pending"); // pending | upcoming | paid
   const [bills, setBills] = useState([]);
   const [visibleCount, setVisibleCount] = useState(8);
   const [loading, setLoading] = useState(false);
@@ -59,12 +58,8 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
         data = (data || []).filter((b) => b.status === "paid").sort((a,b)=> new Date(b.paid_date) - new Date(a.paid_date));
       }
 
-      if (filter === "favorites") {
-        data = (data || []).filter((b) => b.favorite);
-      }
-
-      // Sort pending / upcoming / favorites by due_date asc
-      if (filter === "pending" || filter === "upcoming" || filter === "favorites") {
+      // Sort pending / upcoming by due_date asc
+      if (filter === "pending" || filter === "upcoming") {
         data = (data || []).sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
       }
 
@@ -114,15 +109,6 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
     setPayingBill(null);
     await loadBills();
     closeDetail();
-  };
-
-  const toggleFavorite = async (bill) => {
-    try {
-      await economyService.updateBill(bill.id, { favorite: !bill.favorite });
-      await loadBills();
-    } catch (err) {
-      console.error("Error updating bill favorite:", err);
-    }
   };
 
   const confirmRemoveBill = async (billId) => {
@@ -185,10 +171,6 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
           <button style={filterPill(filter === "pending")} onClick={() => setFilter("pending")}>{t("bills.filterPending")}</button>
           <button style={filterPill(filter === "upcoming")} onClick={() => setFilter("upcoming")}>{t("bills.filterUpcoming")}</button>
           <button style={filterPill(filter === "paid")} onClick={() => setFilter("paid")}>{t("bills.filterPaid")}</button>
-          <button style={filterPill(filter === "favorites")} onClick={() => setFilter("favorites")}>
-            <Star size={12} fill={filter === "favorites" ? "currentColor" : "none"} style={{ verticalAlign: -2, marginRight: 4 }} />
-            {t("common.favoritesFilter")}
-          </button>
         </div>
         <button className="hm-btn hm-btn-primary hm-btn--compact" onClick={() => setShowAdd(true)}>
           <Plus size={15} /> {t("bills.add")}
@@ -200,7 +182,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
 
         {!loading && bills.length === 0 && (
           <div style={{ padding: 24, textAlign: "center", color: "var(--ink-soft)", fontSize: 13.5 }}>
-            {filter === "favorites" ? t("bills.noFavoriteBills") : t("bills.noBills")}
+            {t("bills.noBills")}
           </div>
         )}
 
@@ -235,7 +217,6 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
               <div className="hm-row-icon" style={{ background: iconBg, color: iconColor }}>
                 {isPaid ? <CheckCircle2 size={17} /> : <Calendar size={17} />}
               </div>
-              <FavoriteStar active={bill.favorite} onToggle={() => toggleFavorite(bill)} size={15} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{bill.name}</div>
                 <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{categoryLabel(bill.category || "Otros", t)} · {bill.due_date ? new Date(bill.due_date).toLocaleDateString(intlLocale(locale)) : "-"}</div>
