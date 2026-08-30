@@ -6,8 +6,10 @@
 // x-telegram-trigger-secret, comprobado contra TELEGRAM_TRIGGER_SECRET.
 //
 // El body ya viene con un resumen construido en Postgres a partir de la
-// fila real insertada (event_label / user_email / created_at / details) --
-// nunca metadata cruda, nunca datos financieros. Un llamante sin el
+// fila real insertada (event_label / user_email / actor_email / created_at
+// / details) -- nunca metadata cruda, nunca datos financieros. actor_email
+// es el admin que ejecutó la acción, ya resuelto de metadata.admin_id a
+// email por el trigger (nunca el uuid crudo). Un llamante sin el
 // secreto correcto nunca llega a construir ningún texto (401 antes de
 // leer el body), así que una petición externa no puede elegir
 // arbitrariamente el mensaje.
@@ -42,6 +44,9 @@ function safeText(value: unknown, maxLength: number): string | null {
 function buildMessage(payload: Record<string, unknown>): string {
   const eventLabel = safeText(payload.event_label, 200) ?? "Evento de seguridad crítico";
   const userEmail = safeText(payload.user_email, 200) ?? "Desconocido";
+  // Admin que ejecutó la acción (solo presente en los eventos admin_*, que
+  // guardan metadata.admin_id; el trigger de Postgres ya lo resuelve a email).
+  const actorEmail = safeText(payload.actor_email, 200);
   const createdAt = safeText(payload.created_at, 50);
   const details = safeText(payload.details, 300);
 
@@ -51,8 +56,9 @@ function buildMessage(payload: Record<string, unknown>): string {
     "🔴 CRITICAL",
     "",
     `Evento: ${eventLabel}`,
-    `Usuario: ${userEmail}`,
+    `Usuario afectado: ${userEmail}`,
   ];
+  if (actorEmail) lines.push(`Ejecutado por: ${actorEmail}`);
   if (createdAt) lines.push(`Fecha: ${createdAt}`);
   if (details) lines.push(`Detalles: ${details}`);
   lines.push("", "👉 Revisa el Security Center");
