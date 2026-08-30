@@ -5,6 +5,19 @@ import { BrandMark } from "../BrandMark";
 import { useTranslation } from "../../i18n";
 import { securityEventsService } from "../../services/securityEventsService";
 
+/**
+ * Base del enlace que Supabase mete en el correo de recuperación. Por defecto
+ * es el origin actual, pero al desarrollar contra `vite --host` ese origin es
+ * `http://localhost:3000`, que en el móvil apunta al propio móvil y no abre
+ * nada. Definiendo VITE_PUBLIC_APP_URL (p. ej. `http://192.168.1.42:3000`, la
+ * IP LAN del ordenador que sirve la app) el enlace funciona desde cualquier
+ * dispositivo de la red. Esa URL EXACTA debe estar también en Supabase →
+ * Auth → URL Configuration → Redirect URLs, o Supabase la ignora.
+ */
+const AUTH_REDIRECT_URL =
+  import.meta.env.VITE_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ||
+  window.location.origin;
+
 export function AuthView({ onLogin }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState("login"); // "login" | "signup" | "forgot"
@@ -34,7 +47,7 @@ export function AuthView({ onLogin }) {
     try {
       if (isForgot) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin,
+          redirectTo: AUTH_REDIRECT_URL,
         });
         // Supabase devuelve 200 (sin error) tanto si la cuenta existe como si
         // no, para evitar enumeración -- por eso el "éxito" muestra un aviso
