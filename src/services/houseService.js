@@ -18,9 +18,9 @@ export const MAX_HOMES_PER_USER = 2;
  * el cliente.
  */
 export const houseService = {
-  /** Crea una casa nueva; el creador queda como admin. `photo` es opcional (data URL base64). */
-  async createHouse(name, photo = null) {
-    const { data, error } = await supabase.rpc("create_house", { p_name: name, p_photo: photo });
+  /** Crea una casa nueva; el creador queda como admin. */
+  async createHouse(name) {
+    const { data, error } = await supabase.rpc("create_house", { p_name: name, p_photo: null });
     if (error) throw error;
     return data;
   },

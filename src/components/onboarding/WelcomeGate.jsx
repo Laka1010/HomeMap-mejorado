@@ -1,6 +1,5 @@
-import { useRef, useState } from "react";
-import { ArrowLeft, Camera, Check, X } from "lucide-react";
-import { getPhotoError, fileToBase64 } from "../../services/photoUtils.jsx";
+import { useState } from "react";
+import { ArrowLeft, Check, X } from "lucide-react";
 import { BrandMark } from "../BrandMark";
 import { useTranslation } from "../../i18n";
 import { HOME_TEMPLATES } from "../../modules/homeTemplates/templates";
@@ -203,54 +202,6 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           font-weight: 700;
           letter-spacing: 0.12em;
           text-transform: uppercase;
-        }
-        .wg-photo-row {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-        }
-        .wg-photo-preview {
-          width: 64px;
-          height: 64px;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 1px solid #e5e5e5;
-          flex-shrink: 0;
-        }
-        .wg-photo-placeholder {
-          width: 64px;
-          height: 64px;
-          border-radius: 50%;
-          background: #f2f2f2;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #9b9b9b;
-          flex-shrink: 0;
-        }
-        .wg-photo-actions {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        .wg-photo-btn {
-          background: none;
-          border: 1px solid #e5e5e5;
-          border-radius: 10px;
-          padding: 8px 14px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          color: #1a1a1a;
-        }
-        .wg-photo-remove {
-          background: none;
-          border: none;
-          font-size: 12.5px;
-          color: #9b9b9b;
-          cursor: pointer;
-          text-align: left;
-          padding: 0;
         }
         .wg-error {
           background: #fdecec;
@@ -491,36 +442,17 @@ function CreateStep({ onBack, onSubmit }) {
   const { t } = useTranslation();
   const [subStep, setSubStep] = useState("details"); // details | startMode | gallery | customBuilder | preview
   const [name, setName] = useState("");
-  const [photo, setPhoto] = useState(null);
   const [selection, setSelection] = useState(null);
   const [customChoices, setCustomChoices] = useState({ rooms: new Set(), tasks: new Set(), lists: new Set(), categories: new Set() });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const fileInputRef = useRef(null);
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    const photoError = getPhotoError(file);
-    if (photoError) {
-      setError(t(photoError));
-      return;
-    }
-    try {
-      setError("");
-      setPhoto(await fileToBase64(file));
-    } catch {
-      setError(t("onboarding.welcomeGate.imageReadError"));
-    }
-  };
 
   const submitHome = async (templateSelection) => {
     if (!name.trim() || isSubmitting) return;
     setIsSubmitting(true);
     setError("");
     try {
-      await onSubmit(name.trim(), photo, templateSelection);
+      await onSubmit(name.trim(), templateSelection);
     } catch (err) {
       setError(err?.message || t("onboarding.welcomeGate.createError"));
       setIsSubmitting(false);
@@ -545,11 +477,7 @@ function CreateStep({ onBack, onSubmit }) {
         <DetailsStep
           name={name}
           setName={setName}
-          photo={photo}
-          setPhoto={setPhoto}
           error={error}
-          fileInputRef={fileInputRef}
-          onFileChange={handleFileChange}
           onContinue={() => { setError(""); setSubStep("startMode"); }}
         />
       )}
@@ -600,7 +528,7 @@ function CreateStep({ onBack, onSubmit }) {
   );
 }
 
-function DetailsStep({ name, setName, photo, setPhoto, error, fileInputRef, onFileChange, onContinue }) {
+function DetailsStep({ name, setName, error, onContinue }) {
   const { t } = useTranslation();
   return (
     <>
@@ -621,34 +549,6 @@ function DetailsStep({ name, setName, photo, setPhoto, error, fileInputRef, onFi
             onChange={(e) => setName(e.target.value)}
             required
           />
-        </div>
-
-        <div>
-          <label className="wg-label">{t("onboarding.welcomeGate.photoLabel")}</label>
-          <div className="wg-photo-row" style={{ marginTop: 8 }}>
-            {photo ? (
-              <img src={photo} alt="" className="wg-photo-preview" />
-            ) : (
-              <div className="wg-photo-placeholder"><Camera size={22} /></div>
-            )}
-            <div className="wg-photo-actions">
-              <button type="button" className="wg-photo-btn" onClick={() => fileInputRef.current?.click()}>
-                {photo ? t("onboarding.welcomeGate.changePhoto") : t("onboarding.welcomeGate.addPhoto")}
-              </button>
-              {photo && (
-                <button type="button" className="wg-photo-remove" onClick={() => setPhoto(null)}>
-                  <X size={12} style={{ verticalAlign: "-1px" }} /> {t("onboarding.welcomeGate.removePhoto")}
-                </button>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={onFileChange}
-              style={{ display: "none" }}
-            />
-          </div>
         </div>
 
         <button type="submit" className="wg-btn wg-btn-primary" disabled={!name.trim()} style={{ marginTop: 8 }}>

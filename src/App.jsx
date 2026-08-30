@@ -342,6 +342,9 @@ const GlobalStyle = () => (
     .hm-tap { transition: transform .18s ease, box-shadow .18s ease; cursor: pointer; }
 
     /* Modal / drawer */
+    .hm-room-name-input { color: var(--ink); outline: none; transition: background .15s ease, border-color .15s ease; }
+    @media (hover: hover) { .hm-room-name-input:hover { background: var(--surface-alt) !important; } }
+    .hm-room-name-input:focus { background: var(--surface-alt) !important; border-color: var(--accent) !important; }
     .hm-modal-overlay { position: fixed; inset: 0; z-index: 1000; padding: 0; background: rgba(0,0,0,0.36); backdrop-filter: blur(6px); display: flex; align-items: flex-end; justify-content: center; }
     .hm-drawer-overlay { position: fixed; inset: 0; z-index: 1200; display: flex; justify-content: flex-end; align-items: stretch; background: rgba(15,20,25,0.32); backdrop-filter: blur(8px); padding: 0; }
     .hm-drawer { width: min(100%, 920px); height: 100dvh; max-height: 100dvh; background: var(--surface); box-shadow: -24px 0 48px rgba(0,0,0,0.12); overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; animation: hmDrawerIn .28s cubic-bezier(.22,1,.36,1) backwards; }
@@ -890,14 +893,24 @@ function Route({ path, size = "md" }) {
   );
 }
 
-function Modal({ title, onClose, children, wide }) {
+/**
+ * `elevated` sube el overlay por encima de los drawers (z-index 1200) y los
+ * toasts: lo usa ConfirmDialog para que una confirmación lanzada desde dentro
+ * de un drawer (p.ej. "Eliminar casa" en Configuración de la casa) no quede
+ * oculta detrás de él.
+ */
+function Modal({ title, onClose, children, wide, elevated }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const trapRef = useFocusTrap({ onEscape: onClose });
   const titleId = useId();
 
   return (
-    <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
+    <div
+      className="hm-modal-overlay"
+      style={elevated ? { zIndex: 1400 } : undefined}
+      onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}
+    >
       <div
         ref={trapRef}
         className={`hm-modal hm-scroll ${wide ? 'hm-modal--wide' : ''}`}
@@ -979,7 +992,7 @@ function ToastHost({ notice, onDismiss }) {
 
 function ConfirmDialog({ title, message, onConfirm, onCancel, isDangerous, confirmLabel, extraAction }) {
   return (
-    <Modal title={title} onClose={onCancel}>
+    <Modal title={title} onClose={onCancel} elevated>
       <p style={{ color: "var(--ink-soft)", marginBottom: 20 }}>{message}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {extraAction && (
@@ -1773,7 +1786,7 @@ function Dashboard({ state, goTo, openModal, canSeeEconomy, currentHome, houseMe
 /* -------------------------------------------------------------------- */
 /* MI CASA                                                               */
 /* -------------------------------------------------------------------- */
-function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObject, onUpdateCategories }) {
+function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObject, onUpdateCategories, onUpdateRoom, onDeleteRoom }) {
   const { t } = useTranslation();
   const room = view.roomId ? getRoom(state, view.roomId) : null;
   const zone = view.zoneId ? getZone(state, view.zoneId) : null;
@@ -1930,6 +1943,8 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
           room={room}
           state={state}
           goTo={goTo}
+          onRename={(nextName) => onUpdateRoom?.(room.id, { name: nextName })}
+          onDelete={() => onDeleteRoom?.(room.id)}
           onExpand={() => setView({ roomId: room.id })}
           onClose={() => setView({})}
         />
@@ -2061,9 +2076,16 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
  * (o se toca "Ver habitación") para expandir a la vista completa, y hacia abajo
  * (o tocando el fondo) para cerrar. Ver useSheetGesture.
  */
-function RoomSheet({ room, state, goTo, onExpand, onClose }) {
+function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onClose }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, sheetStyle, isSuppressingClick } = useSheetGesture(onClose, onExpand);
+  const [name, setName] = useState(room.name);
+
+  const commitName = () => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === room.name) { setName(room.name); return; }
+    onRename?.(trimmed);
+  };
 
   const directContainers = state.containers.filter((c) => c.roomId === room.id && !c.zoneId && !c.parentId);
   const looseObjects = state.objects.filter((o) => o.roomId === room.id && !o.zoneId && !o.containerId);
@@ -2084,17 +2106,31 @@ function RoomSheet({ room, state, goTo, onExpand, onClose }) {
         onClick={(e) => e.stopPropagation()}
         style={{ height: "62dvh", maxHeight: "62dvh", overflowY: "hidden", display: "flex", flexDirection: "column", ...sheetStyle }}
       >
+        {/* Solo el tirador arrastra la hoja: la fila del nombre queda fuera para
+            que al tocar el input (móvil) no se dispare el gesto — useSheetGesture
+            hace preventDefault en touchstart sobre todo el elemento arrastrable. */}
         <div ref={handleRef} onMouseDown={handleMouseDown} style={{ touchAction: "none", cursor: "grab", flexShrink: 0 }}>
           <div className="hm-modal-handle-wrap"><div className="hm-modal-handle" /></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 20px 12px" }}>
-            <RoomIcon iconKey={room.icon} size={22} style={{ color: "var(--accent)", flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="hm-display" style={{ fontWeight: 600, fontSize: 17, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{room.name}</div>
-            </div>
-            <span className="hm-mono" style={{ fontSize: 12, color: "var(--ink-soft)", flexShrink: 0 }}>
-              {t("common.objectsCount", { count: roomObjectCount(state, room.id) })}
-            </span>
-          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 16px 12px", flexShrink: 0 }}>
+          <RoomIcon iconKey={room.icon} size={22} style={{ color: "var(--accent)", flexShrink: 0 }} />
+          <input
+            className="hm-display hm-room-name-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={commitName}
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            aria-label={t("room.nameLabel")}
+            style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 17, border: "1px solid transparent", background: "transparent", borderRadius: 8, padding: "4px 6px" }}
+          />
+          <button
+            className="hm-btn hm-btn-ghost hm-text-danger hm-btn--compact"
+            style={{ flexShrink: 0 }}
+            onClick={() => onDelete?.()}
+            aria-label={t("room.deleteRoom")}
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "4px 20px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
@@ -2579,7 +2615,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       setHomes(rows.map((h) => ({
         id: h.id,
         name: h.name,
-        photo: h.photo ?? null,
         inviteCode: h.invite_code,
         myRole: h.my_role,
         isOwner: h.my_role === "admin",
@@ -2718,6 +2753,10 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * apuntando a una casa que ya no existe.
    */
   const handleDeleteHouse = (house) => {
+    if (!house?.id) { showNotice(t("toast.houseDeleteError")); return; }
+    // Cierra el panel de Configuración de la casa antes de pedir confirmación:
+    // ese drawer se dibuja por encima del diálogo y, si no, tapaba la pregunta.
+    closeModal();
     setConfirmDialog({
       title: t("confirm.deleteHouseTitle"),
       message: t("confirm.deleteHouseMessage", { name: house.name }),
@@ -2726,7 +2765,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         setConfirmDialog(null);
         try {
           await houseService.deleteHouse(house.id);
-          closeModal();
           setRoute({ tab: "inicio" });
           setHomes((prev) => prev.filter((h) => h.id !== house.id));
           setCurrentHomeId((prev) => (prev === house.id ? "" : prev));
@@ -2912,9 +2950,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * inline — por eso, a diferencia de otras acciones de esta función, deja
    * que el error se propague en vez de tragárselo con un toast.
    */
-  const createHome = async (name, photo = null, template = null) => {
+  const createHome = async (name, template = null) => {
     if (!name?.trim()) return;
-    const newHouse = await houseService.createHouse(name.trim(), photo);
+    const newHouse = await houseService.createHouse(name.trim());
     if (template) await applyTemplate(newHouse.id, template);
     await refreshHomes();
     setCurrentHomeId(newHouse.id);
@@ -2944,8 +2982,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * el mismo patrón de "relanzar" por la misma razón, aunque sí hay shell
    * de por medio: es el modal "createHome", que reutiliza WelcomeGate.
    */
-  const createHomeFromGate = async (name, photo, template = null) => {
-    const newHouse = await houseService.createHouse(name.trim(), photo);
+  const createHomeFromGate = async (name, template = null) => {
+    const newHouse = await houseService.createHouse(name.trim());
     if (template) await applyTemplate(newHouse.id, template);
     await refreshHomes();
     setCurrentHomeId(newHouse.id);
@@ -3081,13 +3119,17 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   // meta opcional: { category, entityType, entityId }. entityType/entityId
   // permiten que una notificación con el mismo entity_ref (ver
   // src/notifications/rules/*.js) enlace a esta entrada de actividad.
-  const logActivity = (title, meta = {}) => {
+  // Se guarda la clave i18n (`titleKey`) y sus parámetros además de la frase
+  // ya renderizada: el feed se pinta en el idioma de quien lo lee, no en el
+  // del autor. `title` queda como copia de respaldo para filas antiguas.
+  const logActivity = (titleKey, titleParams = {}, meta = {}) => {
     if (!currentHome?.id || !user?.id) return;
     const { category = null, entityType = null, entityId = null } = meta;
     const actorName = user.name || t("common.userFallback");
-    const entry = { id: "act-" + uid(), title, when: new Date().toISOString(), userId: user.id, actorName, category, entityType, entityId };
+    const title = t(titleKey, titleParams);
+    const entry = { id: "act-" + uid(), title, titleKey, titleParams, when: new Date().toISOString(), userId: user.id, actorName, category, entityType, entityId };
     dispatch((s) => ({ ...s, activity: [entry, ...(Array.isArray(s.activity) ? s.activity : [])].slice(0, 20) }));
-    activityService.logActivity(currentHome.id, user.id, actorName, title, { category, entityType, entityId }).catch((error) => {
+    activityService.logActivity(currentHome.id, user.id, actorName, title, { category, entityType, entityId, titleKey, titleParams }).catch((error) => {
       console.error("Error logging activity:", error);
     });
   };
@@ -3095,7 +3137,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const addRoom = (room) => {
     dispatch((s) => ({ ...s, rooms: [...s.rooms, room] }));
     showNotice(t("toast.roomCreated", { name: room.name }));
-    logActivity(t("activity.roomCreated", { name: user?.name, room: room.name }), { entityType: "room", entityId: room.id });
+    logActivity("activity.roomCreated", { name: user?.name, room: room.name }, { entityType: "room", entityId: room.id });
     window.dispatchEvent(new CustomEvent("homemap:onboarding-complete", { detail: { id: "createRoom" } }));
     const continueTo = modal?.payload?.__continueTo;
     if (continueTo) {
@@ -3106,6 +3148,46 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     homeContentService.createRoom(currentHome.id, room).catch((error) => {
       console.error("Error saving room:", error);
       showNotice(t("toast.roomSaveError"));
+    });
+  };
+  const updateRoom = (roomId, patch) => {
+    dispatch((s) => ({ ...s, rooms: s.rooms.map((r) => (r.id === roomId ? { ...r, ...patch } : r)) }));
+    showNotice(t("toast.roomUpdated"));
+    homeContentService.updateRoom(roomId, patch).catch((error) => {
+      console.error("Error updating room:", error);
+      showNotice(t("toast.roomUpdateError"));
+    });
+  };
+  const deleteRoom = (roomId) => {
+    const room = state.rooms.find((r) => r.id === roomId);
+    if (!room) return;
+    // zones/containers cuelgan de la habitación (borrado en cascada en la BD y
+    // aquí); los objetos de esa habitación se borran también — no se conservan
+    // "sueltos" sin ubicación.
+    dispatch((s) => ({
+      ...s,
+      rooms: s.rooms.filter((r) => r.id !== roomId),
+      zones: s.zones.filter((z) => z.roomId !== roomId),
+      containers: s.containers.filter((c) => c.roomId !== roomId),
+      objects: s.objects.filter((o) => o.roomId !== roomId),
+    }));
+    showNotice(t("toast.roomDeleted", { name: room.name }));
+    homeContentService.deleteRoom(roomId).catch((error) => {
+      console.error("Error deleting room:", error);
+      showNotice(t("toast.roomDeleteError"));
+    });
+  };
+  /** Pide confirmación antes de borrar la habitación (acción irreversible). */
+  const requestDeleteRoom = (roomId) => {
+    const room = state.rooms.find((r) => r.id === roomId);
+    if (!room) return;
+    setConfirmDialog({
+      title: t("confirm.deleteRoomTitle"),
+      message: t("confirm.deleteRoomMessage", { name: room.name }),
+      isDangerous: true,
+      confirmLabel: t("confirm.deleteRoomConfirm"),
+      onConfirm: () => { setConfirmDialog(null); deleteRoom(roomId); },
+      onCancel: () => setConfirmDialog(null),
     });
   };
   const addZone = (zone) => {
@@ -3121,7 +3203,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const addContainer = (c) => {
     dispatch((s) => ({ ...s, containers: [...s.containers, c] }));
     showNotice(t("toast.containerCreated", { name: c.name }));
-    logActivity(t("activity.containerCreated", { name: user?.name, box: c.name }));
+    logActivity("activity.containerCreated", { name: user?.name, box: c.name });
     window.dispatchEvent(new CustomEvent("homemap:onboarding-complete", { detail: { id: "createBox" } }));
     closeModal();
     homeContentService.createContainer(currentHome.id, c).catch((error) => {
@@ -3134,7 +3216,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     const nextObject = { ...o, ...normalized };
     dispatch((s) => ({ ...s, objects: [...s.objects, nextObject] }));
     showNotice(t("toast.objectSaved", { name: o.name }));
-    logActivity(t("activity.objectAdded", { name: user?.name, item: o.name }), { entityType: "object", entityId: o.id });
+    logActivity("activity.objectAdded", { name: user?.name, item: o.name }, { entityType: "object", entityId: o.id });
     window.dispatchEvent(new CustomEvent("homemap:onboarding-complete", { detail: { id: "addObject" } }));
     closeModal();
     homeContentService.createObject(currentHome.id, nextObject).catch((error) => {
@@ -3145,7 +3227,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const addShopping = (s2) => {
     dispatch((s) => ({ ...s, shoppingItems: [...s.shoppingItems, s2] }));
     showNotice(t("toast.addedToShoppingList", { name: s2.name }));
-    logActivity(t("activity.shoppingItemAdded", { name: user?.name, item: s2.name }));
+    logActivity("activity.shoppingItemAdded", { name: user?.name, item: s2.name });
     closeModal();
     shoppingService.createItem(currentHome.id, s2).catch((error) => {
       console.error("Error saving shopping item:", error);
@@ -3326,7 +3408,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         shoppingItems: (s.shoppingItems || []).filter((item) => !purchasedIds.has(item.id)),
         shoppingPurchases: [purchase, ...(s.shoppingPurchases || [])],
       }));
-      logActivity(t("activity.purchaseCompleted", { name: user?.name, count: items.length }), { entityType: "shoppingList", entityId: listId });
+      logActivity("activity.purchaseCompleted", { name: user?.name, count: items.length }, { entityType: "shoppingList", entityId: listId });
       celebratePurchase({ listId, store, itemCount: items.length, amount });
       Promise.all(items.map((item) => shoppingService.deleteItem(item.id))).catch((error) => {
         console.error("Error clearing purchased shopping items:", error);
@@ -3498,7 +3580,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     const note = { id: "note-" + uid(), text: trimmed, pinned: false, done: false, createdAt: Date.now() };
     dispatch((s) => ({ ...s, notes: [...(s.notes || []), note] }));
     showNotice(t("toast.noteSaved"));
-    logActivity(t("activity.noteAdded", { name: user?.name }));
+    logActivity("activity.noteAdded", { name: user?.name });
     closeModal();
     notesService.createNote(currentHome.id, note).catch((error) => {
       console.error("Error saving note:", error);
@@ -3527,7 +3609,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     const next = { id: "task-" + uid(), status: "pending", ...taskData };
     dispatch((s) => ({ ...s, tasks: [...(s.tasks || []), next] }));
     showNotice(t("toast.taskCreated", { title: taskData.title }));
-    logActivity(t("activity.taskCreated", { name: user?.name, task: taskData.title }), { entityType: "task", entityId: next.id });
+    logActivity("activity.taskCreated", { name: user?.name, task: taskData.title }, { entityType: "task", entityId: next.id });
     closeModal();
     taskService.createTask(currentHome.id, next).catch((error) => {
       console.error("Error saving task:", error);
@@ -3542,7 +3624,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * la pantalla de información del miembro.
    */
   const logTaskCompleted = (task) => {
-    logActivity(t("activity.taskCompleted", { name: user?.name, task: task?.title }), { entityType: "taskCompleted", entityId: task?.id });
+    logActivity("activity.taskCompleted", { name: user?.name, task: task?.title }, { entityType: "taskCompleted", entityId: task?.id });
   };
   const editTask = (taskId, patch) => {
     dispatch((s) => ({
@@ -3565,7 +3647,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     // (p.ej. "vence pronto", que referencia bill.id) puede encontrarla.
     const billId = crypto.randomUUID();
     showNotice(t("toast.billAdded", { name: b.name }));
-    logActivity(t("activity.billCreated", { name: user?.name, bill: b.name }), { category: "finanzas", entityType: "bill", entityId: billId });
+    logActivity("activity.billCreated", { name: user?.name, bill: b.name }, { category: "finanzas", entityType: "bill", entityId: billId });
     closeModal();
     economyService.createBill({
       id: billId,
@@ -3888,7 +3970,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             {route.tab === "hogar" && (
               cajasView?.containerId
                 ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} />
-                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} onUpdateCategories={updateCategories} />
+                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} onUpdateCategories={updateCategories} onUpdateRoom={updateRoom} onDeleteRoom={requestDeleteRoom} />
             )}
 
             {/* ✅ ORGANIZACIÓN - Shopping, Tasks, Calendar */}
@@ -4246,9 +4328,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             title={t(modal.payload.missing.title)}
             subtitle={t(modal.payload.missing.description)}
             onCancel={closeModal}
-            onCreateHouse={async (name, photo, template) => {
+            onCreateHouse={async (name, template) => {
               const target = modal.payload.target;
-              await createHomeFromGate(name, photo, template);
+              await createHomeFromGate(name, template);
               if (target) openModal(target.type, target.payload); else closeModal();
             }}
             onJoinHouse={async (code) => {

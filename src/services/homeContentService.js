@@ -93,6 +93,29 @@ export const homeContentService = {
     if (error) throw error;
   },
 
+  async updateRoom(roomId, patch) {
+    const row = {};
+    if ("name" in patch) row.name = patch.name;
+    if ("icon" in patch) row.icon = patch.icon ?? null;
+    if ("photo" in patch) row.photo = patch.photo ?? null;
+    const { error } = await supabase.from("rooms").update(row).eq("id", roomId);
+    if (error) throw error;
+  },
+
+  /**
+   * Borra la habitación y todo lo que cuelga de ella. zones y containers tienen
+   * FK `on delete cascade` sobre rooms, así que se van solos; objects tiene
+   * `on delete set null` (quedarían huérfanos), por eso se borran a mano antes
+   * por room_id — todo objeto está normalizado con su roomId (ver
+   * normalizeLocation en App.jsx).
+   */
+  async deleteRoom(roomId) {
+    const objErr = (await supabase.from("objects").delete().eq("room_id", roomId)).error;
+    if (objErr) throw objErr;
+    const { error } = await supabase.from("rooms").delete().eq("id", roomId);
+    if (error) throw error;
+  },
+
   async createZone(houseId, zone) {
     const { error } = await supabase.from("zones").insert({
       id: zone.id,

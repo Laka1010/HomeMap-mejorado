@@ -9,7 +9,7 @@ export const activityService = {
   async fetchRecent(houseId, limit = 20) {
     const { data, error } = await supabase
       .from("house_activity")
-      .select("id, user_id, actor_name, title, category, entity_type, entity_id, created_at")
+      .select("id, user_id, actor_name, title, title_key, title_params, category, entity_type, entity_id, created_at")
       .eq("house_id", houseId)
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -17,6 +17,8 @@ export const activityService = {
     return (data || []).map((row) => ({
       id: row.id,
       title: row.title,
+      titleKey: row.title_key,
+      titleParams: row.title_params,
       when: row.created_at,
       userId: row.user_id,
       actorName: row.actor_name,
@@ -29,10 +31,10 @@ export const activityService = {
   /** `meta` opcional: { category, entityType, entityId } — entityType/entityId permiten
    *  que una notificación relacionada (notifications.entity_ref) enlace a esta entrada. */
   async logActivity(houseId, userId, actorName, title, meta = {}) {
-    const { category = null, entityType = null, entityId = null } = meta;
+    const { category = null, entityType = null, entityId = null, titleKey = null, titleParams = null } = meta;
     const { error } = await supabase
       .from("house_activity")
-      .insert({ house_id: houseId, user_id: userId, actor_name: actorName, title, category, entity_type: entityType, entity_id: entityId });
+      .insert({ house_id: houseId, user_id: userId, actor_name: actorName, title, title_key: titleKey, title_params: titleParams, category, entity_type: entityType, entity_id: entityId });
     if (error) throw error;
   },
 };
