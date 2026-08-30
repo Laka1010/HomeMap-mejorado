@@ -55,9 +55,12 @@ function severityHeader(severity: string | null): string {
 function buildMessage(payload: Record<string, unknown>): string {
   const eventLabel = safeText(payload.event_label, 200) ?? "Evento de seguridad crítico";
   const severity = safeText(payload.severity, 20);
-  const userEmail = safeText(payload.user_email, 200) ?? "Desconocido";
-  // Admin que ejecutó la acción (solo presente en los eventos admin_*, que
-  // guardan metadata.admin_id; el trigger de Postgres ya lo resuelve a email).
+  // Usuario objetivo. Puede no haberlo (p.ej. un bloqueo de IP, o la
+  // detección de actividad sospechosa por IP anónima): en ese caso se omite
+  // la línea en vez de poner "Desconocido".
+  const userEmail = safeText(payload.user_email, 200);
+  // Quién ejecutó la acción (admin en los eventos admin_* / auditoría; el
+  // trigger de Postgres ya lo resuelve de uuid a email).
   const actorEmail = safeText(payload.actor_email, 200);
   const createdAt = safeText(payload.created_at, 50);
   const details = safeText(payload.details, 300);
@@ -68,8 +71,8 @@ function buildMessage(payload: Record<string, unknown>): string {
     severityHeader(severity),
     "",
     `Evento: ${eventLabel}`,
-    `Usuario afectado: ${userEmail}`,
   ];
+  if (userEmail) lines.push(`Usuario afectado: ${userEmail}`);
   if (actorEmail) lines.push(`Ejecutado por: ${actorEmail}`);
   if (createdAt) lines.push(`Fecha: ${createdAt}`);
   if (details) lines.push(`Detalles: ${details}`);
