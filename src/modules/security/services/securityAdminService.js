@@ -51,6 +51,27 @@ export const securityAdminService = {
     return data || [];
   },
 
+  /**
+   * Listado paginado de usuarios (sección Users del Security Center). A
+   * diferencia de searchUsers, no exige texto: sin `query` devuelve todos,
+   * con `query` filtra server-side por email/nombre, y `status` filtra por
+   * estado de cuenta. Ver security_admin_list_users en
+   * 20260809_061_security_admin_list_users.sql.
+   */
+  async listUsers(filters = {}, limit = 30, offset = 0) {
+    const { data, error } = await supabase.rpc("security_admin_list_users", {
+      p_status: filters.status || null,
+      p_query: filters.query || null,
+      p_limit: limit,
+      p_offset: offset,
+    });
+    if (error) throw error;
+    return {
+      rows: data || [],
+      totalCount: data && data.length > 0 ? Number(data[0].total_count) : 0,
+    };
+  },
+
   async getUserDetail(userId) {
     const { data, error } = await supabase.rpc("security_admin_get_user_detail", { p_user_id: userId });
     if (error) throw error;
