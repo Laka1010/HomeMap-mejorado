@@ -6,8 +6,9 @@
 // x-telegram-trigger-secret, comprobado contra TELEGRAM_TRIGGER_SECRET.
 //
 // El body ya viene con un resumen construido en Postgres a partir de la
-// fila real insertada (event_label / user_email / actor_email / created_at
-// / details) -- nunca metadata cruda, nunca datos financieros. actor_email
+// fila real insertada (event_label / severity / user_email / actor_email /
+// created_at / details) -- nunca metadata cruda, nunca datos financieros.
+// actor_email
 // es el admin que ejecutó la acción, ya resuelto de metadata.admin_id a
 // email por el trigger (nunca el uuid crudo). Un llamante sin el
 // secreto correcto nunca llega a construir ningún texto (401 antes de
@@ -41,8 +42,20 @@ function safeText(value: unknown, maxLength: number): string | null {
   return trimmed.length > maxLength ? trimmed.slice(0, maxLength) + "…" : trimmed;
 }
 
+// Cabecera de nivel según la severity real del evento. Si el campo falta
+// (payloads antiguos), se asume 'critical' -- hasta 20260830_075 todo lo que
+// llegaba aquí era crítico.
+function severityHeader(severity: string | null): string {
+  switch (severity) {
+    case "info": return "🟢 INFO";
+    case "warning": return "🟠 HIGH";
+    default: return "🔴 CRITICAL";
+  }
+}
+
 function buildMessage(payload: Record<string, unknown>): string {
   const eventLabel = safeText(payload.event_label, 200) ?? "Evento de seguridad crítico";
+  const severity = safeText(payload.severity, 20);
   const userEmail = safeText(payload.user_email, 200) ?? "Desconocido";
   // Admin que ejecutó la acción (solo presente en los eventos admin_*, que
   // guardan metadata.admin_id; el trigger de Postgres ya lo resuelve a email).
@@ -53,7 +66,7 @@ function buildMessage(payload: Record<string, unknown>): string {
   const lines = [
     "🚨 HomeMap Security",
     "━━━━━━━━━━━━━━",
-    "🔴 CRITICAL",
+    severityHeader(severity),
     "",
     `Evento: ${eventLabel}`,
     `Usuario afectado: ${userEmail}`,
