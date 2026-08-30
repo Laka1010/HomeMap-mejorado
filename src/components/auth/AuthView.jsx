@@ -36,12 +36,25 @@ export function AuthView({ onLogin }) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: window.location.origin,
         });
-        // No revelamos si el email existe o no en la respuesta -- Supabase
-        // ya no distingue esto en el mensaje de error para evitar
-        // enumeración de cuentas, así que mostramos el mismo aviso salvo
-        // que sea un error real de red/servidor.
-        if (error && error.status && error.status >= 500) {
-          setErrorMessage(t("auth.networkError"));
+        // Supabase devuelve 200 (sin error) tanto si la cuenta existe como si
+        // no, para evitar enumeración -- por eso el "éxito" muestra un aviso
+        // neutro. Cuando SÍ hay error es un fallo real (nunca revela
+        // existencia de la cuenta) y hay que enseñarlo en vez de mentir con
+        // "te hemos enviado un enlace":
+        if (error) {
+          // 429: demasiadas peticiones seguidas (límite de Supabase).
+          if (error.status === 429) {
+            setErrorMessage(t("auth.resetRateLimited"));
+            return;
+          }
+          // Sin status o 5xx: el servicio de usuarios no respondió.
+          if (!error.status || error.status >= 500) {
+            setErrorMessage(t("auth.networkError"));
+            return;
+          }
+          // Otros 4xx: email con formato inválido, redirect no permitida en la
+          // config de Auth, SMTP mal configurado en el proyecto, etc.
+          setErrorMessage(t("auth.resetEmailError"));
           return;
         }
         securityEventsService.logSecurityEvent("auth_password_reset_requested", { email });
