@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { houseService } from "../services/houseService";
+import { profileService } from "../services/profileService";
 
 /**
- * Última casa visitada, por usuario. Se guarda en localStorage para que al
- * cerrar/reabrir o recargar la app se entre directamente en esa casa en vez
- * de en la primera de la lista.
+ * Última casa visitada. La fuente de verdad es el perfil del usuario en el
+ * servidor (profiles.last_home_id, sigue al usuario entre dispositivos);
+ * localStorage es solo una caché local rápida / respaldo sin conexión para
+ * no esperar a la red en el arranque.
  */
 const LAST_HOME_KEY = "homemap-last-home";
 
@@ -51,8 +53,27 @@ export function useHomesAndMembers(userId) {
   const [homesLoadError, setHomesLoadError] = useState(false);
   const [houseMembers, setHouseMembers] = useState([]);
   const [currentHomeId, setCurrentHomeId] = useState("");
+  // Última casa según el servidor + si esa consulta ya terminó (para no
+  // elegir una casa por defecto antes de saber cuál prefería el usuario).
+  const [serverLastHomeId, setServerLastHomeId] = useState(null);
+  const [lastHomeResolved, setLastHomeResolved] = useState(false);
 
   const activeHome = homes.find((h) => h.id === currentHomeId) || null;
+
+  useEffect(() => {
+    if (!userId) {
+      setServerLastHomeId(null);
+      setLastHomeResolved(false);
+      return;
+    }
+    let cancelled = false;
+    setLastHomeResolved(false);
+    profileService.getLastHomeId(userId)
+      .then((id) => { if (!cancelled) setServerLastHomeId(id); })
+      .catch((error) => { console.error("Error loading last home:", error); })
+      .finally(() => { if (!cancelled) setLastHomeResolved(true); });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   useEffect(() => {
     if (!activeHome?.id) {
@@ -74,10 +95,18 @@ export function useHomesAndMembers(userId) {
     }
   }, [homes, userId]);
 
-  // Recuerda la casa activa para la próxima vez que se abra la app.
+  // Recuerda la casa activa para la próxima vez que se abra la app: caché
+  // local inmediata + perfil en el servidor. Solo escribe en el servidor si
+  // el valor ha cambiado de verdad (evita un PUT redundante en cada arranque
+  // cuando la selección ya coincide con el perfil).
   useEffect(() => {
-    if (userId && currentHomeId) writeLastHomeId(userId, currentHomeId);
-  }, [userId, currentHomeId]);
+    if (!userId || !currentHomeId) return;
+    writeLastHomeId(userId, currentHomeId);
+    if (currentHomeId === serverLastHomeId) return;
+    setServerLastHomeId(currentHomeId);
+    profileService.setLastHome(currentHomeId)
+      .catch((error) => { console.error("Error saving last home:", error); });
+  }, [userId, currentHomeId, serverLastHomeId]);
 
   /**
    * Selecciona una casa cuando no hay ninguna elegida Y ADEMÁS descarta un
@@ -89,17 +118,19 @@ export function useHomesAndMembers(userId) {
    * contenido cacheado de la casa vieja y escribía las altas nuevas en otra
    * casa distinta.
    *
-   * Al elegir por defecto se prioriza la última casa visitada (localStorage)
-   * si sigue en la lista; si no, la primera.
+   * Al elegir por defecto se prioriza la última casa visitada: primero la
+   * del perfil del servidor, luego la caché de localStorage, y si ninguna
+   * sigue en la lista, la primera. Espera a que la consulta al servidor
+   * termine (`lastHomeResolved`) para no elegir la primera y luego saltar.
    */
   useEffect(() => {
-    if (homes.length === 0) return;
+    if (homes.length === 0 || !lastHomeResolved) return;
     if (!currentHomeId || !homes.some((h) => h.id === currentHomeId)) {
-      const lastId = readLastHomeId(userId);
-      const next = homes.some((h) => h.id === lastId) ? lastId : homes[0].id;
+      const next = [serverLastHomeId, readLastHomeId(userId)]
+        .find((id) => id && homes.some((h) => h.id === id)) || homes[0].id;
       setCurrentHomeId(next);
     }
-  }, [homes, currentHomeId, userId]);
+  }, [homes, currentHomeId, userId, serverLastHomeId, lastHomeResolved]);
 
   return {
     homes, setHomes,
