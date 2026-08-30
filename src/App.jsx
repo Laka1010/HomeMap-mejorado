@@ -7,7 +7,7 @@ import {
   Sparkles, ArrowLeft, Trash2, Filter, ChevronDown, PenSquare, Boxes,
   ClipboardList, Layers, Link as LinkIcon, Calendar, Tag, StickyNote,
   ScanLine, Grid3x3, ExternalLink, MapPinOff, RotateCcw, Zap, Share2, Eye, EyeOff,
-  ShieldCheck, Bell, User, Building2, CheckSquare, TrendingUp, Star
+  ShieldCheck, Bell, User, Building2, CheckSquare, TrendingUp
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -78,7 +78,6 @@ import { normalizeText, fuzzyMatch, fuzzyMatchAny } from "./utils/textMatch";
 import { toLocalDateString } from "./utils/dates";
 import { ActionCenter } from "./components/ActionCenter";
 import { GlobalSearchModal } from "./modules/search/GlobalSearchModal";
-import { FavoriteStar } from "./components/FavoriteStar";
 import { useFocusTrap } from "./hooks/useFocusTrap";
 import { useSheetGesture } from "./hooks/useSheetGesture";
 
@@ -1786,15 +1785,13 @@ function Dashboard({ state, goTo, openModal, canSeeEconomy, currentHome, houseMe
 /* -------------------------------------------------------------------- */
 /* MI CASA                                                               */
 /* -------------------------------------------------------------------- */
-function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObject, onUpdateCategories, onUpdateRoom, onDeleteRoom }) {
+function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCategories, onUpdateRoom, onDeleteRoom }) {
   const { t } = useTranslation();
   const room = view.roomId ? getRoom(state, view.roomId) : null;
   const zone = view.zoneId ? getZone(state, view.zoneId) : null;
-  const [activeSection, setActiveSection] = useState("rooms"); // 'rooms' | 'favorites' | 'categories'
+  const [activeSection, setActiveSection] = useState("rooms"); // 'rooms' | 'categories'
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const showFavoritesOnly = activeSection === "favorites";
   const showCategoryFilter = activeSection === "categories";
-  const toggleObjectFavorite = (o) => onUpdateObject?.(o.id, { favorite: !o.favorite });
   const selectSection = (section) => {
     setActiveSection(section);
     setSelectedCategory(null);
@@ -1815,7 +1812,6 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
 
   if (!room || peeking) {
     // ROOM LIST (+ hoja inferior si `peeking`)
-    const favoriteObjects = showFavoritesOnly ? state.objects.filter((o) => o.favorite) : [];
     const categoriesInUse = showCategoryFilter
       ? [...new Set([...(state.categories || []), ...state.objects.map((o) => o.category).filter(Boolean)])].sort((a, b) => a.localeCompare(b))
       : [];
@@ -1840,32 +1836,9 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
             >
               <Tag size={13} /> {t("common.categoriesFilter")}
             </button>
-            <button
-              className={`hm-btn hm-btn--compact ${showFavoritesOnly ? "hm-btn-primary" : "hm-btn-soft"}`}
-              style={{ fontSize: 12.5 }}
-              onClick={() => selectSection("favorites")}
-            >
-              <Star size={13} fill={showFavoritesOnly ? "currentColor" : "none"} /> {t("common.favoritesFilter")}
-            </button>
           </div>
         </div>
-        {showFavoritesOnly ? (
-          favoriteObjects.length === 0 ? (
-            <EmptyState icon={Star} title={t("common.noResults")} subtitle={t("room.noFavoriteObjects")} />
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {favoriteObjects.map((o) => (
-                <ObjectRow
-                  key={o.id}
-                  o={o}
-                  onClick={() => goTo({ tab: "objectDetail", objectId: o.id })}
-                  onToggleFavorite={() => toggleObjectFavorite(o)}
-                  path={locationPath(state, o)}
-                />
-              ))}
-            </div>
-          )
-        ) : showCategoryFilter ? (
+        {showCategoryFilter ? (
           selectedCategory ? (
             <div>
               <button className="hm-btn hm-btn-ghost" style={{ paddingLeft: 0, marginBottom: 12 }} onClick={() => setSelectedCategory(null)}>
@@ -1880,7 +1853,6 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
                       key={o.id}
                       o={o}
                       onClick={() => goTo({ tab: "objectDetail", objectId: o.id })}
-                      onToggleFavorite={() => toggleObjectFavorite(o)}
                       path={locationPath(state, o)}
                     />
                   ))}
@@ -2014,7 +1986,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {directObjects.map((o) => (
-              <ObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} onToggleFavorite={() => toggleObjectFavorite(o)} />
+              <ObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} />
             ))}
           </div>
         )}
@@ -2063,7 +2035,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateObjec
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {objectsInZone.map((o) => <ObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} onToggleFavorite={() => toggleObjectFavorite(o)} />)}
+          {objectsInZone.map((o) => <ObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} />)}
         </div>
       )}
     </div>
@@ -2178,7 +2150,7 @@ function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onClose })
   );
 }
 
-function ObjectRow({ o, onClick, onToggleFavorite, path }) {
+function ObjectRow({ o, onClick, path }) {
   return (
     <div className="hm-card hm-tap hm-card--p12" style={{ display: "flex", alignItems: "center", gap: 10 }} onClick={onClick}>
       <CategoryIcon category={o.category} size={18} style={{ color: "var(--ink-soft)", flexShrink: 0 }} />
@@ -2186,7 +2158,6 @@ function ObjectRow({ o, onClick, onToggleFavorite, path }) {
         <div style={{ fontWeight: 600, fontSize: 14 }}>{o.name}</div>
         <div style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>{path && path.length > 0 ? path.join(" · ") : o.category}</div>
       </div>
-      {onToggleFavorite && <FavoriteStar active={o.favorite} onToggle={onToggleFavorite} size={15} />}
       <ChevronRight size={16} style={{ color: "var(--ink-soft)" }} />
     </div>
   );
@@ -2195,7 +2166,7 @@ function ObjectRow({ o, onClick, onToggleFavorite, path }) {
 /* -------------------------------------------------------------------- */
 /* CAJAS                                                                 */
 /* -------------------------------------------------------------------- */
-function Cajas({ state, view, setView, openModal, goTo, onUpdateObject }) {
+function Cajas({ state, view, setView, openModal, goTo }) {
   const { t } = useTranslation();
   const activeContainer = view.containerId ? getContainer(state, view.containerId) : null;
 
@@ -2240,7 +2211,7 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateObject }) {
             action={<button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: activeContainer.roomId, zoneId: activeContainer.zoneId, containerId: activeContainer.id })}><Plus size={15} />{t("room.addObject")}</button>} />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {childObjects.map((o) => <ObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} onToggleFavorite={() => onUpdateObject?.(o.id, { favorite: !o.favorite })} />)}
+            {childObjects.map((o) => <ObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} />)}
           </div>
         )}
       </div>
@@ -3969,8 +3940,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
                 vino, que sigue intacta en `micasaView`. */}
             {route.tab === "hogar" && (
               cajasView?.containerId
-                ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} />
-                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateObject={updateObject} onUpdateCategories={updateCategories} onUpdateRoom={updateRoom} onDeleteRoom={requestDeleteRoom} />
+                ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} />
+                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateCategories={updateCategories} onUpdateRoom={updateRoom} onDeleteRoom={requestDeleteRoom} />
             )}
 
             {/* ✅ ORGANIZACIÓN - Shopping, Tasks, Calendar */}
