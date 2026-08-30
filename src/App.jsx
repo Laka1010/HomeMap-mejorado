@@ -67,7 +67,7 @@ import { useAuthSession, mapSupabaseUser, USER_STORAGE_KEY } from "./hooks/useAu
 import { useTheme } from "./hooks/useTheme";
 import { useTaskRetention } from "./hooks/useTaskRetention";
 import { useNotificationsEngine } from "./hooks/useNotificationsEngine";
-import { useHomesAndMembers } from "./hooks/useHomesAndMembers";
+import { useHomesAndMembers, clearLastHomeId } from "./hooks/useHomesAndMembers";
 import { useAppModals } from "./hooks/useAppModals";
 import { useHomeNavigation } from "./hooks/useHomeNavigation";
 import { NotificationCenter } from "./components/NotificationCenter";
@@ -2899,6 +2899,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         });
         if (user?.id) {
           localStorage.removeItem(getHomesStorageKey(user.id));
+          clearLastHomeId(user.id);
         }
         localStorage.removeItem(USER_STORAGE_KEY);
 
