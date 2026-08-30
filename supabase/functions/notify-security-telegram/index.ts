@@ -8,12 +8,11 @@
 // El body ya viene con un resumen construido en Postgres a partir de la
 // fila real insertada (event_label / severity / user_email / actor_email /
 // created_at / details) -- nunca metadata cruda, nunca datos financieros.
-// actor_email
-// es el admin que ejecutó la acción, ya resuelto de metadata.admin_id a
-// email por el trigger (nunca el uuid crudo). Un llamante sin el
-// secreto correcto nunca llega a construir ningún texto (401 antes de
-// leer el body), así que una petición externa no puede elegir
-// arbitrariamente el mensaje.
+// actor_email es el admin que ejecutó la acción, ya resuelto de
+// metadata.admin_id a email por el trigger (nunca el uuid crudo). Un
+// llamante sin el secreto correcto nunca llega a construir ningún texto
+// (401 antes de leer el body), así que una petición externa no puede
+// elegir arbitrariamente el mensaje.
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
