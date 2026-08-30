@@ -1,9 +1,10 @@
-// Fase 7B/7C — llamada exclusivamente interna (Postgres AFTER INSERT
-// trigger en security_events, ver
-// 20260811_066_security_critical_telegram_alert_content.sql), nunca
-// invocada por el cliente: verify_jwt=false porque la autorización no es
-// un JWT de usuario, es el secreto compartido de la cabecera
-// x-telegram-trigger-secret, comprobado contra TELEGRAM_TRIGGER_SECRET.
+// Fase 7B/7C — llamada exclusivamente interna desde triggers AFTER INSERT
+// de Postgres: security_events (eventos críticos automáticos, ver
+// 20260811_066) y security_admin_audit_log (toda acción de un Security
+// Admin, ver 20260830_076). Nunca invocada por el cliente: verify_jwt=false
+// porque la autorización no es un JWT de usuario, es el secreto compartido
+// de la cabecera x-telegram-trigger-secret, comprobado contra
+// TELEGRAM_TRIGGER_SECRET.
 //
 // El body ya viene con un resumen construido en Postgres a partir de la
 // fila real insertada (event_label / severity / user_email / actor_email /
