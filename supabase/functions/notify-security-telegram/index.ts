@@ -53,6 +53,17 @@ function severityHeader(severity: string | null): string {
   }
 }
 
+// URL directa al Security Center. Se configura como secreto de la Edge
+// Function (ADMIN_SECURITY_URL, p.ej. "https://tudominio/admin.html#/security");
+// si no está definida, el mensaje solo lleva el texto sin enlace. Telegram
+// convierte una URL suelta en enlace clicable sin necesidad de parse_mode.
+function adminSecurityUrl(): string | null {
+  const raw = Deno.env.get("ADMIN_SECURITY_URL")?.trim();
+  if (!raw) return null;
+  if (!/^https?:\/\//i.test(raw)) return null;
+  return raw;
+}
+
 function buildMessage(payload: Record<string, unknown>): string {
   const eventLabel = safeText(payload.event_label, 200) ?? "Evento de seguridad crítico";
   const severity = safeText(payload.severity, 20);
@@ -77,7 +88,9 @@ function buildMessage(payload: Record<string, unknown>): string {
   if (actorEmail) lines.push(`Ejecutado por: ${actorEmail}`);
   if (createdAt) lines.push(`Fecha: ${createdAt}`);
   if (details) lines.push(`Detalles: ${details}`);
-  lines.push("", "👉 Revisa el Security Center");
+
+  const url = adminSecurityUrl();
+  lines.push("", url ? `👉 Security Center: ${url}` : "👉 Revisa el Security Center");
 
   return lines.join("\n");
 }
