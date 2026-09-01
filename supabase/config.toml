@@ -1,0 +1,28 @@
+# Configuración del proyecto Supabase en control de versiones.
+#
+# Motivo de que este fichero exista (hallazgo de la auditoría): hasta ahora el
+# `verify_jwt` de cada Edge Function vivía SOLO en el panel de Supabase. Nada en
+# el repositorio decía cuál debía ser, así que un cambio accidental ahí no
+# dejaba rastro ni se podía revisar. Es especialmente delicado porque
+# delete-account y vision-proxy únicamente DECODIFICAN el JWT (atob del payload)
+# sin verificar la firma: confían en que el gateway ya lo ha hecho. Si alguien
+# pusiera verify_jwt = false en delete-account, cualquiera podría borrar la
+# cuenta de otro usuario poniendo su "sub" en un token inventado.
+
+project_id = "issxagrlwqubrzorahsn"
+
+[functions.delete-account]
+# CRÍTICO: debe seguir siendo true. La función decodifica el JWT sin verificar
+# la firma y borra la cuenta del "sub" que encuentre.
+verify_jwt = true
+
+[functions.vision-proxy]
+# CRÍTICO: debe seguir siendo true. Mismo patrón de decodificación sin
+# verificar, y además protege la clave de OpenAI de un uso no autenticado.
+verify_jwt = true
+
+[functions.notify-security-telegram]
+# Deliberadamente false: la llaman los triggers de Postgres, no un usuario, así
+# que no hay JWT que verificar. La autorización es el secreto compartido de la
+# cabecera x-telegram-trigger-secret, comprobado dentro de la función.
+verify_jwt = false

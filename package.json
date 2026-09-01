@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "lint": "eslint .",
+    "migrations:check": "node scripts/assert-migrations-applied.js",
     "build": "vite build",
     "build:capacitor": "vite build --mode capacitor",
     "preview": "vite preview",
