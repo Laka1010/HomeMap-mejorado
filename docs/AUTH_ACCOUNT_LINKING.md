@@ -36,10 +36,23 @@ permitieran altas con correo sin confirmar, cualquiera podría registrarse con e
 correo de otra persona y quedarse esperando a que esa persona entrara con Google
 para heredar su cuenta.
 
-> **Pendiente de verificar en el panel:** no se ha podido leer la configuración
-> de Auth desde fuera. Antes de activar ningún proveedor social hay que
-> confirmar en *Authentication → Sign In / Providers → Email* que la
-> confirmación de correo está activada.
+> **Verificado el 2026-09-01: la confirmación de correo ESTÁ activada.** No se
+> puede leer la configuración de Auth desde fuera, pero los datos lo demuestran:
+> de los 8 usuarios, ninguno tiene `email_confirmed_at` igual a su `created_at`
+> —los 7 confirmados lo hicieron entre 2 y 45 segundos después del alta— y los 7
+> tienen `confirmation_sent_at`. Con la confirmación desactivada, Supabase
+> marcaría el correo como confirmado en el mismo instante y no enviaría nada.
+> El octavo usuario se registró y nunca confirmó, así que no puede entrar: eso
+> solo ocurre si la confirmación es obligatoria.
+>
+> **Riesgo asociado, pendiente:** si la confirmación es obligatoria, cada alta
+> depende de que salga un correo. El servicio SMTP integrado de Supabase está
+> limitado a unos pocos envíos por hora y no está pensado para producción. Con
+> el volumen actual no se nota; el día del lanzamiento, a partir del tercer o
+> cuarto registro en una hora el correo deja de llegar y esas personas no pueden
+> entrar. Hay que configurar un SMTP propio en *Authentication → Emails → SMTP
+> Settings* antes de publicar. Afecta también a la recuperación de contraseña,
+> que ya está en uso.
 
 ### 3. Ningún proveedor que devuelva correos sin verificar
 
