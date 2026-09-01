@@ -119,7 +119,7 @@ const translations = {
       authError: "No se pudo completar la operación.",
       networkError: "No se pudo conectar con el servicio de usuarios. Inténtalo de nuevo.",
       infoTitle: "Tu casa, bajo control",
-      infoText: "Gestiona inventarios, escanea espacios con IA y comparte el acceso con tu familia o compañeros de piso.",
+      infoText: "Organiza el inventario de tu casa, encuentra cualquier objeto al instante y comparte el acceso con tu familia o compañeros de piso.",
       newVersionBadge: "Nueva versión 2.0",
       forgotPassword: "¿Has olvidado tu contraseña?",
       forgotPasswordTitle: "Recuperar contraseña",
@@ -396,118 +396,262 @@ const translations = {
       supportCopied: "Correo copiado",
       supportDiscordText: "¿Tienes alguna duda? Únete a nuestro Discord y te ayudamos.",
       supportDiscordButton: "Unirse al Discord de Haven",
-      privacyText: `Última actualización: julio de 2026
+      privacyText: `Última actualización: septiembre de 2026
 
-En Haven valoramos tu privacidad y nos comprometemos a proteger tu información personal.
+En Haven nos tomamos en serio la privacidad de nuestros usuarios. Esta Política de Privacidad explica qué información podemos tratar cuando utilizas Haven, para qué la utilizamos, con quién puede compartirse y qué derechos tienes sobre tus datos.
 
-1. Información que recopilamos
-Dependiendo de cómo uses Haven, podemos recopilar:
-• Nombre
-• Dirección de correo electrónico
-• Información del perfil
-• Información del hogar
-• Listas de la compra
-• Tareas
-• Objetos del hogar
-• Facturas
-• Gastos
-• Registros de ingresos
-• Preferencias de la aplicación
+1. Responsable y contacto
+Aplicación: Haven
+Contacto de privacidad: havenhome.app1@gmail.com
+Si tienes cualquier pregunta sobre el tratamiento de tus datos, puedes utilizar esta dirección para contactar con nosotros.
 
-2. Cómo usamos tu información
-Usamos tu información para:
-• Prestar el servicio de Haven.
-• Sincronizar datos entre los miembros del hogar.
-• Mejorar la aplicación.
+2. Información que podemos recopilar
+Dependiendo de las funciones que utilices, Haven puede tratar diferentes categorías de información.
+
+Información de la cuenta
+Podemos tratar:
+• Dirección de correo electrónico.
+• Nombre o nombre de usuario.
+• Información básica del perfil.
+• Información necesaria para autenticar y proteger tu cuenta.
+
+Información del hogar
+Cuando utilizas las funciones de organización del hogar, podemos almacenar:
+• Nombre del hogar.
+• Miembros del hogar.
+• Habitaciones y espacios.
+• Cajas y contenedores.
+• Objetos.
+• Fotografías asociadas a objetos o espacios.
+• Listas y productos.
+• Notas y otra información introducida por los usuarios.
+
+Información de compras
+Podemos tratar información relacionada con las compras que registres en Haven, como:
+• Productos.
+• Listas de compra.
+• Compras realizadas.
+• Importes.
+• Información contenida en registros o comprobantes que decidas procesar mediante Haven.
+
+Información económica
+Si utilizas las funciones económicas de Haven, podemos almacenar información introducida por ti, como:
+• Gastos.
+• Ingresos.
+• Cuentas.
+• Facturas.
+• Transferencias.
+• Objetivos económicos.
+• Movimientos y estadísticas derivadas de esta información.
+Esta información puede considerarse información personal y, dependiendo de su contenido, puede tener carácter especialmente sensible desde el punto de vista de privacidad.
+Haven no vende información financiera ni la utiliza para publicidad personalizada.
+
+Tareas, calendario y notas
+Podemos almacenar la información que introduzcas en:
+• Tareas.
+• Eventos.
+• Recordatorios.
+• Notas.
+• Otros contenidos creados dentro de la aplicación.
+
+Fotografías y cámara
+Cuando utilizas funciones que requieren fotografías o cámara, Haven puede acceder a las imágenes que selecciones o captures para proporcionar la función correspondiente.
+No utilizamos estas fotografías para publicidad.
+
+Información técnica y de seguridad
+Podemos tratar información técnica necesaria para mantener el servicio seguro y operativo, incluyendo determinados datos relacionados con:
+• Autenticación.
+• Sesiones.
+• Seguridad de la cuenta.
+• Errores técnicos.
+• Actividad necesaria para detectar y prevenir abusos o accesos no autorizados.
+
+3. Cómo utilizamos la información
+Utilizamos la información para:
+• Proporcionar las funciones de Haven.
+• Crear y gestionar cuentas.
+• Sincronizar información entre tus dispositivos.
+• Permitir la colaboración entre miembros autorizados de un hogar.
+• Guardar y mostrar el contenido que hayas creado.
+• Procesar compras, tareas, notas, eventos y otra información introducida por ti.
+• Proporcionar las funciones económicas de la aplicación.
+• Procesar fotografías cuando sea necesario para una función solicitada.
+• Detectar, investigar y prevenir accesos no autorizados, fraude o usos indebidos.
+• Mantener y mejorar la estabilidad y seguridad del servicio.
 • Responder a solicitudes de soporte.
-• Mantener la seguridad de la cuenta.
+• Cumplir obligaciones legales cuando sea necesario.
+No utilizamos los datos personales de Haven para vender publicidad personalizada.
 
-3. Compartición de datos
-No vendemos tu información personal.
-Tu información solo se comparte:
-• Con los miembros de tu propio hogar (cuando corresponda).
-• Cuando lo exija la ley.
+4. Base jurídica del tratamiento
+Cuando resulte aplicable la normativa europea de protección de datos, podemos tratar tus datos sobre diferentes bases jurídicas, dependiendo de la finalidad:
+• Ejecución del servicio: cuando el tratamiento es necesario para proporcionarte Haven y sus funciones.
+• Consentimiento: cuando la legislación exige que obtengamos tu consentimiento.
+• Interés legítimo: para determinadas actividades necesarias para mantener la seguridad, prevenir abusos y mejorar la fiabilidad del servicio, siempre respetando tus derechos.
+• Obligación legal: cuando tengamos que conservar o proporcionar información para cumplir una obligación legal.
 
-4. Seguridad de los datos
-Utilizamos medidas técnicas y organizativas razonables para proteger tus datos.
-Sin embargo, ningún servicio en línea puede garantizar una seguridad absoluta.
+5. Datos compartidos con otros miembros
+Haven permite crear hogares compartidos.
+Cuando introduces información dentro de un hogar compartido, esa información puede ser accesible para otros miembros autorizados según los permisos y funciones disponibles.
+Por ejemplo, determinados objetos, compras, tareas o información económica pueden estar disponibles para los miembros del hogar cuando la función correspondiente esté diseñada para ello.
+Te recomendamos no introducir información que no quieras compartir dentro de un hogar compartido.
 
-5. Almacenamiento de datos
-Tus datos se almacenan de forma segura utilizando infraestructura en la nube de confianza.
-Solo los sistemas y servicios autorizados necesarios para operar Haven pueden acceder a tu información.
+6. Proveedores de servicios
+Para poder proporcionar Haven podemos utilizar proveedores tecnológicos que procesen información en nuestro nombre.
+Estos proveedores pueden proporcionar servicios relacionados con:
+• Alojamiento y almacenamiento.
+• Base de datos.
+• Autenticación.
+• Infraestructura técnica.
+• Seguridad.
+• Envío de comunicaciones necesarias para el funcionamiento del servicio.
+• Procesamiento de determinadas funciones solicitadas por el usuario.
+Estos proveedores solo deben acceder a la información necesaria para prestar sus servicios y están sujetos a las obligaciones correspondientes de protección de datos.
+No vendemos tus datos personales a estos proveedores ni les autorizamos a utilizarlos para sus propios fines publicitarios.
 
-6. Tus derechos
-Puedes solicitar:
-• Acceder a tus datos personales.
-• Corregir información inexacta.
-• Eliminar tu cuenta.
-• Exportar tus datos cuando esté disponible.
+7. Seguridad
+Aplicamos medidas técnicas y organizativas razonables destinadas a proteger la información frente a accesos no autorizados, pérdida, alteración o divulgación indebida.
+Entre otras medidas, utilizamos mecanismos de autenticación, controles de acceso y comunicaciones cifradas cuando corresponde.
+Sin embargo, ningún sistema conectado a Internet puede garantizar una seguridad absoluta.
 
-7. Privacidad de los menores
-Los menores solo pueden usar Haven como miembros de un hogar gestionado por un padre, madre o tutor.
-Las cuentas infantiles tienen permisos restringidos y acceso limitado a la información del hogar.
+8. Conservación de los datos
+Conservamos la información mientras sea necesaria para proporcionar Haven, mantener la seguridad del servicio, cumplir obligaciones legales o resolver posibles conflictos.
+Cuando elimines tu cuenta, procederemos a eliminar los datos asociados a ella conforme a nuestros procedimientos de eliminación y a las obligaciones legales aplicables.
+Algunos datos técnicos o registros pueden conservarse durante un período limitado cuando sea necesario por motivos de seguridad, prevención del fraude o cumplimiento de obligaciones legales.
 
-8. Cookies y análisis
-Haven puede utilizar tecnologías esenciales necesarias para la autenticación, la seguridad y el rendimiento de la aplicación.
-No utilizamos tus datos personales con fines publicitarios.
+9. Eliminación de la cuenta y de los datos
+Puedes solicitar la eliminación de tu cuenta y de los datos asociados a ella.
+La eliminación de una cuenta puede realizarse mediante las opciones disponibles dentro de Haven o mediante el mecanismo de solicitud que proporcionemos.
+Cuando se solicite la eliminación, eliminaremos los datos personales asociados a la cuenta dentro de los plazos razonables y aplicables, salvo aquella información que debamos conservar por obligación legal o por razones legítimas de seguridad.
+La eliminación de una cuenta puede afectar también al acceso a hogares compartidos y a las funciones asociadas a dicha cuenta.
 
-9. Actualizaciones de la política
-Esta Política de Privacidad puede actualizarse de vez en cuando.
-La versión más reciente siempre estará disponible dentro de la aplicación.
+10. Derechos de los usuarios
+Dependiendo de la legislación aplicable, puedes tener derecho a:
+• Solicitar acceso a tus datos personales.
+• Solicitar la corrección de información incorrecta.
+• Solicitar la eliminación de tus datos.
+• Solicitar la limitación del tratamiento.
+• Oponerte a determinados tratamientos.
+• Solicitar la portabilidad de tus datos cuando sea aplicable.
+• Retirar un consentimiento cuando el tratamiento se base en él.
+• Presentar una reclamación ante la autoridad de protección de datos correspondiente.
+Para ejercer estos derechos puedes contactar con:
+havenhome.app1@gmail.com
 
-10. Contacto
-Si tienes alguna pregunta sobre esta Política de Privacidad, contacta con:
-lucas.mesas.10@gmail.com`,
-      termsText: `Última actualización: julio de 2026
+11. Menores
+Haven no está diseñada específicamente como un servicio dirigido a menores.
+Los menores no deben crear una cuenta o utilizar Haven de forma independiente cuando la legislación aplicable requiera autorización parental.
+Si Haven permite la participación de un menor en un hogar familiar, dicha utilización deberá realizarse bajo la responsabilidad y supervisión del padre, madre o tutor correspondiente.
 
-Bienvenido a Haven.
+12. Cookies y tecnologías similares
+Haven no utiliza cookies con fines publicitarios dentro de la aplicación.
+Podemos utilizar tecnologías esenciales relacionadas con autenticación, seguridad, funcionamiento y mantenimiento del servicio cuando sean necesarias.
 
-Al crear una cuenta o usar Haven, aceptas estos Términos de Servicio. Si no estás de acuerdo con estos términos, por favor no uses la aplicación.
+13. Publicidad
+Haven no vende los datos personales de sus usuarios y no utiliza la información personal, económica o del hogar para crear perfiles destinados a publicidad personalizada.
+
+14. Transferencias internacionales
+Algunos proveedores tecnológicos que utilizamos podrían procesar información desde países distintos al país donde resides.
+Cuando esto ocurra, adoptaremos las medidas y garantías exigidas por la legislación de protección de datos aplicable.
+
+15. Cambios en esta Política
+Podemos actualizar esta Política de Privacidad para reflejar cambios en Haven, en nuestros proveedores, en las funcionalidades disponibles o en los requisitos legales.
+Cuando los cambios sean relevantes, procuraremos comunicarlos mediante la aplicación o por otros medios razonables.
+La fecha de la última actualización aparece al principio de esta Política.
+
+16. Contacto
+Si tienes cualquier pregunta relacionada con esta Política de Privacidad o con el tratamiento de tus datos, puedes contactar con:
+Correo electrónico: havenhome.app1@gmail.com
+También puedes unirte a nuestro servidor de soporte en Discord: https://discord.gg/KfA9fp4M5h`,
+      termsText: `Última actualización: septiembre de 2026
+
+Bienvenido a Haven, una aplicación diseñada para ayudarte a organizar y gestionar tu hogar de forma sencilla, incluyendo objetos, espacios, compras, tareas, notas, calendario y gestión económica.
+
+Al crear una cuenta, acceder o utilizar Haven, aceptas estos Términos de Servicio. Si no estás de acuerdo con ellos, no debes utilizar el servicio.
 
 1. Sobre Haven
-Haven es una aplicación de organización del hogar diseñada para ayudar a personas y familias a gestionar su hogar, incluyendo objetos, listas de la compra, tareas, facturas, gastos y demás información relacionada con el hogar.
+Haven es una herramienta de organización personal y del hogar. Entre otras funciones, Haven puede permitirte:
+• Organizar habitaciones, espacios, cajas y objetos.
+• Crear y gestionar listas de la compra.
+• Registrar compras.
+• Gestionar tareas, notas y eventos.
+• Registrar gastos, ingresos, cuentas, facturas y otros movimientos económicos.
+• Compartir determinados datos del hogar con otros miembros autorizados.
+• Utilizar determinadas funciones de cámara o reconocimiento para facilitar la organización de objetos y compras.
+Las funciones disponibles pueden variar según la versión de la aplicación.
 
-2. Cuentas de usuario
-Eres responsable de mantener la seguridad de tu cuenta.
-Aceptas proporcionar información precisa y mantenerla actualizada.
-Eres responsable de toda la actividad que ocurra bajo tu cuenta.
+2. Cuenta de usuario
+Para utilizar determinadas funciones de Haven puede ser necesario crear una cuenta. Te comprometes a:
+• Proporcionar información verdadera y actualizada.
+• Mantener la confidencialidad de tus credenciales.
+• No compartir tus credenciales con terceros.
+• Informarnos si detectas un acceso no autorizado a tu cuenta.
+Eres responsable de las actividades realizadas desde tu cuenta, salvo cuando el acceso no autorizado se deba a una causa que no te sea imputable.
 
-3. Miembros del hogar
-Un hogar puede contener varios miembros.
-El propietario del hogar y los administradores son responsables de gestionar las invitaciones y los permisos.
-Los miembros deben respetar los permisos asignados a su rol.
+3. Hogares y cuentas compartidas
+Haven permite crear hogares y, cuando corresponda, invitar a otras personas a formar parte de ellos.
+El propietario y los administradores del hogar pueden gestionar miembros, invitaciones y determinados permisos.
+Cuando compartas información dentro de un hogar, debes tener en cuenta que dicha información podrá ser visible para los miembros que tengan permisos para acceder a ella.
+Cada usuario es responsable de la información que introduce y comparte dentro de un hogar.
 
 4. Uso aceptable
-Aceptas no:
-• Usar Haven con fines ilegales.
-• Intentar acceder sin autorización a otras cuentas u hogares.
-• Subir contenido malicioso o dañino.
-• Interferir con el funcionamiento normal del servicio.
+Al utilizar Haven, aceptas no:
+• Utilizar el servicio para actividades ilegales o fraudulentas.
+• Intentar acceder a cuentas, hogares o información para los que no tengas autorización.
+• Intentar eludir los mecanismos de seguridad o control de acceso.
+• Introducir malware, código malicioso o contenido destinado a perjudicar el servicio.
+• Interferir deliberadamente con el funcionamiento de Haven.
+• Utilizar Haven para vulnerar los derechos de otras personas.
+Podremos tomar medidas razonables, incluida la suspensión o eliminación de una cuenta, cuando exista un incumplimiento grave de estos términos o un riesgo para la seguridad del servicio o de otros usuarios.
 
 5. Contenido del usuario
-Toda la información que añadas a Haven sigue siendo tu responsabilidad.
-Conservas la propiedad de tu contenido.
-Al usar Haven, nos concedes permiso para almacenar y procesar tus datos únicamente con el fin de prestar el servicio.
+El contenido que introduces en Haven, como fotografías, nombres, notas, listas, objetos, tareas, información económica u otros datos, sigue siendo tuyo. No adquirimos la propiedad de dicho contenido.
+Nos concedes únicamente los permisos necesarios para almacenar, procesar, sincronizar y mostrar ese contenido con el objetivo de proporcionar las funcionalidades de Haven. Por ejemplo, si utilizas una función para compartir información con otros miembros de tu hogar, necesitamos procesar dicha información para poder proporcionar esa función.
+Eres responsable de asegurarte de que tienes derecho a introducir y compartir cualquier contenido que añadas a Haven.
 
-6. Disponibilidad
-Nos esforzamos por mantener Haven disponible en todo momento, pero no podemos garantizar un servicio ininterrumpido.
-El mantenimiento, las actualizaciones o los problemas técnicos pueden afectar ocasionalmente a la disponibilidad.
+6. Información económica
+Haven puede permitirte registrar información relacionada con gastos, ingresos, cuentas, facturas, compras y otros movimientos económicos. Estas funciones tienen únicamente una finalidad de organización y registro personal.
+Haven no constituye una entidad financiera, banco, asesor financiero, asesor fiscal ni servicio de inversión. La información económica introducida en Haven no constituye asesoramiento financiero, fiscal o de inversión.
 
-7. Funciones futuras
-Algunas funciones que se muestran en la aplicación pueden no estar disponibles todavía.
-Podrán introducirse, modificarse o eliminarse en futuras actualizaciones.
+7. Funciones de inteligencia artificial y reconocimiento
+Algunas funciones de Haven pueden utilizar tecnologías de reconocimiento o inteligencia artificial para facilitar determinadas tareas, como identificar objetos o interpretar información proporcionada por el usuario.
+Estas funciones tienen carácter auxiliar y sus resultados pueden contener errores. No debes utilizar los resultados de estas funciones como única fuente para tomar decisiones importantes.
 
-8. Limitación de responsabilidad
-Haven se ofrece "tal cual".
-No nos hacemos responsables de ninguna pérdida económica, pérdida de datos o daños derivados del uso de la aplicación.
+8. Cámara, fotografías y permisos del dispositivo
+Algunas funciones pueden requerir acceso a determinadas capacidades del dispositivo, como la cámara o las fotografías. Estos permisos se utilizan únicamente cuando son necesarios para proporcionar la función correspondiente.
+Puedes gestionar los permisos desde los ajustes de tu dispositivo. Algunas funciones podrían dejar de estar disponibles si revocas determinados permisos.
 
-9. Cambios en estos Términos
-Podemos actualizar estos Términos de Servicio de vez en cuando.
-Los cambios significativos se comunicarán a través de la aplicación siempre que sea posible.
+9. Disponibilidad del servicio
+Intentamos mantener Haven disponible y funcionando correctamente, pero no podemos garantizar que el servicio esté disponible de forma permanente o sin errores. Podrían producirse interrupciones debido a:
+• Mantenimiento.
+• Actualizaciones.
+• Problemas técnicos.
+• Fallos de proveedores externos.
+• Circunstancias fuera de nuestro control.
 
-10. Contacto
-Si tienes preguntas sobre estos Términos, contacta con:
-lucas.mesas.10@gmail.com`,
+10. Modificaciones del servicio
+Podemos modificar, añadir o retirar funciones de Haven para mejorar, mantener o desarrollar el servicio.
+Las funciones futuras que puedan aparecer en la aplicación no constituyen una garantía de que vayan a permanecer disponibles.
+
+11. Suspensión o cancelación
+Podemos suspender o cancelar una cuenta cuando sea necesario para proteger Haven, a sus usuarios o cuando exista un incumplimiento de estos términos.
+También puedes dejar de utilizar Haven y solicitar la eliminación de tu cuenta conforme a nuestra Política de Privacidad.
+
+12. Limitación de responsabilidad
+Haven se proporciona dentro de los límites permitidos por la legislación aplicable. No garantizamos que el servicio esté libre de errores, interrupciones o pérdidas de datos.
+En la medida permitida por la ley, no seremos responsables de daños indirectos o pérdidas derivados del uso o imposibilidad de uso de Haven.
+Nada de estos términos pretende excluir o limitar derechos o responsabilidades que no puedan excluirse o limitarse legalmente.
+
+13. Cambios en estos términos
+Podemos actualizar estos Términos de Servicio cuando sea necesario. Cuando realicemos cambios relevantes, procuraremos informar a los usuarios mediante Haven o por otros medios razonables.
+La fecha indicada al principio del documento muestra cuándo se realizó la última actualización.
+
+14. Legislación aplicable
+Estos términos se interpretarán de acuerdo con la legislación aplicable. Cuando seas consumidor, ninguna disposición de estos términos pretende privarte de los derechos que te correspondan obligatoriamente conforme a la legislación de protección de consumidores aplicable.
+
+15. Contacto
+Si tienes preguntas, sugerencias o necesitas asistencia relacionada con Haven, puedes contactar con:
+Correo electrónico: havenhome.app1@gmail.com
+Soporte en Discord: https://discord.gg/KfA9fp4M5h`,
       appName: "Haven",
       versionLabel: "Versión",
       buildLabel: "Número de compilación",
@@ -1726,7 +1870,7 @@ lucas.mesas.10@gmail.com`,
       authError: "We could not complete the operation.",
       networkError: "Could not connect to the user service. Please try again.",
       infoTitle: "Your home, under control",
-      infoText: "Manage inventories, scan spaces with AI, and share access with your family or roommates.",
+      infoText: "Organize your home inventory, find any item instantly, and share access with your family or roommates.",
       newVersionBadge: "New version 2.0",
       forgotPassword: "Forgot your password?",
       forgotPasswordTitle: "Reset password",
@@ -2003,118 +2147,262 @@ lucas.mesas.10@gmail.com`,
       supportCopied: "Email copied",
       supportDiscordText: "Have a question? Join our Discord and we'll help you out.",
       supportDiscordButton: "Join Haven's Discord",
-      privacyText: `Last updated: July 2026
+      privacyText: `Last updated: September 2026
 
-At Haven, we value your privacy and are committed to protecting your personal information.
+At Haven we take our users' privacy seriously. This Privacy Policy explains what information we may process when you use Haven, what we use it for, who it may be shared with, and what rights you have over your data.
 
-1. Information We Collect
-Depending on how you use Haven, we may collect:
-• Name
-• Email address
-• Profile information
-• Household information
-• Shopping lists
-• Tasks
-• Household items
-• Bills
-• Expenses
-• Income records
-• App preferences
+1. Controller and Contact
+Application: Haven
+Privacy contact: havenhome.app1@gmail.com
+If you have any questions about how your data is processed, you can use this address to contact us.
 
-2. How We Use Your Information
-We use your information to:
-• Provide the Haven service.
-• Synchronize data between household members.
-• Improve the application.
+2. Information We May Collect
+Depending on the features you use, Haven may process different categories of information.
+
+Account information
+We may process:
+• Email address.
+• Name or username.
+• Basic profile information.
+• Information needed to authenticate and protect your account.
+
+Household information
+When you use the home organization features, we may store:
+• Household name.
+• Household members.
+• Rooms and spaces.
+• Boxes and containers.
+• Items.
+• Photos associated with items or spaces.
+• Lists and products.
+• Notes and other information entered by users.
+
+Shopping information
+We may process information related to the purchases you record in Haven, such as:
+• Products.
+• Shopping lists.
+• Completed purchases.
+• Amounts.
+• Information contained in records or receipts you choose to process through Haven.
+
+Financial information
+If you use Haven's financial features, we may store information entered by you, such as:
+• Expenses.
+• Income.
+• Accounts.
+• Bills.
+• Transfers.
+• Financial goals.
+• Movements and statistics derived from this information.
+This information may be considered personal information and, depending on its content, may be particularly sensitive from a privacy standpoint.
+Haven does not sell financial information or use it for personalized advertising.
+
+Tasks, calendar, and notes
+We may store the information you enter in:
+• Tasks.
+• Events.
+• Reminders.
+• Notes.
+• Other content created within the application.
+
+Photos and camera
+When you use features that require photos or the camera, Haven may access the images you select or capture in order to provide the corresponding feature.
+We do not use these photos for advertising.
+
+Technical and security information
+We may process technical information needed to keep the service secure and operational, including certain data related to:
+• Authentication.
+• Sessions.
+• Account security.
+• Technical errors.
+• Activity needed to detect and prevent abuse or unauthorized access.
+
+3. How We Use the Information
+We use the information to:
+• Provide Haven's features.
+• Create and manage accounts.
+• Synchronize information across your devices.
+• Enable collaboration between authorized members of a household.
+• Save and display the content you have created.
+• Process purchases, tasks, notes, events, and other information entered by you.
+• Provide the application's financial features.
+• Process photos when necessary for a requested feature.
+• Detect, investigate, and prevent unauthorized access, fraud, or misuse.
+• Maintain and improve the stability and security of the service.
 • Respond to support requests.
-• Maintain account security.
+• Comply with legal obligations when necessary.
+We do not use Haven's personal data to sell personalized advertising.
 
-3. Data Sharing
-We do not sell your personal information.
-Your information is only shared:
-• With members of your own household (where appropriate).
-• When required by law.
+4. Legal Basis for Processing
+Where European data protection law applies, we may process your data on different legal bases, depending on the purpose:
+• Performance of the service: where processing is necessary to provide you with Haven and its features.
+• Consent: where the law requires us to obtain your consent.
+• Legitimate interest: for certain activities needed to maintain security, prevent abuse, and improve the reliability of the service, always respecting your rights.
+• Legal obligation: where we must retain or provide information to comply with a legal obligation.
 
-4. Data Security
-We use reasonable technical and organizational measures to protect your data.
-However, no online service can guarantee absolute security.
+5. Data Shared With Other Members
+Haven lets you create shared households.
+When you enter information within a shared household, that information may be accessible to other authorized members according to the permissions and features available.
+For example, certain items, purchases, tasks, or financial information may be available to household members when the corresponding feature is designed for it.
+We recommend not entering information you do not want to share within a shared household.
 
-5. Data Storage
-Your data is securely stored using trusted cloud infrastructure.
-Only authorized systems and services required to operate Haven can access your information.
+6. Service Providers
+In order to provide Haven, we may use technology providers that process information on our behalf.
+These providers may provide services related to:
+• Hosting and storage.
+• Database.
+• Authentication.
+• Technical infrastructure.
+• Security.
+• Sending communications necessary for the operation of the service.
+• Processing certain features requested by the user.
+These providers should only access the information necessary to provide their services and are subject to the corresponding data protection obligations.
+We do not sell your personal data to these providers or authorize them to use it for their own advertising purposes.
 
-6. Your Rights
-You may request to:
-• Access your personal data.
-• Correct inaccurate information.
-• Delete your account.
-• Export your data where available.
+7. Security
+We apply reasonable technical and organizational measures intended to protect information against unauthorized access, loss, alteration, or improper disclosure.
+Among other measures, we use authentication mechanisms, access controls, and encrypted communications where appropriate.
+However, no system connected to the Internet can guarantee absolute security.
 
-7. Children's Privacy
-Children may use Haven only as members of a household managed by a parent or guardian.
-Child accounts have restricted permissions and limited access to household information.
+8. Data Retention
+We retain information for as long as necessary to provide Haven, maintain the security of the service, comply with legal obligations, or resolve possible disputes.
+When you delete your account, we will delete the data associated with it in accordance with our deletion procedures and applicable legal obligations.
+Some technical data or logs may be retained for a limited period when necessary for security, fraud prevention, or compliance with legal obligations.
 
-8. Cookies and Analytics
-Haven may use essential technologies required for authentication, security, and application performance.
-We do not use your personal data for advertising purposes.
+9. Account and Data Deletion
+You can request the deletion of your account and the data associated with it.
+Account deletion can be carried out through the options available within Haven or through the request mechanism we provide.
+When deletion is requested, we will delete the personal data associated with the account within reasonable and applicable timeframes, except for information we must retain due to legal obligation or legitimate security reasons.
+Deleting an account may also affect access to shared households and the features associated with that account.
 
-9. Policy Updates
-This Privacy Policy may be updated from time to time.
-The latest version will always be available within the application.
+10. User Rights
+Depending on applicable law, you may have the right to:
+• Request access to your personal data.
+• Request correction of incorrect information.
+• Request deletion of your data.
+• Request restriction of processing.
+• Object to certain processing.
+• Request portability of your data where applicable.
+• Withdraw consent where processing is based on it.
+• Lodge a complaint with the relevant data protection authority.
+To exercise these rights you can contact:
+havenhome.app1@gmail.com
 
-10. Contact
-If you have any questions about this Privacy Policy, please contact:
-lucas.mesas.10@gmail.com`,
-      termsText: `Last updated: July 2026
+11. Minors
+Haven is not specifically designed as a service directed at minors.
+Minors must not create an account or use Haven independently where applicable law requires parental authorization.
+If Haven allows a minor to participate in a family household, such use must take place under the responsibility and supervision of the corresponding parent or guardian.
 
-Welcome to Haven.
+12. Cookies and Similar Technologies
+Haven does not use cookies for advertising purposes within the application.
+We may use essential technologies related to authentication, security, operation, and maintenance of the service when necessary.
 
-By creating an account or using Haven, you agree to these Terms of Service. If you do not agree with these terms, please do not use the application.
+13. Advertising
+Haven does not sell its users' personal data and does not use personal, financial, or household information to build profiles intended for personalized advertising.
+
+14. International Transfers
+Some technology providers we use may process information from countries other than the country where you reside.
+When this occurs, we will adopt the measures and safeguards required by applicable data protection law.
+
+15. Changes to This Policy
+We may update this Privacy Policy to reflect changes in Haven, in our providers, in the features available, or in legal requirements.
+When changes are relevant, we will endeavor to communicate them through the application or by other reasonable means.
+The date of the last update appears at the top of this Policy.
+
+16. Contact
+If you have any questions related to this Privacy Policy or the processing of your data, you can contact:
+Email: havenhome.app1@gmail.com
+You can also join our Discord support server: https://discord.gg/KfA9fp4M5h`,
+      termsText: `Last updated: September 2026
+
+Welcome to Haven, an application designed to help you organize and manage your home simply, including items, spaces, shopping, tasks, notes, calendar, and financial management.
+
+By creating an account, accessing, or using Haven, you agree to these Terms of Service. If you do not agree with them, you must not use the service.
 
 1. About Haven
-Haven is a home organization application designed to help individuals and families manage their household, including items, shopping lists, tasks, bills, expenses, and other household-related information.
+Haven is a personal and home organization tool. Among other features, Haven may allow you to:
+• Organize rooms, spaces, boxes, and items.
+• Create and manage shopping lists.
+• Record purchases.
+• Manage tasks, notes, and events.
+• Record expenses, income, accounts, bills, and other financial movements.
+• Share certain household data with other authorized members.
+• Use certain camera or recognition features to help organize items and purchases.
+Available features may vary depending on the version of the application.
 
-2. User Accounts
-You are responsible for maintaining the security of your account.
-You agree to provide accurate information and keep it up to date.
-You are responsible for all activity that occurs under your account.
+2. User Account
+Using certain Haven features may require creating an account. You agree to:
+• Provide truthful and up-to-date information.
+• Keep your credentials confidential.
+• Not share your credentials with third parties.
+• Notify us if you detect unauthorized access to your account.
+You are responsible for activity carried out from your account, except where the unauthorized access is due to a cause not attributable to you.
 
-3. Household Membership
-A household may contain multiple members.
-The household owner and administrators are responsible for managing invitations and permissions.
-Members must respect the permissions assigned to their role.
+3. Households and Shared Accounts
+Haven lets you create households and, where applicable, invite other people to be part of them.
+The household owner and administrators can manage members, invitations, and certain permissions.
+When you share information within a household, be aware that this information may be visible to members who have permission to access it.
+Each user is responsible for the information they enter and share within a household.
 
 4. Acceptable Use
-You agree not to:
-• Use Haven for illegal purposes.
-• Attempt to gain unauthorized access to other accounts or households.
-• Upload malicious or harmful content.
-• Interfere with the normal operation of the service.
+When using Haven, you agree not to:
+• Use the service for illegal or fraudulent activities.
+• Attempt to access accounts, households, or information you are not authorized to access.
+• Attempt to bypass security or access-control mechanisms.
+• Introduce malware, malicious code, or content intended to harm the service.
+• Deliberately interfere with the operation of Haven.
+• Use Haven to violate the rights of others.
+We may take reasonable measures, including suspending or deleting an account, where there is a serious breach of these terms or a risk to the security of the service or of other users.
 
 5. User Content
-All information you add to Haven remains your responsibility.
-You retain ownership of your content.
-By using Haven, you grant us permission to store and process your data solely for providing the service.
+The content you enter in Haven, such as photos, names, notes, lists, items, tasks, financial information, or other data, remains yours. We do not acquire ownership of that content.
+You grant us only the permissions needed to store, process, sync, and display that content in order to provide Haven's functionality. For example, if you use a feature to share information with other members of your household, we need to process that information in order to provide that feature.
+You are responsible for ensuring that you have the right to enter and share any content you add to Haven.
 
-6. Availability
-We strive to keep Haven available at all times, but we cannot guarantee uninterrupted service.
-Maintenance, updates, or technical issues may occasionally affect availability.
+6. Financial Information
+Haven may allow you to record information related to expenses, income, accounts, bills, purchases, and other financial movements. These features are solely for personal organization and record-keeping.
+Haven is not a financial institution, bank, financial advisor, tax advisor, or investment service. Financial information entered in Haven does not constitute financial, tax, or investment advice.
 
-7. Future Features
-Some features shown in the application may not yet be available.
-They may be introduced, modified, or removed in future updates.
+7. Artificial Intelligence and Recognition Features
+Some Haven features may use recognition or artificial intelligence technologies to help with certain tasks, such as identifying items or interpreting information provided by the user.
+These features are auxiliary and their results may contain errors. You should not use the results of these features as the sole basis for making important decisions.
 
-8. Limitation of Liability
-Haven is provided "as is."
-We are not responsible for any financial loss, data loss, or damages resulting from the use of the application.
+8. Camera, Photos, and Device Permissions
+Some features may require access to certain device capabilities, such as the camera or photos. These permissions are used only when necessary to provide the corresponding feature.
+You can manage permissions from your device settings. Some features may become unavailable if you revoke certain permissions.
 
-9. Changes to These Terms
-We may update these Terms of Service from time to time.
-Significant changes will be communicated through the application whenever possible.
+9. Service Availability
+We try to keep Haven available and working correctly, but we cannot guarantee that the service will be permanently available or error-free. Interruptions may occur due to:
+• Maintenance.
+• Updates.
+• Technical issues.
+• Third-party provider failures.
+• Circumstances beyond our control.
 
-10. Contact
-If you have questions about these Terms, please contact:
-lucas.mesas.10@gmail.com`,
+10. Changes to the Service
+We may modify, add, or remove Haven features to improve, maintain, or develop the service.
+Future features that may appear in the application are not a guarantee that they will remain available.
+
+11. Suspension or Termination
+We may suspend or terminate an account where necessary to protect Haven, its users, or where there is a breach of these terms.
+You may also stop using Haven and request the deletion of your account in accordance with our Privacy Policy.
+
+12. Limitation of Liability
+Haven is provided within the limits permitted by applicable law. We do not guarantee that the service will be free of errors, interruptions, or data loss.
+To the extent permitted by law, we will not be liable for indirect damages or losses arising from the use of or inability to use Haven.
+Nothing in these terms is intended to exclude or limit rights or liabilities that cannot lawfully be excluded or limited.
+
+13. Changes to These Terms
+We may update these Terms of Service when necessary. When we make relevant changes, we will endeavor to inform users through Haven or by other reasonable means.
+The date shown at the top of the document indicates when the last update was made.
+
+14. Governing Law
+These terms shall be interpreted in accordance with applicable law. Where you are a consumer, nothing in these terms is intended to deprive you of the rights that mandatorily apply to you under applicable consumer protection law.
+
+15. Contact
+If you have questions, suggestions, or need assistance related to Haven, you can contact:
+Email: havenhome.app1@gmail.com
+Discord support: https://discord.gg/KfA9fp4M5h`,
       appName: "Haven",
       versionLabel: "Version",
       buildLabel: "Build number",

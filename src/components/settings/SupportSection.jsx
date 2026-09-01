@@ -2,7 +2,7 @@ import { useState } from "react";
 import { LifeBuoy, Copy, Check, MessageCircle } from "lucide-react";
 import { useTranslation } from "../../i18n";
 
-const SUPPORT_EMAIL = "homemapsupport@gmail.com";
+const SUPPORT_EMAIL = "havenhome.app1@gmail.com";
 const SUPPORT_DISCORD_URL = "https://discord.gg/KfA9fp4M5h";
 
 export function SupportSection() {

@@ -4,17 +4,19 @@ Este documento describe los pasos necesarios para preparar la app Haven para pub
 
 ## 1. Firma de la app (release signing)
 
-El proyecto ya contiene configuración de firma en `android/app/build.gradle`. Antes de generar un build de producción:
+El proyecto ya contiene configuración de firma en `android/app/build.gradle` (lee `android/keystore.properties` si existe; si no, el build de release sale sin firmar).
 
-1. Copia `android/keystore.properties.example` a `android/keystore.properties`.
-2. Rellena con los valores reales de tu keystore:
-   - `storeFile`: ruta al archivo JKS o keystore
-   - `storePassword`: contraseña del almacén
-   - `keyAlias`: alias de la clave
-   - `keyPassword`: contraseña de la clave
-3. Genera el archivo de firma (`.jks` o `.keystore`) si no lo tienes.
+1. **Crea el keystore** (una sola vez). En tu propia ventana de PowerShell:
 
-> El archivo `android/keystore.properties` y el keystore deben mantenerse fuera de control de versiones.
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\create-release-keystore.ps1
+   ```
+
+   El script llama a `keytool` y crea `android/release-keystore.jks` con el alias `haven-release`. keytool te pedirá una contraseña de forma interactiva; apúntala.
+
+2. **Rellena `android/keystore.properties`** (ya existe con placeholders): sustituye `PASSWORD_AQUI` por la contraseña que elegiste, en `storePassword` y `keyPassword`.
+
+> `android/keystore.properties`, `*.jks` y `*.keystore` ya están en `.gitignore` (raíz y `android/.gitignore`). Guarda el keystore y la contraseña en un gestor de contraseñas: si los pierdes no podrás actualizar la app.
 
 ## 2. Generar el App Bundle firmado
 
@@ -42,28 +44,22 @@ Para la ficha de Play Store necesitarás una URL pública accesible por Google. 
 ### Posible texto de la ficha
 
 - Nombre de la app: `Haven`
-- Descripción corta: `Organiza tu hogar, localiza objetos y guarda fotos de cada habitación.`
-- Descripción larga: `Haven te ayuda a organizar habitaciones, cajas y objetos de tu hogar. Busca rápidamente dónde está cada cosa, añade fotos a los objetos y guarda tu inventario de forma segura en tu dispositivo.`
+- Descripción corta: `Organiza tu hogar, localiza tus objetos y gestiona compras, tareas y gastos.`
+- Descripción larga: `Haven te ayuda a organizar habitaciones, cajas y objetos de tu hogar. Busca al instante dónde está cada cosa, comparte el acceso con tu familia o compañeros de piso y lleva las listas de la compra, las tareas y la economía del hogar en un solo sitio.`
 - Categoría: `Productividad`
 - Clasificación de contenido: `Todos`
-- Correo de soporte: `soporte@homemap.app` (reemplaza por tu contacto real)
+- Correo de soporte: `havenhome.app1@gmail.com`
 - URL de política de privacidad: `https://tudominio.com/privacy-policy.html`
 
 ## 5. Permisos y justificación
 
-La app declara los siguientes permisos en `android/app/src/main/AndroidManifest.xml`:
+La app solo declara un permiso en `android/app/src/main/AndroidManifest.xml`:
 
 - `android.permission.INTERNET`
-- `android.permission.CAMERA`
-- `android.permission.READ_MEDIA_IMAGES`
-- `android.permission.READ_EXTERNAL_STORAGE` (para compatibilidad con Android 32 y anteriores)
 
-Para Play Store debes justificarlos en la ficha de permisos cuando se solicite.
+(El Android Gradle Plugin añade automáticamente `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` en el manifest fusionado; es interno de la plataforma, no hay que declararlo ni justificarlo.)
 
-### Justificación sugerida
-
-- Cámara: para permitir tomar una foto y asociarla a un objeto de tu inventario.
-- Fotos/Imágenes: para seleccionar imágenes desde la galería y asociarlas a objetos.
+No se piden cámara ni acceso a fotos: la función de fotos y el escaneo con IA se retiraron. Si en el futuro se reactiva el escaneo de tickets, habrá que volver a añadir `CAMERA` / `READ_MEDIA_IMAGES` y justificarlos en la ficha.
 
 ## 6. Checklist de publicación
 

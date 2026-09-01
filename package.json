@@ -13,8 +13,8 @@
     "cap:sync": "npm run build:capacitor && node scripts/assert-no-admin-in-dist.js && npx cap sync",
     "cap:add:android": "npx cap add android",
     "cap:add:ios": "npx cap add ios",
-    "android:release": "npm run cap:sync && powershell -ExecutionPolicy Bypass -NoProfile -Command \"cd android; .\\gradlew.bat assembleRelease\"",
-    "android:bundle": "npm run cap:sync && powershell -ExecutionPolicy Bypass -NoProfile -Command \"cd android; .\\gradlew.bat bundleRelease\"",
+    "android:release": "npm run cap:sync && powershell -ExecutionPolicy Bypass -NoProfile -File scripts/gradle-android.ps1 assembleRelease",
+    "android:bundle": "npm run cap:sync && powershell -ExecutionPolicy Bypass -NoProfile -File scripts/gradle-android.ps1 bundleRelease",
     "ios:release": "npm run cap:sync && npx cap open ios"
   },
   "dependencies": {

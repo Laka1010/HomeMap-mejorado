@@ -45,9 +45,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>Haven necesita acceso a la cámara para reconocer objetos desde fotos o escaneo rápido.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Haven necesita acceso a tus fotos para añadir objetos a la casa desde imágenes existentes.</string>
 </dict>
 </plist>
