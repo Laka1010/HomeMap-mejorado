@@ -114,6 +114,44 @@ function getUserIdFromAuthHeader(req: Request): string | null {
   }
 }
 
+// A-3: mismo orden de confianza que public._security_event_client_ip() (ver
+// 20260831_079). Las dos primeras cabeceras no las puede fijar el cliente; de
+// x-forwarded-for se toma SIEMPRE el último elemento, que es el que añade el
+// borde -- el primero es justo el que inyectaría un atacante.
+function clientIp(req: Request): string | null {
+  const pick = (raw: string | null): string | null => {
+    if (!raw) return null;
+    const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    if (parts.length === 0) return null;
+    let v = parts[parts.length - 1];
+    const bracketed = v.match(/^\[(.+)\]:\d+$/); // [IPv6]:puerto
+    if (bracketed) return bracketed[1];
+    if (v.includes(".") && v.split(":").length === 2) v = v.split(":")[0]; // IPv4:puerto
+    return v || null;
+  };
+  return pick(req.headers.get("sb-forwarded-for"))
+    ?? pick(req.headers.get("cf-connecting-ip"))
+    ?? pick(req.headers.get("x-forwarded-for"))
+    ?? pick(req.headers.get("x-real-ip"));
+}
+
+// Reutiliza public._is_ip_blocked() en vez de duplicar la consulta: una sola
+// fuente de verdad para lo que significa "IP bloqueada". Falla en abierto,
+// igual que la función de Postgres.
+async function isIpBlocked(
+  admin: ReturnType<typeof createClient>,
+  ip: string | null
+): Promise<boolean> {
+  if (!ip) return false;
+  try {
+    const { data, error } = await admin.rpc("_is_ip_blocked", { p_ip: ip });
+    if (error) return false;
+    return data === true;
+  } catch {
+    return false;
+  }
+}
+
 function parseJsonLoosely(rawText: string, fallback: unknown) {
   try {
     return JSON.parse(rawText);
@@ -173,6 +211,13 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (supabaseUrl && serviceRoleKey) {
       const admin = createClient(supabaseUrl, serviceRoleKey);
+
+      // A-3: se comprueba ANTES de contar cuota y antes de llamar a OpenAI, para
+      // que una IP bloqueada no llegue a gastar nada.
+      if (await isIpBlocked(admin, clientIp(req))) {
+        return jsonResponse({ error: "Acceso bloqueado desde esta red" }, 403);
+      }
+
       const { data: currentCount, error: usageError } = await admin.rpc("increment_vision_proxy_usage", {
         p_user_id: userId,
       });
