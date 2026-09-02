@@ -66,7 +66,7 @@ export function MemberDetailScreen({
   };
 
   const joinedLabel = member.joined_at
-    ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-ES", { day: "numeric", month: "long", year: "numeric" }).format(new Date(member.joined_at))
+    ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : locale === "ca" ? "ca-ES" : "es-ES", { day: "numeric", month: "long", year: "numeric" }).format(new Date(member.joined_at))
     : null;
 
   const statCards = [

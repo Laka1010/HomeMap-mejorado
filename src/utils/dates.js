@@ -25,13 +25,15 @@ export function toLocalDateString(date) {
  */
 /**
  * Etiqueta BCP-47 para `Intl` / `toLocaleDateString` a partir del idioma de
- * la app ("es" | "en"). Centralizado aquí para no repetir el ternario
+ * la app ("es" | "en" | "ca"). Centralizado aquí para no repetir el ternario
  * `locale === "en" ? "en-..." : "es-ES"` por media docena de pantallas (y
  * para no volver a olvidarse de alguna, que era como el calendario y el
  * historial de compras acababan siempre en español).
  */
 export function intlLocale(locale) {
-  return locale === "en" ? "en-GB" : "es-ES";
+  if (locale === "en") return "en-GB";
+  if (locale === "ca") return "ca-ES";
+  return "es-ES";
 }
 
 /** Fecha corta localizada (por defecto "28 ago" / "28 Aug"). */

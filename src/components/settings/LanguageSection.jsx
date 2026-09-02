@@ -4,6 +4,7 @@ import { useTranslation } from "../../i18n";
 const options = [
   { value: "es", label: "Español" },
   { value: "en", label: "English" },
+  { value: "ca", label: "Català" },
 ];
 
 export function LanguageSection({ locale, onChange }) {

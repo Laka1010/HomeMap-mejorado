@@ -530,7 +530,7 @@ function HomeInfoView({ currentHome, isAdmin, onRenameHouse, ownerName, locale, 
   const comingSoon = t("accountHub.comingSoon");
   const memberCount = Number.isFinite(currentHome?.memberCount) ? currentHome.memberCount : null;
   const createdLabel = currentHome?.createdAt
-    ? new Date(currentHome.createdAt).toLocaleDateString(locale === "en" ? "en-US" : "es-ES", { year: "numeric", month: "long", day: "numeric" })
+    ? new Date(currentHome.createdAt).toLocaleDateString(locale === "en" ? "en-US" : locale === "ca" ? "ca-ES" : "es-ES", { year: "numeric", month: "long", day: "numeric" })
     : null;
 
   return (

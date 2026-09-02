@@ -27,11 +27,20 @@ const STRINGS = {
     reload: "Reload",
     details: "Technical details",
   },
+  ca: {
+    title: "Alguna cosa ha anat malament",
+    body: "L'aplicació ha trobat un error inesperat. Pots recarregar per tornar-ho a provar. Si el problema persisteix, tanca i torna a obrir l'app.",
+    reload: "Recarregar",
+    details: "Detalls tècnics",
+  },
 };
 
 function pickLang() {
   const nav = typeof navigator !== "undefined" ? navigator.language || "" : "";
-  return nav.toLowerCase().startsWith("en") ? "en" : "es";
+  const lower = nav.toLowerCase();
+  if (lower.startsWith("en")) return "en";
+  if (lower.startsWith("ca")) return "ca";
+  return "es";
 }
 
 export class ErrorBoundary extends Component {

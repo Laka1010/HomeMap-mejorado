@@ -32,7 +32,7 @@ export function toDateKey(dateValue) {
 }
 
 export function formatDayLabel(date, locale = "es") {
-  return date.toLocaleDateString(locale === "en" ? "en-GB" : "es-ES", { day: "numeric", month: "short" });
+  return date.toLocaleDateString(locale === "en" ? "en-GB" : locale === "ca" ? "ca-ES" : "es-ES", { day: "numeric", month: "short" });
 }
 
 /** Devuelve los 7 Date (lunes -> domingo) de la semana que contiene `anchorDate`. */
