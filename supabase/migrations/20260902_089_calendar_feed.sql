@@ -23,8 +23,8 @@ alter table public.house_calendar_feeds enable row level security;
 revoke all on public.house_calendar_feeds from public, anon, authenticated;
 
 -- ============================================================================
--- Generador de tokens: 64 hex, URL-safe, único. Se arma con dos
--- gen_random_uuid() (en pg_catalog, siempre disponible) en vez de
+-- Generador de tokens: 32 hex (un gen_random_uuid() sin guiones = 128 bits),
+-- URL-safe. Se usa gen_random_uuid() (pg_catalog, siempre disponible) en vez de
 -- gen_random_bytes() -- esa vive en la extensión pgcrypto, que no está en el
 -- search_path 'public' de esta función.
 -- ============================================================================
@@ -38,7 +38,7 @@ declare
   v_token text;
 begin
   loop
-    v_token := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
+    v_token := replace(gen_random_uuid()::text, '-', '');
     exit when not exists (select 1 from public.house_calendar_feeds where token = v_token);
   end loop;
   return v_token;

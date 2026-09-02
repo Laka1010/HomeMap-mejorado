@@ -8,6 +8,11 @@ import { calendarFeedService, buildFeedUrl, buildWebcalUrl } from "../../service
  * Calendar ("Otros calendarios → Suscribirse con URL") o Apple Calendar
  * ("Ajustes → Calendario → Cuentas → Añadir → Otra → Añadir calendario
  * suscrito"). Solo lectura hacia fuera. Ver src/services/calendarFeedService.js.
+ *
+ * La URL es larga por naturaleza (dominio de Supabase + token); la caja que la
+ * muestra trunca con "…" y NUNCA desborda — cada contenedor de la cadena lleva
+ * min-width:0 para que el grid de HouseSettingsScreen no crezca a lo ancho. El
+ * usuario no necesita leerla: copia con un toque o pulsa "Suscribirse".
  */
 export function CalendarFeedSection({ houseId, isAdmin }) {
   const { t } = useTranslation();
@@ -59,7 +64,7 @@ export function CalendarFeedSection({ houseId, isAdmin }) {
   };
 
   return (
-    <div>
+    <div style={{ minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent-soft)", display: "grid", placeItems: "center", color: "var(--accent)" }}>
           <CalendarDays size={16} />
@@ -67,29 +72,28 @@ export function CalendarFeedSection({ houseId, isAdmin }) {
         <div style={{ fontWeight: 600, fontSize: 14 }}>{t("calendarFeed.title")}</div>
       </div>
 
-      <div className="hm-card hm-card--p16" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="hm-card hm-card--p16" style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
         <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("calendarFeed.description")}</div>
 
         {loadError ? (
           <div style={{ fontSize: 13, color: "var(--danger)" }}>{t("calendarFeed.loadError")}</div>
         ) : (
           <>
-            <div className="cf-url-card">
-              <div className="cf-url-text">{url || "…"}</div>
+            <div className="cf-actions">
               <button
                 type="button"
-                className={`cf-icon-btn ${copied ? "copied" : ""}`}
+                className={`hm-btn ${copied ? "hm-btn-soft" : "hm-btn-primary"} cf-btn`}
                 onClick={handleCopy}
                 disabled={!url}
-                aria-label={t("calendarFeed.copy")}
               >
-                {copied ? <Check size={16} /> : <Copy size={16} />}
+                {copied ? <><Check size={16} /> {t("calendarFeed.copied")}</> : <><Copy size={16} /> {t("calendarFeed.copy")}</>}
+              </button>
+              <button type="button" className="hm-btn hm-btn-soft cf-btn" onClick={handleSubscribe} disabled={!token}>
+                {t("calendarFeed.subscribeButton")}
               </button>
             </div>
 
-            <button className="hm-btn hm-btn-primary" style={{ justifyContent: "center" }} onClick={handleSubscribe} disabled={!token}>
-              {t("calendarFeed.subscribeButton")}
-            </button>
+            <div className="cf-url" title={url}>{url || "…"}</div>
 
             <button type="button" className="cf-help-toggle" onClick={() => setShowHelp((v) => !v)}>
               {showHelp ? <ChevronUp size={14} /> : <ChevronDown size={14} />} {t("calendarFeed.howToTitle")}
@@ -127,11 +131,15 @@ export function CalendarFeedSection({ houseId, isAdmin }) {
       </div>
 
       <style>{`
-        .cf-url-card { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
-        .cf-url-text { flex: 1; min-width: 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .cf-icon-btn { flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: var(--ink-soft); cursor: pointer; transition: all 0.2s; }
-        .cf-icon-btn.copied { background: var(--success); color: #fff; border-color: var(--success); }
-        .cf-icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .cf-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .cf-btn { flex: 1 1 140px; justify-content: center; min-width: 0; }
+        .cf-url {
+          min-width: 0; max-width: 100%;
+          background: var(--surface-alt); border: 1px solid var(--border); border-radius: 10px;
+          padding: 8px 12px;
+          font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ink-soft);
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
         .cf-help-toggle { background: none; border: none; color: var(--accent); font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 2px 0; }
         .cf-help-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--ink-soft); }
         .cf-regen { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
