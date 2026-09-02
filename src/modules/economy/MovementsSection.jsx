@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, TrendingUp, TrendingDown, ArrowLeftRight, ShoppingCart } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, ArrowLeftRight, ShoppingCart, PenSquare, Tag, Wallet, StickyNote, Calendar } from "lucide-react";
 import { economyService } from "./services/economyService";
 import { accountsService } from "./services/accountsService";
 import { transfersService } from "./services/transfersService";
@@ -7,6 +7,8 @@ import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "./economyCategories";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { toLocalDateString } from "../../utils/dates";
+import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components/MoneyEntry";
 
 /**
  * Movimientos = "qué ha pasado con mi dinero": las tres formas en que el
@@ -449,6 +451,7 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated 
   // ("Alimentación"/"Salario"), así que quien no toque el desplegable acaba
   // falseando las estadísticas por categoría. Ver DEFAULT_CATEGORY.
   const [category, setCategory] = useState(DEFAULT_CATEGORY);
+  const [date, setDate] = useState(() => toLocalDateString(new Date()));
   const [accountId, setAccountId] = useState(accounts.find((a) => a.is_default)?.id || accounts[0]?.id || "");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
@@ -468,6 +471,7 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated 
       name: name.trim(),
       amount: parsedAmount,
       category,
+      date: date || toLocalDateString(new Date()),
       notes: notes.trim() || null,
     };
 
@@ -493,34 +497,47 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated 
           <h3 className="hm-display hm-modal-title">{t("movements.add")}</h3>
         </div>
         <div className="hm-modal-body">
-          <label className="hm-label">{t("movements.nameLabel")}</label>
-          <input className="hm-input" value={name} onChange={(e) => setName(e.target.value)} />
+          <AmountHero value={amount} onChange={setAmount} />
 
-          <label className="hm-label" style={{ marginTop: 14 }}>{t("movements.amountLabel")}</label>
-          <input type="number" className="hm-input" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <FieldGroup label={t("movements.nameLabel")}>
+            <FieldTextRow icon={PenSquare} value={name} onChange={setName} />
+          </FieldGroup>
 
-          <label className="hm-label" style={{ marginTop: 14 }}>{t("movements.categoryLabel")}</label>
-          <select className="hm-input" value={category} onChange={(e) => setCategory(e.target.value)}>
-            {categories.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
-          </select>
+          <FieldGroup label={t("movements.categoryLabel")}>
+            <FieldRow
+              icon={Tag}
+              title={categoryLabel(category, t)}
+              options={categories.map((c) => ({ value: c, label: categoryLabel(c, t) }))}
+              value={category}
+              onValueChange={setCategory}
+            />
+          </FieldGroup>
+
+          <FieldGroup label={t("movements.dateLabel").replace(":", "")}>
+            <FieldTextRow icon={Calendar} type="date" value={date} onChange={setDate} />
+          </FieldGroup>
 
           {accounts.length > 0 && (
-            <>
-              <label className="hm-label" style={{ marginTop: 14 }}>{t("accounts.title")}</label>
-              <select className="hm-input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
-              </select>
-            </>
+            <FieldGroup label={t("accounts.title")}>
+              <FieldRow
+                icon={Wallet}
+                title={(() => { const a = accounts.find((x) => x.id === accountId); return a ? `${a.icon} ${a.name}` : ""; })()}
+                options={accounts.map((a) => ({ value: a.id, label: `${a.icon} ${a.name}` }))}
+                value={accountId}
+                onValueChange={setAccountId}
+              />
+            </FieldGroup>
           )}
 
-          <label className="hm-label" style={{ marginTop: 14 }}>{t("movements.notesLabel")}</label>
-          <textarea className="hm-input" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <FieldGroup label={t("movements.notesLabel")}>
+            <FieldTextRow icon={StickyNote} value={notes} onChange={setNotes} />
+          </FieldGroup>
 
-          {error && <p style={{ fontSize: 12.5, color: "var(--danger)", margin: "10px 0 0" }}>{error}</p>}
+          {error && <p className="hm-money-error">{error}</p>}
 
-          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <div className="hm-money-actions">
             <button className="hm-btn hm-btn-soft" onClick={onClose}>{t("movements.cancel")}</button>
-            <button className="hm-btn hm-btn-primary" onClick={handleSubmit} disabled={saving || !name.trim() || !amount}>
+            <button className="hm-btn hm-btn-primary hm-btn--full" onClick={handleSubmit} disabled={saving || !name.trim() || !amount}>
               {t("movements.save")}
             </button>
           </div>

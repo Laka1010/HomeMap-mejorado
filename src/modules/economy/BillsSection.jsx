@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { economyService } from "./services/economyService";
-import { Plus, Calendar, CheckCircle2 } from "lucide-react";
+import { Plus, Calendar, CheckCircle2, PenSquare, Tag, Repeat, StickyNote } from "lucide-react";
 import { PayBillModal } from "./PayBillModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 import { EXPENSE_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "./economyCategories";
 import { toLocalDateString, intlLocale } from "../../utils/dates";
+import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components/MoneyEntry";
 
 export default function BillsSection({ currentHome, spaceId, spaces, state, dispatch, user }) {
   const { t, locale } = useTranslation();
@@ -421,38 +422,55 @@ function AddBillModal({ spaceId, userId, onClose, onCreated }) {
           <h3 className="hm-display hm-modal-title">{t("bills.add")}</h3>
         </div>
         <div className="hm-modal-body">
-          <label className="hm-label">{t("bills.nameLabel")}</label>
-          <input className="hm-input" value={name} onChange={(e) => setName(e.target.value)} />
+          <AmountHero value={amount} onChange={setAmount} />
 
-          <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.amountLabel")}</label>
-          <input type="number" className="hm-input" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <FieldGroup label={t("bills.nameLabel")}>
+            <FieldTextRow icon={PenSquare} value={name} onChange={setName} />
+          </FieldGroup>
 
-          <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.dueDateLabel").replace(":", "")}</label>
-          <input type="date" className="hm-input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          <FieldGroup label={t("bills.dueDateLabel").replace(":", "")}>
+            <FieldTextRow icon={Calendar} type="date" value={dueDate} onChange={setDueDate} />
+          </FieldGroup>
 
-          <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.categoryLabel")}</label>
-          <select className="hm-input" value={category || DEFAULT_CATEGORY} onChange={(e) => setCategory(e.target.value)}>
-            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
-          </select>
+          <FieldGroup label={t("bills.categoryLabel")}>
+            <FieldRow
+              icon={Tag}
+              title={categoryLabel(category || DEFAULT_CATEGORY, t)}
+              options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: categoryLabel(c, t) }))}
+              value={category || DEFAULT_CATEGORY}
+              onValueChange={setCategory}
+            />
+          </FieldGroup>
 
-          <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.repetitionLabel")}</label>
-          <select className="hm-input" value={frequency} onChange={(e) => setFrequency(e.target.value)}>
-            <option value="once">{t("bills.once")}</option>
-            <option value="monthly">{t("bills.monthly")}</option>
-            <option value="quarterly">{t("bills.quarterly")}</option>
-            <option value="semiannual">{t("bills.semiannual")}</option>
-            <option value="every9months">{t("bills.every9months")}</option>
-            <option value="yearly">{t("bills.yearly")}</option>
-          </select>
+          <FieldGroup label={t("bills.repetitionLabel")}>
+            <FieldRow
+              icon={Repeat}
+              title={{
+                once: t("bills.once"), monthly: t("bills.monthly"), quarterly: t("bills.quarterly"),
+                semiannual: t("bills.semiannual"), every9months: t("bills.every9months"), yearly: t("bills.yearly"),
+              }[frequency]}
+              options={[
+                { value: "once", label: t("bills.once") },
+                { value: "monthly", label: t("bills.monthly") },
+                { value: "quarterly", label: t("bills.quarterly") },
+                { value: "semiannual", label: t("bills.semiannual") },
+                { value: "every9months", label: t("bills.every9months") },
+                { value: "yearly", label: t("bills.yearly") },
+              ]}
+              value={frequency}
+              onValueChange={setFrequency}
+            />
+          </FieldGroup>
 
-          <label className="hm-label" style={{ marginTop: 14 }}>{t("bills.notesLabel")}</label>
-          <textarea className="hm-input" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <FieldGroup label={t("bills.notesLabel")}>
+            <FieldTextRow icon={StickyNote} value={notes} onChange={setNotes} />
+          </FieldGroup>
 
-          {error && <p style={{ fontSize: 12.5, color: "var(--danger)", margin: "10px 0 0" }}>{error}</p>}
+          {error && <p className="hm-money-error">{error}</p>}
 
-          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <div className="hm-money-actions">
             <button className="hm-btn hm-btn-soft" onClick={onClose}>{t("bills.cancel")}</button>
-            <button className="hm-btn hm-btn-primary" onClick={handleSubmit} disabled={saving || !name.trim() || !amount || !dueDate}>
+            <button className="hm-btn hm-btn-primary hm-btn--full" onClick={handleSubmit} disabled={saving || !name.trim() || !amount || !dueDate}>
               {t("bills.save")}
             </button>
           </div>

@@ -7,7 +7,7 @@ import {
   Sparkles, ArrowLeft, Trash2, Filter, ChevronDown, PenSquare, Boxes,
   ClipboardList, Layers, Link as LinkIcon, Calendar, Tag, StickyNote,
   Grid3x3, ExternalLink, MapPinOff, RotateCcw, Zap, Share2, Eye, EyeOff,
-  ShieldCheck, Bell, User, Building2, CheckSquare, TrendingUp
+  ShieldCheck, Bell, User, Building2, CheckSquare, TrendingUp, Repeat
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -34,6 +34,7 @@ import { WelcomeGate } from "./components/onboarding/WelcomeGate";
 import { BrandMark } from "./components/BrandMark";
 import { PurchaseCompleteAnimation } from "./modules/shopping/PurchaseCompleteAnimation";
 import { DependencyGateModal } from "./components/DependencyGateModal";
+import { AmountHero, FieldGroup, FieldRow, FieldTextRow, SegmentedTabs } from "./components/MoneyEntry";
 import { supabase } from "./supabaseClient";
 import { securityEventsService } from "./services/securityEventsService";
 import { houseService, MAX_HOMES_PER_USER } from "./services/houseService";
@@ -77,6 +78,7 @@ import { PRIORITY_LEVELS } from "./modules/shopping/shoppingMeta";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "./modules/economy/economyCategories";
 import { normalizeText, fuzzyMatch, fuzzyMatchAny } from "./utils/textMatch";
 import { toLocalDateString } from "./utils/dates";
+import { safeRandomUUID } from "./utils/uuid";
 import { ActionCenter } from "./components/ActionCenter";
 import { GlobalSearchModal } from "./modules/search/GlobalSearchModal";
 import { useFocusTrap } from "./hooks/useFocusTrap";
@@ -404,6 +406,84 @@ const GlobalStyle = () => (
     .hm-desktop-sidebar { display: none; }
     .hm-mobile-nav { display: block; }
     @media (min-width: 860px) { .hm-desktop-sidebar { display: block; } .hm-mobile-nav { display: none; } }
+
+    /* ---- Registro de dinero (gasto / ingreso / factura / movimiento) ---- */
+    .hm-money-hero { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 6px 0 20px; }
+    .hm-money-hero-input {
+      font-family: 'Fraunces', serif; font-weight: 600; font-size: 54px; line-height: 1;
+      border: none; outline: none; background: transparent; color: var(--ink);
+      text-align: right; padding: 0; min-width: 1ch; caret-color: var(--accent);
+    }
+    .hm-money-hero-input::placeholder { color: var(--border); }
+    .hm-money-hero-cur { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 500; color: var(--ink-soft); }
+
+    .hm-field-group { margin-top: 18px; }
+    .hm-field-group:first-of-type { margin-top: 2px; }
+    .hm-field-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 8px 4px; }
+    .hm-field-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; }
+    .hm-field-card > * + * { border-top: 1px solid var(--border); }
+
+    .hm-field-row {
+      width: 100%; display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; min-height: 60px; background: transparent; border: none;
+      text-align: left; font: inherit; color: var(--ink); cursor: pointer; position: relative;
+    }
+    .hm-field-row--text { cursor: text; }
+    .hm-field-icon {
+      width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+      background: var(--accent-soft); color: var(--accent); display: grid; place-items: center;
+    }
+    .hm-field-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .hm-field-title { font-size: 15px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hm-field-hint { font-size: 12.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hm-field-chevron { color: var(--ink-soft); flex-shrink: 0; }
+    .hm-field-select {
+      position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+      opacity: 0; border: none; background: transparent; cursor: pointer;
+      -webkit-appearance: none; appearance: none; font-size: 16px;
+    }
+    .hm-field-text-input {
+      flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+      font-size: 15px; font-weight: 500; color: var(--ink); font-family: inherit; padding: 0;
+    }
+    .hm-field-text-input::placeholder { color: var(--ink-soft); font-weight: 400; }
+    .hm-field-row--multiline { align-items: flex-start; }
+    .hm-field-text-area { resize: vertical; min-height: 60px; padding: 9px 0 0; line-height: 1.45; font-weight: 400; }
+    .hm-field-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+    .hm-field-chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; min-height: 38px;
+      border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
+      font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer;
+    }
+    .hm-field-chip[data-active="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+    .hm-seg { display: flex; gap: 4px; background: var(--surface-alt); border-radius: 999px; padding: 4px; margin-bottom: 4px; }
+    .hm-seg-btn {
+      flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      height: 40px; border: none; border-radius: 999px; background: transparent;
+      font-weight: 700; font-size: 14px; color: var(--ink-soft); cursor: pointer;
+    }
+    .hm-seg-btn[data-active="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-elev-1); }
+    .hm-seg-btn[data-active="true"][data-tone="expense"] { color: var(--danger); }
+    .hm-seg-btn[data-active="true"][data-tone="income"] { color: var(--success); }
+
+    .hm-toggle-card {
+      display: flex; align-items: center; gap: 12px; width: 100%;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 12px 14px; margin-top: 18px; cursor: pointer; min-height: 60px;
+    }
+    .hm-toggle-card-icon { width: 38px; height: 38px; border-radius: 12px; background: var(--success-soft); color: var(--success); display: grid; place-items: center; flex-shrink: 0; }
+    .hm-toggle-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .hm-toggle-card-title { font-size: 15px; font-weight: 700; }
+    .hm-toggle-card-sub { font-size: 12.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hm-switch { position: relative; width: 46px; height: 28px; flex-shrink: 0; border-radius: 999px; background: var(--surface-alt); border: 1px solid var(--border); transition: background .18s ease, border-color .18s ease; }
+    .hm-switch[data-on="true"] { background: var(--accent); border-color: var(--accent); }
+    .hm-switch input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
+    .hm-switch-knob { position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-elev-1); transition: transform .18s cubic-bezier(.2,.9,.3,1.2); }
+    .hm-switch[data-on="true"] .hm-switch-knob { transform: translateX(18px); }
+
+    .hm-money-actions { display: flex; gap: 10px; margin-top: 22px; }
+    .hm-money-error { font-size: 12.5px; color: var(--danger); margin: 12px 4px 0; font-weight: 600; }
   `}</style>
 );
 
@@ -955,24 +1035,31 @@ function Modal({ title, onClose, children, wide, elevated }) {
   );
 }
 
-function MemberPicker({ id, members = [], selected = [] }) {
+/** Selector de personas asignadas — controlado: `selected` es un array de
+ *  nombres y `onChange` recibe el array nuevo al pulsar un chip. */
+function MemberPicker({ members = [], selected = [], onChange }) {
   const { t } = useTranslation();
   if (!members.length) {
-    return <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{t("membersModule.noOtherMembers")}</div>;
+    return <div style={{ fontSize: 12.5, color: "var(--ink-soft)", padding: "12px 14px" }}>{t("membersModule.noOtherMembers")}</div>;
   }
+  const toggle = (name) => {
+    onChange(selected.includes(name) ? selected.filter((n) => n !== name) : [...selected, name]);
+  };
   return (
-    <div id={id} style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+    <div className="hm-field-chips">
       {members.map((m) => {
         const name = m.name || m.email || m.id;
+        const on = selected.includes(name);
         return (
-          <label
+          <button
             key={m.user_id || m.id || name}
-            className="hm-btn hm-btn-soft hm-btn--compact"
-            style={{ cursor: "pointer", gap: 6, marginBottom: 0 }}
+            type="button"
+            className="hm-field-chip"
+            data-active={on}
+            onClick={() => toggle(name)}
           >
-            <input type="checkbox" value={name} defaultChecked={selected.includes(name)} style={{ margin: 0 }} />
-            {name}
-          </label>
+            {on ? <Check size={13} /> : null} {name}
+          </button>
         );
       })}
     </div>
@@ -1049,54 +1136,47 @@ function StatChip({ value, label }) {
 function AddShoppingModal({ onClose, onSave }) {
   const { t } = useTranslation();
   const [form, setForm] = useState({ name: "", price: "", category: "", notes: "", priority: "week" });
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const setPrice = (e) => {
-    // Allow only digits, comma or dot while typing
-    const val = e.target.value || "";
-    const clean = val.replace(/[^0-9.,]/g, "");
-    setForm((f) => ({ ...f, price: clean }));
+  const patch = (fields) => setForm((f) => ({ ...f, ...fields }));
+
+  const submit = () => {
+    if (!form.name.trim()) return;
+    const parsedPrice = form.price === "" ? "" : parseFloat(form.price.toString().replace(/,/g, "."));
+    onSave({ id: "s-" + uid(), photo: null, ...form, name: form.name.trim(), price: parsedPrice });
+    onClose();
   };
 
   return (
     <Modal title={t("modal.addShoppingTitle")} onClose={onClose}>
-      <label className="hm-label">{t("addShopping.name")}</label>
-      <input className="hm-input" value={form.name} onChange={set("name")} />
+      <FieldGroup label={t("addShopping.name")}>
+        <FieldTextRow icon={ShoppingCart} value={form.name} autoFocus onChange={(v) => patch({ name: v })} onEnter={submit} />
+      </FieldGroup>
 
-      <label className="hm-label" style={{ marginTop: 14 }}>{t("quickAdd.priorityLabel")}</label>
-      <div style={{ display: "flex", gap: 8 }}>
-        {PRIORITY_LEVELS.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            className="hm-btn hm-btn-soft"
-            style={{ flex: 1, borderColor: form.priority === p.key ? p.color : "var(--border)", color: form.priority === p.key ? p.color : "var(--ink)" }}
-            onClick={() => setForm((f) => ({ ...f, priority: p.key }))}
-          >
-            <p.icon size={14} /> {t(p.labelKey)}
-          </button>
-        ))}
-      </div>
+      <FieldGroup label={t("quickAdd.priorityLabel")}>
+        <div className="hm-field-chips">
+          {PRIORITY_LEVELS.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              className="hm-field-chip"
+              data-active={form.priority === p.key}
+              style={form.priority === p.key ? { borderColor: p.color, background: p.soft, color: p.color } : undefined}
+              onClick={() => patch({ priority: p.key })}
+            >
+              <p.icon size={14} /> {t(p.labelKey)}
+            </button>
+          ))}
+        </div>
+      </FieldGroup>
 
-      <label className="hm-label" style={{ marginTop: 14 }}>{t("addShopping.price")}</label>
-      <input
-        className="hm-input"
-        type="number"
-        inputMode="decimal"
-        step="0.01"
-        value={form.price}
-        onChange={setPrice}
-      />
+      <FieldGroup label={t("addShopping.price")}>
+        <FieldTextRow icon={Tag} inputMode="decimal" value={form.price} onChange={(v) => patch({ price: v.replace(/[^0-9.,]/g, "") })} />
+      </FieldGroup>
 
-      <label className="hm-label" style={{ marginTop: 14 }}>{t("addShopping.notes")}</label>
-      <textarea className="hm-input" rows={2} value={form.notes} onChange={set("notes")} />
+      <FieldGroup label={t("addShopping.notes")}>
+        <FieldTextRow icon={StickyNote} multiline value={form.notes} onChange={(v) => patch({ notes: v })} />
+      </FieldGroup>
 
-      <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20"
-        disabled={!form.name.trim()}
-        onClick={() => {
-          const parsedPrice = form.price === "" ? "" : parseFloat(form.price.toString().replace(/,/g, '.'));
-          onSave({ id: "s-" + uid(), photo: null, ...form, price: parsedPrice });
-          onClose();
-        }}>
+      <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" disabled={!form.name.trim()} onClick={submit}>
         <Plus size={16} /> {t("addShopping.addButton")}
       </button>
     </Modal>
@@ -1113,59 +1193,176 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
   const [type, setType] = useState("expense"); // expense | income
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(DEFAULT_CATEGORY);
+  const [date, setDate] = useState(() => toLocalDateString(new Date()));
   const isExpense = type === "expense";
 
   const categoryOptions = isExpense ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const parsedAmount = parseFloat(amount);
+  const valid = parsedAmount > 0;
 
   const submit = () => {
-    const payload = { name: name.trim(), amount: parseFloat(amount) || 0, category: category || categoryOptions[0] };
+    if (!valid) return;
+    const payload = { name: name.trim(), amount: parsedAmount, category: category || DEFAULT_CATEGORY, date: date || toLocalDateString(new Date()) };
     if (isExpense) onSaveExpense(payload);
     else onSaveIncome(payload);
   };
 
   return (
     <Modal title={t("addMovement.title")} onClose={onClose}>
-      <div style={{ display: "flex", background: "var(--surface-alt)", borderRadius: 999, padding: 4, marginBottom: 16 }}>
-        <button
-          type="button"
-          onClick={() => { setType("expense"); setCategory(""); }}
-          style={{
-            flex: 1, padding: "10px 0", borderRadius: 999, border: "none", cursor: "pointer",
-            fontWeight: 700, fontSize: 14,
-            background: isExpense ? "var(--danger)" : "transparent",
-            color: isExpense ? "#fff" : "var(--ink-soft)",
-            transition: "background .18s ease, color .18s ease",
-          }}
-        >
-          {t("addMovement.expenseToggle")}
-        </button>
-        <button
-          type="button"
-          onClick={() => { setType("income"); setCategory(""); }}
-          style={{
-            flex: 1, padding: "10px 0", borderRadius: 999, border: "none", cursor: "pointer",
-            fontWeight: 700, fontSize: 14,
-            background: !isExpense ? "var(--success)" : "transparent",
-            color: !isExpense ? "#fff" : "var(--ink-soft)",
-            transition: "background .18s ease, color .18s ease",
-          }}
-        >
-          {t("addMovement.incomeToggle")}
-        </button>
-      </div>
+      <SegmentedTabs
+        value={type}
+        onChange={(v) => { setType(v); setCategory(DEFAULT_CATEGORY); }}
+        options={[
+          { value: "expense", label: t("addMovement.expenseToggle"), tone: "expense" },
+          { value: "income", label: t("addMovement.incomeToggle"), tone: "income" },
+        ]}
+      />
 
-      <label className="hm-label">{t("addMovement.nameLabel")}</label>
-      <input className="hm-input" value={name} onChange={(e) => setName(e.target.value)} />
-      <label className="hm-label" style={{ marginTop: 14 }}>{t("addMovement.amountLabel")}</label>
-      <input className="hm-input" type="number" step="0.01" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
-      <label className="hm-label" style={{ marginTop: 14 }}>{t("addMovement.categoryLabel")}</label>
-      <select className="hm-input" value={category || categoryOptions[0]} onChange={(e) => setCategory(e.target.value)}>
-        {categoryOptions.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
-      </select>
+      <AmountHero value={amount} onChange={setAmount} />
 
-      <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" disabled={!name.trim()} onClick={submit}>
+      <FieldGroup label={t("addMovement.nameLabel")}>
+        <FieldTextRow icon={PenSquare} placeholder={t("quickAdd.descriptionLabel")} value={name} onChange={setName} />
+      </FieldGroup>
+
+      <FieldGroup label={t("addMovement.categoryLabel")}>
+        <FieldRow
+          icon={Tag}
+          title={categoryLabel(category, t)}
+          options={categoryOptions.map((c) => ({ value: c, label: categoryLabel(c, t) }))}
+          value={category}
+          onValueChange={setCategory}
+        />
+      </FieldGroup>
+
+      <FieldGroup label={t("movements.dateLabel").replace(":", "")}>
+        <FieldTextRow icon={Calendar} type="date" value={date} onChange={setDate} />
+      </FieldGroup>
+
+      <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" disabled={!valid} onClick={submit}>
         {isExpense ? t("addMovement.registerExpense") : t("addMovement.registerIncome")}
+      </button>
+    </Modal>
+  );
+}
+
+/**
+ * "Añadir factura" del botón + global. Antes era JSX suelto en el árbol de
+ * App con inputs sin estado (se leían con document.getElementById al pulsar
+ * "Añadir"); ahora es un componente controlado con el mismo lenguaje visual
+ * que el resto de pantallas de dinero.
+ */
+function AddBillQuickModal({ onClose, onSave }) {
+  const { t } = useTranslation();
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [category, setCategory] = useState(DEFAULT_CATEGORY);
+  const [frequency, setFrequency] = useState("once");
+  const parsedAmount = parseFloat(amount);
+  const valid = parsedAmount > 0;
+
+  const FREQUENCIES = [
+    { value: "once", label: t("quickAdd.frequencyOnce") },
+    { value: "monthly", label: t("quickAdd.frequencyMonthly") },
+    { value: "quarterly", label: t("quickAdd.frequencyQuarterly") },
+    { value: "semiannual", label: t("quickAdd.frequencySemiannual") },
+    { value: "every9months", label: t("quickAdd.frequencyEvery9Months") },
+    { value: "yearly", label: t("quickAdd.frequencyYearly") },
+  ];
+
+  return (
+    <Modal title={t("quickAdd.addBillTitle")} onClose={onClose}>
+      <AmountHero value={amount} onChange={setAmount} />
+
+      <FieldGroup label={t("quickAdd.nameLabel")}>
+        <FieldTextRow icon={PenSquare} placeholder={t("quickAdd.billNamePlaceholder")} value={name} onChange={setName} />
+      </FieldGroup>
+
+      <FieldGroup label={t("quickAdd.dueDateLabel")}>
+        <FieldTextRow icon={Calendar} type="date" value={dueDate} onChange={setDueDate} />
+      </FieldGroup>
+
+      <FieldGroup label={t("quickAdd.categoryLabel")}>
+        <FieldRow
+          icon={Tag}
+          title={categoryLabel(category, t)}
+          options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: categoryLabel(c, t) }))}
+          value={category}
+          onValueChange={setCategory}
+        />
+      </FieldGroup>
+
+      <FieldGroup label={t("quickAdd.repeatLabel")}>
+        <FieldRow
+          icon={Repeat}
+          title={FREQUENCIES.find((f) => f.value === frequency)?.label}
+          options={FREQUENCIES}
+          value={frequency}
+          onValueChange={setFrequency}
+        />
+      </FieldGroup>
+
+      <button
+        className="hm-btn hm-btn-primary hm-btn--full hm-mt-20"
+        disabled={!valid}
+        onClick={() => onSave({
+          name: name.trim() || t("actionCenter.bill"),
+          amount: parsedAmount,
+          dueDate: dueDate || null,
+          category,
+          frequency,
+        })}
+      >
+        {t("quickAdd.add")}
+      </button>
+    </Modal>
+  );
+}
+
+/**
+ * "Registrar gasto" del botón + global y modo edición del gasto de una compra
+ * (ver updateExpenseFromModal). Controlado, mismo lenguaje visual.
+ */
+function AddExpenseQuickModal({ payload, onClose, onCreate, onUpdate }) {
+  const { t } = useTranslation();
+  const isEdit = Boolean(payload?.expenseId);
+  const [name, setName] = useState(payload?.name || "");
+  const [amount, setAmount] = useState(payload?.amount != null ? String(payload.amount) : "");
+  const [category, setCategory] = useState(
+    EXPENSE_CATEGORIES.includes(payload?.category) ? payload.category : DEFAULT_CATEGORY,
+  );
+  const parsedAmount = parseFloat(amount);
+  const valid = parsedAmount > 0;
+
+  return (
+    <Modal title={isEdit ? t("quickAdd.editExpenseTitle") : t("quickAdd.registerExpenseTitle")} onClose={onClose}>
+      <AmountHero value={amount} onChange={setAmount} />
+
+      <FieldGroup label={t("quickAdd.nameLabel")}>
+        <FieldTextRow icon={PenSquare} placeholder={t("quickAdd.expenseNamePlaceholder")} value={name} onChange={setName} />
+      </FieldGroup>
+
+      <FieldGroup label={t("quickAdd.categoryLabel")}>
+        <FieldRow
+          icon={Tag}
+          title={categoryLabel(category, t)}
+          options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: categoryLabel(c, t) }))}
+          value={category}
+          onValueChange={setCategory}
+        />
+      </FieldGroup>
+
+      <button
+        className="hm-btn hm-btn-primary hm-btn--full hm-mt-20"
+        disabled={!valid}
+        onClick={() => {
+          const data = { name: name.trim() || t("quickAdd.registerExpenseTitle"), amount: parsedAmount, category: category || DEFAULT_CATEGORY };
+          if (isEdit) onUpdate(payload.expenseId, data);
+          else onCreate(data);
+        }}
+      >
+        {isEdit ? t("quickAdd.saveChanges") : t("quickAdd.register")}
       </button>
     </Modal>
   );
@@ -1177,48 +1374,135 @@ function AddZoneModal({ roomId, onClose, onSave }) {
   const [icon, setIcon] = useState("🗄️");
   const iconOptions = ["🗄️", "🛏️", "📺", "🧺", "🧰", "📚", "🪑", "🧽"];
 
+  const submit = () => {
+    if (!name.trim()) return;
+    onSave({ id: "z-" + uid(), roomId, name: name.trim(), icon, photo: null });
+    onClose();
+  };
+
   return (
     <Modal title={t("modal.addZoneTitle")} onClose={onClose}>
-      <label className="hm-label">{t("addZone.zoneName")}</label>
-      <input
-        className="hm-input"
-        placeholder={t("addZone.zonePlaceholder")}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && name.trim()) {
-            onSave({ id: "z-" + uid(), roomId, name: name.trim(), icon, photo: null });
-            onClose();
-          }
-        }}
-      />
+      <FieldGroup label={t("addZone.zoneName")}>
+        <FieldTextRow icon={MapPin} placeholder={t("addZone.zonePlaceholder")} value={name} autoFocus onChange={setName} onEnter={submit} />
+      </FieldGroup>
 
-      <label className="hm-label" style={{ marginTop: 14 }}>{t("addZone.iconLabel")}</label>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {iconOptions.map((option) => (
-          <button
-            key={option}
-            className={"hm-btn hm-btn-soft hm-btn--compact"}
-            style={{
-              minWidth: 48,
-              borderColor: icon === option ? "var(--accent)" : "var(--border)",
-            }}
-            onClick={() => setIcon(option)}
-          >
-            <span style={{ fontSize: 18 }}>{option}</span>
-          </button>
-        ))}
-      </div>
+      <FieldGroup label={t("addZone.iconLabel")}>
+        <div className="hm-field-chips">
+          {iconOptions.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className="hm-field-chip"
+              data-active={icon === option}
+              style={{ minWidth: 44, justifyContent: "center", fontSize: 18 }}
+              onClick={() => setIcon(option)}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </FieldGroup>
 
-      <button
-        className="hm-btn hm-btn-primary hm-btn--full hm-mt-20"
-        disabled={!name.trim()}
-        onClick={() => {
-          onSave({ id: "z-" + uid(), roomId, name: name.trim(), icon, photo: null });
-          onClose();
-        }}
-      >
+      <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" disabled={!name.trim()} onClick={submit}>
         <Plus size={16} /> {t("addZone.createButton")}
+      </button>
+    </Modal>
+  );
+}
+
+/**
+ * Crear / editar tarea. Antes eran dos bloques de JSX suelto con inputs sin
+ * estado (getElementById + querySelectorAll al pulsar); ahora un componente
+ * controlado con el mismo lenguaje visual que el resto de altas.
+ */
+function AddTaskModal({ payload, members, onClose, onCreate, onEdit }) {
+  const { t } = useTranslation();
+  const isEdit = Boolean(payload?.id);
+  const [title, setTitle] = useState(payload?.title || "");
+  const [description, setDescription] = useState(payload?.description || "");
+  const [date, setDate] = useState(payload?.date || "");
+  const [priority, setPriority] = useState(payload?.priority || "normal");
+  const [assignee, setAssignee] = useState(
+    (payload?.assignee || "").split(",").map((n) => n.trim()).filter(Boolean),
+  );
+  const [repeat, setRepeat] = useState(REPEAT_OPTIONS.includes(payload?.repeat) ? payload.repeat : "none");
+
+  const PRIORITIES = [
+    { value: "baja", label: t("quickAdd.priorityLow") },
+    { value: "normal", label: t("quickAdd.priorityNormal") },
+    { value: "alta", label: t("quickAdd.priorityHigh") },
+  ];
+
+  const submit = () => {
+    const base = {
+      title: title.trim() || t("quickAdd.defaultTaskTitle"),
+      description: description.trim(),
+      date,
+      assignee: assignee.join(", "),
+      repeat: repeat === "none" ? null : repeat,
+    };
+    if (isEdit) onEdit(payload.id, { ...base, priority });
+    else onCreate(base);
+  };
+
+  return (
+    <Modal title={isEdit ? t("quickAdd.editTaskTitle") : t("quickAdd.createTaskTitle")} onClose={onClose}>
+      <FieldGroup label={t("quickAdd.titleLabel")}>
+        <FieldTextRow icon={CheckSquare} value={title} autoFocus onChange={setTitle} onEnter={submit} />
+      </FieldGroup>
+
+      <FieldGroup label={t("quickAdd.descriptionLabel")}>
+        <FieldTextRow icon={PenSquare} multiline value={description} onChange={setDescription} />
+      </FieldGroup>
+
+      <FieldGroup label={t("quickAdd.dateLabel")}>
+        <FieldTextRow icon={Calendar} type="date" value={date} onChange={setDate} />
+      </FieldGroup>
+
+      {isEdit && (
+        <FieldGroup label={t("quickAdd.priorityLabel")}>
+          <FieldRow
+            icon={Zap}
+            title={PRIORITIES.find((p) => p.value === priority)?.label}
+            options={PRIORITIES}
+            value={priority}
+            onValueChange={setPriority}
+          />
+        </FieldGroup>
+      )}
+
+      <FieldGroup label={t("quickAdd.assignedLabel")}>
+        <MemberPicker members={members} selected={assignee} onChange={setAssignee} />
+      </FieldGroup>
+
+      <FieldGroup label={t("quickAdd.repeatLabel")}>
+        <FieldRow
+          icon={Repeat}
+          title={t(repeatLabelKey(repeat))}
+          options={REPEAT_OPTIONS.map((r) => ({ value: r, label: t(repeatLabelKey(r)) }))}
+          value={repeat}
+          onValueChange={setRepeat}
+        />
+      </FieldGroup>
+
+      <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" onClick={submit}>
+        {isEdit ? t("quickAdd.saveChanges") : t("quickAdd.create")}
+      </button>
+    </Modal>
+  );
+}
+
+/** Nota rápida — un único campo de texto multilínea. */
+function AddNoteModal({ onClose, onSave }) {
+  const { t } = useTranslation();
+  const [text, setText] = useState("");
+  return (
+    <Modal title={t("quickAdd.newNoteTitle")} onClose={onClose}>
+      <FieldGroup label={t("quickAdd.noteLabel")}>
+        <FieldTextRow icon={StickyNote} multiline autoFocus value={text} onChange={setText} />
+      </FieldGroup>
+      <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" disabled={!text.trim()} onClick={() => onSave(text)}>
+        {t("quickAdd.save")}
       </button>
     </Modal>
   );
@@ -2129,25 +2413,22 @@ function AddShoppingListModal({ purchases, onCreate, onClose }) {
 
   return (
     <Modal title={t("quickAdd.newListTitle")} onClose={onClose}>
-      <label className="hm-label">{t("quickAdd.nameLabel")}</label>
-      <input
-        className="hm-input"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
+      <FieldGroup label={t("quickAdd.nameLabel")}>
+        <FieldTextRow icon={ShoppingCart} value={name} autoFocus onChange={setName} onEnter={handleCreate} />
+      </FieldGroup>
 
       {suggestions.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <label className="hm-label">{t("quickAdd.frequentProductsLabel")}</label>
-          <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "0 0 10px" }}>{t("quickAdd.frequentProductsHint")}</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <FieldGroup label={t("quickAdd.frequentProductsLabel")}>
+          <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "12px 14px 0" }}>{t("quickAdd.frequentProductsHint")}</p>
+          <div className="hm-field-chips">
             {suggestions.map((s) => {
               const isSelected = selected.has(s.name);
               return (
                 <button
                   key={s.name}
                   type="button"
-                  className={"hm-btn hm-btn--compact " + (isSelected ? "hm-btn-primary" : "hm-btn-soft")}
+                  className="hm-field-chip"
+                  data-active={isSelected}
                   onClick={() => toggleSuggestion(s.name)}
                 >
                   {isSelected ? <Check size={13} /> : <Plus size={13} />} {s.name}
@@ -2155,13 +2436,10 @@ function AddShoppingListModal({ purchases, onCreate, onClose }) {
               );
             })}
           </div>
-        </div>
+        </FieldGroup>
       )}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-        <button className="hm-btn hm-btn-soft" onClick={onClose}>{t("quickAdd.cancel")}</button>
-        <button className="hm-btn hm-btn-primary" onClick={handleCreate} disabled={!name.trim()}>{t("quickAdd.create")}</button>
-      </div>
+      <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" onClick={handleCreate} disabled={!name.trim()}>{t("quickAdd.create")}</button>
     </Modal>
   );
 }
@@ -3313,7 +3591,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     // enlazar ya mismo esta entrada de actividad con la factura, antes de
     // que exista la fila — así una notificación futura de esa factura
     // (p.ej. "vence pronto", que referencia bill.id) puede encontrarla.
-    const billId = crypto.randomUUID();
+    const billId = safeRandomUUID();
     showNotice(t("toast.billAdded", { name: b.name }));
     logActivity("activity.billCreated", { name: user?.name, bill: b.name }, { category: "finanzas", entityType: "bill", entityId: billId });
     closeModal();
@@ -3353,6 +3631,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       name: e.name,
       amount: e.amount,
       category: e.category || DEFAULT_CATEGORY,
+      ...(e.date ? { date: e.date } : {}),
     }).catch((error) => {
       console.error("Error creating expense:", error);
       showNotice(t("toast.expenseSaveError"));
@@ -3393,6 +3672,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       name: inc.name,
       amount: inc.amount,
       category: inc.category || DEFAULT_CATEGORY,
+      ...(inc.date ? { date: inc.date } : {}),
     }).catch((error) => {
       console.error("Error creating income:", error);
       showNotice(t("toast.incomeSaveError"));
@@ -3884,86 +4164,26 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           CategoriesSection. */}
 
       {modal?.type === "addTask" && (
-        <Modal title={t("quickAdd.createTaskTitle")} onClose={closeModal}>
-          <label className="hm-label">{t("quickAdd.titleLabel")}</label>
-          <input className="hm-input" id="ac-task-title" />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.descriptionLabel")}</label>
-          <input className="hm-input" id="ac-task-desc" />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.dateLabel")}</label>
-          <input className="hm-input" type="date" id="ac-task-date" />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.assignedLabel")}</label>
-          <MemberPicker id="ac-task-assignee" members={houseMembers.length ? houseMembers : state.members} selected={[]} />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.repeatLabel")}</label>
-          <select className="hm-input" id="ac-task-repeat" defaultValue="none">
-            {REPEAT_OPTIONS.map((r) => <option key={r} value={r}>{t(repeatLabelKey(r))}</option>)}
-          </select>
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
-            <button className="hm-btn hm-btn-primary" onClick={() => {
-              const title = document.getElementById("ac-task-title").value || t("quickAdd.defaultTaskTitle");
-              const description = document.getElementById("ac-task-desc").value || "";
-              const date = document.getElementById("ac-task-date").value;
-              const assignee = Array.from(document.querySelectorAll("#ac-task-assignee input:checked")).map((el) => el.value).join(", ");
-              const repeatSel = document.getElementById("ac-task-repeat").value;
-              const repeat = repeatSel === "none" ? null : repeatSel;
-              addTask({ title, description, date, assignee, repeat });
-            }}>{t("quickAdd.create")}</button>
-          </div>
-        </Modal>
+        <AddTaskModal
+          members={houseMembers.length ? houseMembers : state.members}
+          onClose={closeModal}
+          onCreate={addTask}
+          onEdit={editTask}
+        />
       )}
 
       {modal?.type === "editTask" && (
-        <Modal title={t("quickAdd.editTaskTitle")} onClose={closeModal}>
-          <label className="hm-label">{t("quickAdd.titleLabel")}</label>
-          <input className="hm-input" id="ac-edit-task-title" defaultValue={modal.payload?.title || ""} />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.descriptionLabel")}</label>
-          <input className="hm-input" id="ac-edit-task-desc" defaultValue={modal.payload?.description || ""} />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.priorityLabel")}</label>
-          <select className="hm-input" id="ac-edit-task-priority" defaultValue={modal.payload?.priority || "normal"}>
-            <option value="baja">{t("quickAdd.priorityLow")}</option>
-            <option value="normal">{t("quickAdd.priorityNormal")}</option>
-            <option value="alta">{t("quickAdd.priorityHigh")}</option>
-          </select>
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.assignedLabel")}</label>
-          <MemberPicker
-            id="ac-edit-task-assignee"
-            members={houseMembers.length ? houseMembers : state.members}
-            selected={(modal.payload?.assignee || "").split(",").map((n) => n.trim()).filter(Boolean)}
-          />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.dateLabel")}</label>
-          <input className="hm-input" type="date" id="ac-edit-task-date" defaultValue={modal.payload?.date || ""} />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.repeatLabel")}</label>
-          <select className="hm-input" id="ac-edit-task-repeat" defaultValue={REPEAT_OPTIONS.includes(modal.payload?.repeat) ? modal.payload.repeat : "none"}>
-            {REPEAT_OPTIONS.map((r) => <option key={r} value={r}>{t(repeatLabelKey(r))}</option>)}
-          </select>
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
-            <button className="hm-btn hm-btn-primary" onClick={() => {
-              const title = document.getElementById("ac-edit-task-title").value || t("quickAdd.defaultTaskTitle");
-              const description = document.getElementById("ac-edit-task-desc").value || "";
-              const priority = document.getElementById("ac-edit-task-priority").value;
-              const assignee = Array.from(document.querySelectorAll("#ac-edit-task-assignee input:checked")).map((el) => el.value).join(", ");
-              const date = document.getElementById("ac-edit-task-date").value;
-              const repeatSel = document.getElementById("ac-edit-task-repeat").value;
-              const repeat = repeatSel === "none" ? null : repeatSel;
-              editTask(modal.payload.id, { title, description, priority, assignee, date, repeat });
-            }}>{t("quickAdd.saveChanges")}</button>
-          </div>
-        </Modal>
+        <AddTaskModal
+          payload={modal.payload}
+          members={houseMembers.length ? houseMembers : state.members}
+          onClose={closeModal}
+          onCreate={addTask}
+          onEdit={editTask}
+        />
       )}
 
       {modal?.type === "addNote" && (
-        <Modal title={t("quickAdd.newNoteTitle")} onClose={closeModal}>
-          <label className="hm-label">{t("quickAdd.noteLabel")}</label>
-          <textarea className="hm-input" rows={3} id="ac-note-text" />
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
-            <button className="hm-btn hm-btn-primary" onClick={() => {
-              const text = document.getElementById("ac-note-text").value;
-              addNote(text);
-            }}>{t("quickAdd.save")}</button>
-          </div>
-        </Modal>
+        <AddNoteModal onClose={closeModal} onSave={addNote} />
       )}
 
       {modal?.type === "addShoppingList" && (
@@ -4018,38 +4238,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       )}
 
       {modal?.type === "addBill" && (
-        <Modal title={t("quickAdd.addBillTitle")} onClose={closeModal}>
-          <label className="hm-label">{t("quickAdd.nameLabel")}</label>
-          <input className="hm-input" placeholder={t("quickAdd.billNamePlaceholder")} id="ac-bill-name" />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.amountLabel")}</label>
-          <input className="hm-input" type="number" placeholder="0.00" id="ac-bill-amount" />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.dueDateLabel")}</label>
-          <input className="hm-input" type="date" id="ac-bill-due" />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.categoryLabel")}</label>
-          <select className="hm-input" id="ac-bill-category" defaultValue={DEFAULT_CATEGORY}>
-            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
-          </select>
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.repeatLabel")}</label>
-          <select className="hm-input" id="ac-bill-frequency" defaultValue="once">
-            <option value="once">{t("quickAdd.frequencyOnce")}</option>
-            <option value="monthly">{t("quickAdd.frequencyMonthly")}</option>
-            <option value="quarterly">{t("quickAdd.frequencyQuarterly")}</option>
-            <option value="semiannual">{t("quickAdd.frequencySemiannual")}</option>
-            <option value="every9months">{t("quickAdd.frequencyEvery9Months")}</option>
-            <option value="yearly">{t("quickAdd.frequencyYearly")}</option>
-          </select>
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
-            <button className="hm-btn hm-btn-primary" onClick={() => {
-              const name = document.getElementById("ac-bill-name").value || t("actionCenter.bill");
-              const amount = parseFloat(document.getElementById("ac-bill-amount").value || 0);
-              const dueDate = document.getElementById("ac-bill-due").value || null;
-              const category = document.getElementById("ac-bill-category").value;
-              const frequency = document.getElementById("ac-bill-frequency").value;
-              addBill({ name, amount, dueDate, category, frequency });
-            }}>{t("quickAdd.add")}</button>
-          </div>
-        </Modal>
+        <AddBillQuickModal onClose={closeModal} onSave={addBill} />
       )}
 
       {modal?.type === "addMovement" && (
@@ -4061,29 +4250,12 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       )}
 
       {modal?.type === "addExpense" && (
-        <Modal title={modal.payload?.expenseId ? t("quickAdd.editExpenseTitle") : t("quickAdd.registerExpenseTitle")} onClose={closeModal}>
-          <label className="hm-label">{t("quickAdd.nameLabel")}</label>
-          <input className="hm-input" placeholder={t("quickAdd.expenseNamePlaceholder")} id="ac-exp-name" defaultValue={modal.payload?.name || ""} />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.amountLabel")}</label>
-          <input className="hm-input" type="number" placeholder="0.00" id="ac-exp-amount" defaultValue={modal.payload?.amount || ""} />
-          <label className="hm-label" style={{ marginTop: 12 }}>{t("quickAdd.categoryLabel")}</label>
-          <select className="hm-input" id="ac-exp-cat" defaultValue={EXPENSE_CATEGORIES.includes(modal.payload?.category) ? modal.payload.category : DEFAULT_CATEGORY}>
-            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
-          </select>
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button className="hm-btn hm-btn-soft" onClick={closeModal}>{t("quickAdd.cancel")}</button>
-            <button className="hm-btn hm-btn-primary" onClick={() => {
-              const name = document.getElementById("ac-exp-name").value || t("quickAdd.registerExpenseTitle");
-              const amount = parseFloat(document.getElementById("ac-exp-amount").value || 0);
-              const category = document.getElementById("ac-exp-cat").value || DEFAULT_CATEGORY;
-              if (modal.payload?.expenseId) {
-                updateExpenseFromModal(modal.payload.expenseId, { name, amount, category });
-              } else {
-                addExpense({ name, amount, category });
-              }
-            }}>{modal.payload?.expenseId ? t("quickAdd.saveChanges") : t("quickAdd.register")}</button>
-          </div>
-        </Modal>
+        <AddExpenseQuickModal
+          payload={modal.payload}
+          onClose={closeModal}
+          onCreate={addExpense}
+          onUpdate={updateExpenseFromModal}
+        />
       )}
 
       <OnboardingManager

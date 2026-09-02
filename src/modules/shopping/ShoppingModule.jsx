@@ -49,8 +49,10 @@ function PriorityBadge({ priority }) {
   );
 }
 
-function ShoppingItemCard({ item, onToggle }) {
+function ShoppingItemCard({ item, onToggle, onDelete }) {
   const { t } = useTranslation();
+  const [confirming, setConfirming] = useState(false);
+  const compactBtn = { fontSize: 12, height: "auto", minHeight: 0, padding: "5px 10px", gap: 5 };
   return (
     <ModuleCard
       // El emoji se sigue derivando de la categoría (cuando el producto trae
@@ -64,19 +66,36 @@ function ShoppingItemCard({ item, onToggle }) {
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
         {item.notes ? <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{item.notes}</div> : null}
-        <button
-          className={(item.completed ? "hm-btn hm-btn-soft" : "hm-btn hm-btn-primary") + " hm-btn--compact"}
-          style={{ fontSize: 12, height: "auto", minHeight: 0, padding: "5px 10px", gap: 5 }}
-          onClick={() => onToggle(item.id)}
-        >
-          <Check size={13} style={{ width: 13, height: 13 }} /> {item.completed ? t("shoppingModule.markPending") : t("shoppingModule.markPurchased")}
-        </button>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <button
+            className={(item.completed ? "hm-btn hm-btn-soft" : "hm-btn hm-btn-primary") + " hm-btn--compact"}
+            style={compactBtn}
+            onClick={() => onToggle(item.id)}
+          >
+            <Check size={13} style={{ width: 13, height: 13 }} /> {item.completed ? t("shoppingModule.markPending") : t("shoppingModule.markPurchased")}
+          </button>
+          {onDelete && (confirming ? (
+            <span style={{ display: "inline-flex", gap: 4 }}>
+              <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ ...compactBtn, padding: "5px 8px" }} onClick={() => setConfirming(false)}>{t("shoppingModule.no")}</button>
+              <button className="hm-btn hm-btn--danger hm-btn--compact" style={{ ...compactBtn, padding: "5px 8px" }} onClick={() => onDelete(item.id)}>{t("common.yes")}</button>
+            </span>
+          ) : (
+            <button
+              className="hm-btn hm-btn-ghost hm-btn--compact hm-text-danger"
+              style={{ ...compactBtn, padding: "5px 8px" }}
+              onClick={() => setConfirming(true)}
+              aria-label={t("movements.delete")}
+            >
+              <Trash2 size={13} style={{ width: 13, height: 13 }} />
+            </button>
+          ))}
+        </div>
       </div>
     </ModuleCard>
   );
 }
 
-function ItemSection({ icon: Icon, title, items, onToggle, muted, action }) {
+function ItemSection({ icon: Icon, title, items, onToggle, onDelete, muted, action }) {
   if (items.length === 0) return null;
   return (
     <div style={muted ? { opacity: 0.7 } : undefined}>
@@ -86,7 +105,7 @@ function ItemSection({ icon: Icon, title, items, onToggle, muted, action }) {
         {action ? <span style={{ marginLeft: "auto" }}>{action}</span> : null}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-        {items.map((item) => <ShoppingItemCard key={item.id} item={item} onToggle={onToggle} />)}
+        {items.map((item) => <ShoppingItemCard key={item.id} item={item} onToggle={onToggle} onDelete={onDelete} />)}
       </div>
     </div>
   );
@@ -170,6 +189,16 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
     }));
     Promise.all(ids.map((id) => shoppingService.deleteItem(id))).catch((error) => {
       console.error("Error deleting purchased shopping items:", error);
+    });
+  };
+
+  const deleteItem = (itemId) => {
+    dispatch((current) => ({
+      ...current,
+      shoppingItems: (current.shoppingItems || []).filter((i) => i.id !== itemId),
+    }));
+    shoppingService.deleteItem(itemId).catch((error) => {
+      console.error("Error deleting shopping item:", error);
     });
   };
 
@@ -305,14 +334,15 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-          <ItemSection icon={Flame} title={t("shoppingModule.todaySection")} items={todayItems} onToggle={togglePurchased} />
-          <ItemSection icon={Clock3} title={t("shoppingModule.laterSection")} items={laterItems} onToggle={togglePurchased} />
+          <ItemSection icon={Flame} title={t("shoppingModule.todaySection")} items={todayItems} onToggle={togglePurchased} onDelete={deleteItem} />
+          <ItemSection icon={Clock3} title={t("shoppingModule.laterSection")} items={laterItems} onToggle={togglePurchased} onDelete={deleteItem} />
           <FrequentSuggestions suggestions={frequentSuggestions} onAdd={addFrequentSuggestion} />
           <ItemSection
             icon={Check}
             title={t("shoppingModule.purchasedSection")}
             items={completedItems}
             onToggle={togglePurchased}
+            onDelete={deleteItem}
             muted
             action={confirmingClearPurchased ? (
               <span style={{ display: "inline-flex", gap: 4 }}>
