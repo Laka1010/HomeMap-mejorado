@@ -165,6 +165,10 @@ export function AddObjectWizard({ state, onClose, onSave, defaults = {} }) {
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
+        /* La barra de progreso va entre el asa y la cabecera, así que bajamos la
+           cruz para que no quede pisándola. */
+        .wizard-modal .hm-modal-header { padding-top: 16px; }
+        .wizard-modal .hm-modal-close { top: 14px; }
         .wizard-body {
           padding: 20px 32px 40px;
           flex: 1;

@@ -183,6 +183,10 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
         .wizard-progress-bar { height: 6px; background: var(--surface-alt); width: 100%; flex-shrink: 0; }
         .wizard-progress-fill { height: 100%; background: var(--accent); transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
         .wizard-step-counter { font-size: 13px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
+        /* La barra de progreso va entre el asa y la cabecera, así que bajamos la
+           cruz para que no quede pisándola. */
+        .wizard-modal .hm-modal-header { padding-top: 16px; }
+        .wizard-modal .hm-modal-close { top: 14px; }
         .wizard-body { padding: 20px 32px 40px; flex: 1; overflow-y: auto; overscroll-behavior-y: contain; display: flex; flex-direction: column; }
         .wizard-content-wrapper { flex: 1; display: flex; flex-direction: column; }
         .wizard-step-container { display: flex; flex-direction: column; align-items: center; text-align: center; }
