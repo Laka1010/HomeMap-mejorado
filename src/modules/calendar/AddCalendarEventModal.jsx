@@ -2,8 +2,11 @@ import { useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
-import { REPEAT_OPTIONS, repeatLabelKey } from "../tasks/taskRepeat";
+import { repeatLabelKey } from "../tasks/taskRepeat";
 
+// El calendario admite "yearly" además de los 4 valores de las tareas
+// (REPEAT_OPTIONS en taskRepeat.js). Se guarda tal cual en calendar_events.repeat.
+const REPEAT_OPTIONS = ["none", "daily", "weekly", "monthly", "yearly"];
 const ALERT_OPTIONS = ["none", "at_time", "5m", "10m", "15m", "30m", "1h", "1d"];
 
 const pad = (n) => String(n).padStart(2, "0");

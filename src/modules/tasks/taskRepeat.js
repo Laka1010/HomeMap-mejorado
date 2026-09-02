@@ -15,6 +15,10 @@ export function repeatLabelKey(repeat) {
     case "daily": return "quickAdd.repeatDaily";
     case "weekly": return "quickAdd.repeatWeekly";
     case "monthly": return "quickAdd.repeatMonthly";
+    // "yearly" hoy solo lo usa el calendario (CALENDAR_REPEAT_OPTIONS); las
+    // tareas siguen con REPEAT_OPTIONS de 4 valores. El label vive aquí para
+    // no duplicar el mapeo si más adelante las tareas también lo admiten.
+    case "yearly": return "quickAdd.repeatYearly";
     default: return "quickAdd.repeatNone";
   }
 }
