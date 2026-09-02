@@ -26,3 +26,11 @@ verify_jwt = true
 # que no hay JWT que verificar. La autorización es el secreto compartido de la
 # cabecera x-telegram-trigger-secret, comprobado dentro de la función.
 verify_jwt = false
+
+[functions.calendar-feed]
+# Deliberadamente false: la sirve a apps de calendario (Google/Apple Calendar)
+# que se suscriben a la URL sin mandar ningún JWT. La autorización es el token
+# secreto de la query (?token=...), que la función resuelve a un house_id en
+# public.house_calendar_feeds. Solo LEE public.calendar_events de ese hogar
+# (nunca datos de economía ni de otros hogares) y solo responde a GET/HEAD.
+verify_jwt = false

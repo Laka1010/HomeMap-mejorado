@@ -9,6 +9,7 @@ import { RequestEconomyAccessModal } from "./RequestEconomyAccessModal";
 import { economyAccessService } from "../../modules/economy/services/economyAccessService";
 import { CategoriesSection } from "./CategoriesSection";
 import { TaskRetentionSection } from "./TaskRetentionSection";
+import { CalendarFeedSection } from "./CalendarFeedSection";
 
 /**
  * Configuración de la casa: ajustes que pertenecen al hogar y no al usuario
@@ -108,6 +109,8 @@ export function HouseSettingsScreen({
           <CategoriesSection categories={categories} onChange={onChangeCategories} />
 
           <TaskRetentionSection days={taskRetentionDays} onChange={onChangeTaskRetention} isAdmin={isAdmin} />
+
+          <CalendarFeedSection houseId={house?.id} isAdmin={isAdmin} />
 
           {isAdmin && (
             <div>
