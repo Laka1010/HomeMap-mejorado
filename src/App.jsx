@@ -41,6 +41,8 @@ import { homeContentService } from "./services/homeContentService";
 import { taskService, DEFAULT_TASK_RETENTION_DAYS } from "./services/taskService";
 import { REPEAT_OPTIONS, repeatLabelKey } from "./modules/tasks/taskRepeat";
 import { notesService } from "./services/notesService";
+import { calendarEventService } from "./services/calendarEventService";
+import { AddCalendarEventModal } from "./modules/calendar/AddCalendarEventModal";
 import { shoppingService } from "./services/shoppingService";
 import { shoppingListsService } from "./services/shoppingListsService";
 import { shoppingPurchasesService } from "./services/shoppingPurchasesService";
@@ -483,6 +485,7 @@ function buildEmptyState(t) {
     shoppingLists: [],
     shoppingPurchases: [],
     tasks: [],
+    calendarEvents: [],
     notes: [],
     bills: [],
     activity,
@@ -598,6 +601,15 @@ function useHomeMapState(currentHomeId, userId) {
       } catch (e) {
         console.error("Error loading tasks from Supabase:", e);
         // Falls back to whatever was cached locally for tasks.
+      }
+
+      try {
+        const calendarEvents = await calendarEventService.fetchEvents(currentHomeId);
+        if (cancelled) return;
+        parsed = { ...parsed, calendarEvents };
+      } catch (e) {
+        console.error("Error loading calendar events from Supabase:", e);
+        // Falls back to whatever was cached locally for calendarEvents.
       }
 
       try {
@@ -824,6 +836,7 @@ function sanitizeHomeState(parsed) {
     shoppingLists: Array.isArray(parsed.shoppingLists) ? parsed.shoppingLists : base.shoppingLists,
     shoppingPurchases: Array.isArray(parsed.shoppingPurchases) ? parsed.shoppingPurchases : base.shoppingPurchases,
     tasks: Array.isArray(parsed.tasks) ? parsed.tasks : base.tasks,
+    calendarEvents: Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : base.calendarEvents,
     notes: Array.isArray(parsed.notes) ? parsed.notes : base.notes,
     bills: Array.isArray(parsed.bills) ? parsed.bills : base.bills,
     activity: Array.isArray(parsed.activity) ? parsed.activity : base.activity,
@@ -1931,8 +1944,8 @@ function Notas({ state, dispatch, openModal }) {
 /* -------------------------------------------------------------------- */
 /* CALENDARIO                                                             */
 /* -------------------------------------------------------------------- */
-function Calendario({ state, currentHome, canSeeEconomy }) {
-  return <CalendarModule state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} />;
+function Calendario({ state, currentHome, canSeeEconomy, openModal, onDeleteEvent }) {
+  return <CalendarModule state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} openModal={openModal} onDeleteEvent={onDeleteEvent} />;
 }
 
 /* -------------------------------------------------------------------- */
@@ -3258,6 +3271,42 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     });
   };
 
+  /* -------------------- Calendar events (manual) -------------------- */
+  const addCalendarEvent = (eventData) => {
+    const next = { id: "cev-" + uid(), repeat: "none", alert: "none", ...eventData };
+    dispatch((s) => ({ ...s, calendarEvents: [...(s.calendarEvents || []), next] }));
+    showNotice(t("toast.calendarEventCreated", { title: next.title }));
+    logActivity("activity.calendarEventCreated", { name: user?.name, event: next.title }, { category: "calendario", entityType: "calendarEvent", entityId: next.id });
+    closeModal();
+    calendarEventService.createEvent(currentHome.id, next).catch((error) => {
+      console.error("Error saving calendar event:", error);
+      showNotice(t("toast.calendarEventSaveError"));
+    });
+  };
+  const editCalendarEvent = (eventId, patch) => {
+    dispatch((s) => ({
+      ...s,
+      calendarEvents: (s.calendarEvents || []).map((ev) => ev.id === eventId ? { ...ev, ...patch } : ev),
+    }));
+    showNotice(t("toast.calendarEventUpdated"));
+    closeModal();
+    calendarEventService.updateEvent(eventId, patch).catch((error) => {
+      console.error("Error updating calendar event:", error);
+      showNotice(t("toast.calendarEventUpdateError"));
+    });
+  };
+  const deleteCalendarEvent = (eventId) => {
+    dispatch((s) => ({
+      ...s,
+      calendarEvents: (s.calendarEvents || []).filter((ev) => ev.id !== eventId),
+    }));
+    closeModal();
+    calendarEventService.deleteEvent(eventId).catch((error) => {
+      console.error("Error deleting calendar event:", error);
+      showNotice(t("toast.calendarEventUpdateError"));
+    });
+  };
+
   const addBill = (b) => {
     setEconomyVersion((v) => v + 1);
     // Se genera aquí (en vez de dejar que la DB use su default) para poder
@@ -3611,7 +3660,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
                   {organizationTab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}
                   {organizationTab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onTaskCompleted={logTaskCompleted} />}
                   {organizationTab === "notas" && <Notas state={state} dispatch={dispatch} openModal={openModal} />}
-                  {organizationTab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} />}
+                  {organizationTab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} openModal={openModal} onDeleteEvent={deleteCalendarEvent} />}
                 </Suspense>
               </div>
             )}
@@ -3810,6 +3859,23 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       )}
       {modal?.type === "addObject" && <AddObjectWizard state={state} defaults={modal.payload} onClose={closeModal} onSave={addObject} />}
       {modal?.type === "addShopping" && <AddShoppingModal onClose={closeModal} onSave={(item) => addShopping({ ...item, listId: modal.payload?.listId || null })} /> }
+
+      {modal?.type === "addCalendarEvent" && (
+        <AddCalendarEventModal
+          initialDate={modal.payload?.date}
+          onClose={closeModal}
+          onSave={addCalendarEvent}
+        />
+      )}
+      {modal?.type === "editCalendarEvent" && (
+        <AddCalendarEventModal
+          event={modal.payload}
+          initialDate={modal.payload?.startDate}
+          onClose={closeModal}
+          onSave={(patch) => editCalendarEvent(modal.payload.id, patch)}
+          onDelete={(ev) => deleteCalendarEvent(ev.id)}
+        />
+      )}
 
       {/* El modal "editCategories" se quitó al sacar las categorías de las
           listas de la compra: sus dos únicos accesos estaban ahí. Las

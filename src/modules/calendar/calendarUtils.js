@@ -1,4 +1,4 @@
-import { CheckSquare, CreditCard, ShoppingCart, Bell, Package } from "lucide-react";
+import { CheckSquare, CreditCard, ShoppingCart, Bell, Package, CalendarClock } from "lucide-react";
 
 /**
  * Utilidades de fecha y metadatos de categoría para el Calendario (vista
@@ -68,15 +68,17 @@ export function billDueLabel(dueDate, t) {
 }
 
 /**
- * Icono + color discreto por tipo de evento. "Compra", "Recordatorio" y
- * "Evento del hogar" están preparados para cuando esos módulos tengan un
- * campo de fecha propio (hoy no existe en el esquema, ver buildLocalEvents.js);
- * de momento nunca llegan eventos con esos tipos.
+ * Icono + color discreto por tipo de evento. "Evento" son los eventos
+ * manuales que crea el usuario (calendar_events). "Recordatorio" y "Evento
+ * del hogar" están preparados para cuando esos módulos tengan un campo de
+ * fecha propio (hoy no existe en el esquema, ver buildLocalEvents.js); de
+ * momento nunca llegan eventos con esos tipos.
  */
 export const EVENT_CATEGORY_META = {
   Tarea: { icon: CheckSquare, color: "var(--accent)", bg: "var(--accent-soft)" },
   Factura: { icon: CreditCard, color: "var(--pin)", bg: "var(--pin-soft)" },
   Compra: { icon: ShoppingCart, color: "var(--success)", bg: "var(--success-soft)" },
+  Evento: { icon: CalendarClock, color: "var(--danger)", bg: "var(--danger-soft)" },
   Recordatorio: { icon: Bell, color: "var(--ink-soft)", bg: "var(--surface-alt)" },
   "Evento del hogar": { icon: Package, color: "var(--ink-soft)", bg: "var(--surface-alt)" },
 };

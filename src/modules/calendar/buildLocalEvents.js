@@ -1,6 +1,7 @@
 /**
- * Construye la lista de eventos derivados del propio estado de la casa
- * (tareas, facturas, compras con fecha).
+ * Construye la lista de eventos del calendario a partir del estado de la casa:
+ * los DERIVADOS (tareas, facturas, compras con fecha) y los eventos MANUALES
+ * que el usuario crea desde el formulario "nuevo evento" (state.calendarEvents).
  *
  * Extraído de CalendarModule.jsx para poder reutilizarlo también desde la
  * regla de notificaciones "evento próximo" sin duplicar esta lógica.
@@ -32,5 +33,24 @@ export function buildLocalEvents(state) {
       priority: item.priority,
     }));
 
-  return [...taskEvents, ...billEvents, ...shoppingEvents].filter((event) => event.date);
+  // Eventos manuales: conservan todos sus campos para que CalendarModule pueda
+  // reabrir el formulario de edición sin buscar el original por id.
+  const manualEvents = (Array.isArray(state.calendarEvents) ? state.calendarEvents : []).map((ev) => ({
+    id: ev.id,
+    title: ev.title,
+    date: ev.startDate || null,
+    time: ev.allDay ? null : (ev.startTime || null),
+    type: "Evento",
+    manual: true,
+    allDay: ev.allDay ?? false,
+    location: ev.location || "",
+    endDate: ev.endDate || "",
+    endTime: ev.endTime || "",
+    repeat: ev.repeat || "none",
+    alert: ev.alert || "none",
+    notes: ev.notes || "",
+    url: ev.url || "",
+  }));
+
+  return [...taskEvents, ...billEvents, ...shoppingEvents, ...manualEvents].filter((event) => event.date);
 }

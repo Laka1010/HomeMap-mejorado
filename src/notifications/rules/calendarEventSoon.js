@@ -5,8 +5,9 @@ const HOURS_AHEAD = 24;
 export const rule = {
   id: "calendar_event_soon",
   category: "calendario",
-  // Nota: solo cubre eventos derivados de la propia casa (tareas, facturas,
-  // compras con fecha).
+  // Cubre tanto los eventos derivados de la casa (tareas, facturas, compras
+  // con fecha) como los eventos manuales del calendario (state.calendarEvents),
+  // ambos vía buildLocalEvents.
   evaluate({ state, bills, today }) {
     const events = buildLocalEvents({ ...state, bills });
     const horizon = new Date(today.getTime() + HOURS_AHEAD * 3600 * 1000);
