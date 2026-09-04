@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { memberStatsService } from "../../services/memberStatsService";
+import { SelectField } from "../SelectField";
 
 /**
  * Información del miembro — solo Owner/Admin puede llegar aquí (ver
@@ -177,18 +178,20 @@ export function MemberDetailScreen({
                     <span style={{ fontSize: 13.5, color: perm.granted ? "var(--ink)" : "var(--ink-soft)" }}>{perm.label}</span>
                   </div>
                   {perm.key === "economy" && canEditEconomyAccess && (
-                    <select
+                    <SelectField
                       className="hm-input"
                       style={{ width: "auto", fontSize: 12.5, padding: "4px 8px" }}
-                      value={economySelectValue}
-                      onChange={(e) => handleEconomyAccessChange(e.target.value)}
+                      title={t("memberDetail.economyAccessAria", { name: member.name })}
                       aria-label={t("memberDetail.economyAccessAria", { name: member.name })}
-                    >
-                      <option value="auto">{t("memberDetail.economyAccessAuto")}</option>
-                      <option value="none">{t("memberDetail.economyAccessRevoked")}</option>
-                      <option value="contributor">{t("memberDetail.economyAccessContributor")}</option>
-                      <option value="manager">{t("memberDetail.economyAccessManager")}</option>
-                    </select>
+                      value={economySelectValue}
+                      onChange={handleEconomyAccessChange}
+                      options={[
+                        { value: "auto", label: t("memberDetail.economyAccessAuto") },
+                        { value: "none", label: t("memberDetail.economyAccessRevoked") },
+                        { value: "contributor", label: t("memberDetail.economyAccessContributor") },
+                        { value: "manager", label: t("memberDetail.economyAccessManager") },
+                      ]}
+                    />
                   )}
                 </div>
               ))}
@@ -203,16 +206,18 @@ export function MemberDetailScreen({
                 {member.role !== "admin" && (
                   <div className="hm-card hm-card--p16" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                     <span style={{ fontSize: 13.5 }}>{t("memberDetail.changeRoleLabel")}</span>
-                    <select
+                    <SelectField
                       className="hm-input"
                       style={{ width: "auto" }}
-                      value={member.role}
-                      onChange={(e) => onChangeRole?.(member.user_id, e.target.value)}
+                      title={t("memberDetail.changeRoleLabel")}
                       aria-label={t("shareHome.changeRoleAria", { name: member.name })}
-                    >
-                      <option value="adult">{ROLE_LABELS.adult}</option>
-                      <option value="child">{ROLE_LABELS.child}</option>
-                    </select>
+                      value={member.role}
+                      onChange={(v) => onChangeRole?.(member.user_id, v)}
+                      options={[
+                        { value: "adult", label: ROLE_LABELS.adult },
+                        { value: "child", label: ROLE_LABELS.child },
+                      ]}
+                    />
                   </div>
                 )}
 

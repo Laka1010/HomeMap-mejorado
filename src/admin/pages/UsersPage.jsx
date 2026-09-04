@@ -4,6 +4,7 @@ import { usersService } from "../services/usersService";
 import { SecuritySpinner } from "../../modules/security/SecuritySpinner";
 import { AccountStatusBadge } from "../../modules/security/SeverityBadge";
 import { SecurityUserDetailModal } from "../../modules/security/SecurityUserDetailModal";
+import { SelectField } from "../../components/SelectField";
 
 const PAGE_SIZE = 25;
 
@@ -69,16 +70,14 @@ export function UsersPage() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <select
+        <SelectField
           className="hm-input"
           style={{ width: 200 }}
+          title="Estado"
           value={statusFilter}
-          onChange={(e) => handleStatusChange(e.target.value)}
-        >
-          {STATUS_FILTERS.map((f) => (
-            <option key={f.value} value={f.value}>{f.label}</option>
-          ))}
-        </select>
+          onChange={handleStatusChange}
+          options={STATUS_FILTERS.map((f) => ({ value: f.value, label: f.label }))}
+        />
         <button type="submit" className="hm-btn hm-btn-primary" disabled={state.status === "loading"}>Buscar</button>
       </form>
 

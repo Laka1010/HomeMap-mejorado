@@ -4,6 +4,7 @@ import { securityAdminService } from "./services/securityAdminService";
 import { AccountStatusBadge } from "./SeverityBadge";
 import { SecurityUserDetailModal } from "./SecurityUserDetailModal";
 import { SecuritySpinner } from "./SecuritySpinner";
+import { SelectField } from "../../components/SelectField";
 import { Pager } from "./SecurityEventsView";
 
 const PAGE_SIZE = 30;
@@ -61,9 +62,11 @@ export function SecurityUsersView() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </form>
-        <select className="hm-input" style={{ width: "auto" }} value={status} onChange={(e) => setStatus(e.target.value)}>
-          {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <SelectField
+          className="hm-input" style={{ width: "auto" }} title="Estado"
+          value={status} onChange={setStatus}
+          options={STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+        />
       </div>
 
       {error && <div className="sc-error">{error}</div>}

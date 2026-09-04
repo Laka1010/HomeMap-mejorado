@@ -1,5 +1,6 @@
 import { Shield, UserMinus, Users } from "lucide-react";
 import { useTranslation } from "../../i18n";
+import { SelectField } from "../SelectField";
 
 /**
  * Lista de miembros de la casa con su rol. Compartida por la configuración de
@@ -104,15 +105,17 @@ export function HouseMembersSection({
               </div>
               {canManage && (
                 <div className="hm-member-actions" onClick={(e) => e.stopPropagation()}>
-                  <select
+                  <SelectField
                     className="hm-input hm-role-select"
-                    value={member.role}
-                    onChange={(e) => onChangeRole?.(member.id, e.target.value)}
+                    title={t("shareHome.changeRoleAria", { name: member.name })}
                     aria-label={t("shareHome.changeRoleAria", { name: member.name })}
-                  >
-                    <option value="adult">{ROLE_LABELS.adult}</option>
-                    <option value="child">{ROLE_LABELS.child}</option>
-                  </select>
+                    value={member.role}
+                    onChange={(v) => onChangeRole?.(member.id, v)}
+                    options={[
+                      { value: "adult", label: ROLE_LABELS.adult },
+                      { value: "child", label: ROLE_LABELS.child },
+                    ]}
+                  />
                   <button
                     className="hm-btn hm-btn-ghost hm-remove-btn"
                     onClick={() => onRemoveMember?.(member.id)}

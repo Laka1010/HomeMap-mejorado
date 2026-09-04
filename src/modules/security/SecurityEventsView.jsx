@@ -3,6 +3,7 @@ import { securityAdminService } from "./services/securityAdminService";
 import { SeverityBadge } from "./SeverityBadge";
 import { SecurityEventDetailModal } from "./SecurityEventDetailModal";
 import { SecuritySpinner } from "./SecuritySpinner";
+import { SelectField } from "../../components/SelectField";
 
 const EVENT_TYPES = [
   "auth_login_success", "auth_login_failure", "auth_logout", "auth_password_change",
@@ -42,22 +43,28 @@ export function SecurityEventsView() {
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <div className="sc-filters">
-        <select className="hm-input" value={filters.severity} onChange={(e) => setFilter("severity", e.target.value)}>
-          <option value="">Severity: todas</option>
-          <option value="info">INFO</option>
-          <option value="warning">HIGH</option>
-          <option value="critical">CRITICAL</option>
-        </select>
-        <select className="hm-input" value={filters.result} onChange={(e) => setFilter("result", e.target.value)}>
-          <option value="">Result: todos</option>
-          <option value="success">success</option>
-          <option value="failure">failure</option>
-          <option value="denied">denied</option>
-        </select>
-        <select className="hm-input" value={filters.eventType} onChange={(e) => setFilter("eventType", e.target.value)}>
-          <option value="">Event type: todos</option>
-          {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+        <SelectField
+          className="hm-input" title="Severity" value={filters.severity} onChange={(v) => setFilter("severity", v)}
+          options={[
+            { value: "", label: "Severity: todas" },
+            { value: "info", label: "INFO" },
+            { value: "warning", label: "HIGH" },
+            { value: "critical", label: "CRITICAL" },
+          ]}
+        />
+        <SelectField
+          className="hm-input" title="Result" value={filters.result} onChange={(v) => setFilter("result", v)}
+          options={[
+            { value: "", label: "Result: todos" },
+            { value: "success", label: "success" },
+            { value: "failure", label: "failure" },
+            { value: "denied", label: "denied" },
+          ]}
+        />
+        <SelectField
+          className="hm-input" title="Event type" value={filters.eventType} onChange={(v) => setFilter("eventType", v)}
+          options={[{ value: "", label: "Event type: todos" }, ...EVENT_TYPES.map((t) => ({ value: t, label: t }))]}
+        />
         <input type="date" className="hm-input" value={filters.dateFrom} onChange={(e) => setFilter("dateFrom", e.target.value ? `${e.target.value}T00:00:00` : "")} />
         <input type="date" className="hm-input" value={filters.dateTo} onChange={(e) => setFilter("dateTo", e.target.value ? `${e.target.value}T23:59:59` : "")} />
       </div>

@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { securityAdminService } from "./services/securityAdminService";
 import { SeverityBadge } from "./SeverityBadge";
 import { SecuritySpinner } from "./SecuritySpinner";
+import { SelectField } from "../../components/SelectField";
 
 const DURATIONS = [
   { label: "15 minutos", value: 15 },
@@ -81,19 +82,21 @@ export function SecurityIpBlocksView() {
           <input className="hm-input" placeholder="Dirección IP" value={form.ip} onChange={(e) => setForm((f) => ({ ...f, ip: e.target.value }))} />
           <textarea className="hm-input" style={{ minHeight: 60 }} placeholder="Motivo (obligatorio)" value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <select className="hm-input" style={{ width: "auto" }} value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}>
-              <option value="info">INFO</option>
-              <option value="warning">HIGH</option>
-              <option value="critical">CRITICAL</option>
-            </select>
-            <select
-              className="hm-input"
-              style={{ width: "auto" }}
-              value={form.duration === null ? "null" : form.duration}
-              onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value === "null" ? null : Number(e.target.value) }))}
-            >
-              {DURATIONS.map((d) => <option key={d.label} value={d.value === null ? "null" : d.value}>{d.label}</option>)}
-            </select>
+            <SelectField
+              className="hm-input" style={{ width: "auto" }} title="Severity"
+              value={form.severity} onChange={(v) => setForm((f) => ({ ...f, severity: v }))}
+              options={[
+                { value: "info", label: "INFO" },
+                { value: "warning", label: "HIGH" },
+                { value: "critical", label: "CRITICAL" },
+              ]}
+            />
+            <SelectField
+              className="hm-input" style={{ width: "auto" }} title="Duración"
+              value={form.duration === null ? "null" : String(form.duration)}
+              onChange={(v) => setForm((f) => ({ ...f, duration: v === "null" ? null : Number(v) }))}
+              options={DURATIONS.map((d) => ({ value: d.value === null ? "null" : String(d.value), label: d.label }))}
+            />
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button type="button" className="hm-btn hm-btn-ghost hm-btn--compact" onClick={() => setShowForm(false)} disabled={busy}>Cancelar</button>
