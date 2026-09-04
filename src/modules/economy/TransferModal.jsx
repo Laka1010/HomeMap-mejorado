@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "../../i18n";
 import { transfersService } from "./services/transfersService";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { SelectField } from "../../components/SelectField";
 
 /**
  * Transferir (entre 2 cuentas del Space activo) o Contribuir (desde una
@@ -112,28 +113,40 @@ export function TransferModal({ spaceId, spaces, accounts, initialToSpaceId, onC
           {mode === "transfer" && canTransfer && (
             <>
               <label className="hm-label">{t("transfers.fromLabel")}</label>
-              <select className="hm-input" value={fromAccountId} onChange={(e) => setFromAccountId(e.target.value)}>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
-              </select>
+              <SelectField
+                title={t("transfers.fromLabel")}
+                value={fromAccountId}
+                onChange={setFromAccountId}
+                options={accounts.map((a) => ({ value: a.id, label: a.name, emoji: a.icon }))}
+              />
 
               <label className="hm-label" style={{ marginTop: 14 }}>{t("transfers.toAccountLabel")}</label>
-              <select className="hm-input" value={toAccountId} onChange={(e) => setToAccountId(e.target.value)}>
-                {accounts.filter((a) => a.id !== fromAccountId).map((a) => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
-              </select>
+              <SelectField
+                title={t("transfers.toAccountLabel")}
+                value={toAccountId}
+                onChange={setToAccountId}
+                options={accounts.filter((a) => a.id !== fromAccountId).map((a) => ({ value: a.id, label: a.name, emoji: a.icon }))}
+              />
             </>
           )}
 
           {mode === "contribute" && canContribute && (
             <>
               <label className="hm-label">{t("transfers.fromLabel")}</label>
-              <select className="hm-input" value={fromAccountId} onChange={(e) => setFromAccountId(e.target.value)}>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
-              </select>
+              <SelectField
+                title={t("transfers.fromLabel")}
+                value={fromAccountId}
+                onChange={setFromAccountId}
+                options={accounts.map((a) => ({ value: a.id, label: a.name, emoji: a.icon }))}
+              />
 
               <label className="hm-label" style={{ marginTop: 14 }}>{t("transfers.toSpaceLabel")}</label>
-              <select className="hm-input" value={toSpaceId} onChange={(e) => setToSpaceId(e.target.value)}>
-                {otherSpaces.map((s) => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
-              </select>
+              <SelectField
+                title={t("transfers.toSpaceLabel")}
+                value={toSpaceId}
+                onChange={setToSpaceId}
+                options={otherSpaces.map((s) => ({ value: s.id, label: s.name, emoji: s.icon }))}
+              />
             </>
           )}
 

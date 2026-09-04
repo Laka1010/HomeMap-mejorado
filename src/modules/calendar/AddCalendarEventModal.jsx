@@ -3,6 +3,7 @@ import { Trash2 } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 import { repeatLabelKey } from "../tasks/taskRepeat";
+import { SelectField } from "../../components/SelectField";
 
 // El calendario admite "yearly" además de los 4 valores de las tareas
 // (REPEAT_OPTIONS en taskRepeat.js). Se guarda tal cual en calendar_events.repeat.
@@ -216,30 +217,26 @@ export function AddCalendarEventModal({ initialDate, event, onClose, onSave, onD
             )}
             <div className="cev-row">
               <span className="cev-label">{t("calendarEvent.fieldRepeat")}</span>
-              <select
+              <SelectField
                 className="cev-field cev-field--select"
+                title={t("calendarEvent.fieldRepeat")}
                 value={data.repeat}
-                onChange={(e) => patch({ repeat: e.target.value })}
-              >
-                {REPEAT_OPTIONS.map((r) => (
-                  <option key={r} value={r}>{t(repeatLabelKey(r))}</option>
-                ))}
-              </select>
+                onChange={(v) => patch({ repeat: v })}
+                options={REPEAT_OPTIONS.map((r) => ({ value: r, label: t(repeatLabelKey(r)) }))}
+              />
             </div>
           </div>
 
           <div className="cev-group">
             <div className="cev-row">
               <span className="cev-label">{t("calendarEvent.fieldAlert")}</span>
-              <select
+              <SelectField
                 className="cev-field cev-field--select"
+                title={t("calendarEvent.fieldAlert")}
                 value={data.alert}
-                onChange={(e) => patch({ alert: e.target.value })}
-              >
-                {ALERT_OPTIONS.map((a) => (
-                  <option key={a} value={a}>{t(`calendarEvent.alert_${a}`)}</option>
-                ))}
-              </select>
+                onChange={(v) => patch({ alert: v })}
+                options={ALERT_OPTIONS.map((a) => ({ value: a, label: t(`calendarEvent.alert_${a}`) }))}
+              />
             </div>
           </div>
 

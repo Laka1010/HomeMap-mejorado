@@ -5,6 +5,7 @@ import { useCurrency } from "../../currency";
 import { economyService } from "./services/economyService";
 import { accountsService } from "./services/accountsService";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { SelectField } from "../../components/SelectField";
 
 /**
  * "¿Cómo quieres pagarla?" — desde una cuenta del propio Household, o
@@ -95,18 +96,24 @@ export function PayBillModal({ bill, spaceId, spaces, onClose, onPaid }) {
           {mode === "account" && (
             <>
               <label className="hm-label">{t("bills.chooseAccountLabel")}</label>
-              <select className="hm-input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-                {householdAccounts.map((a) => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
-              </select>
+              <SelectField
+                title={t("bills.chooseAccountLabel")}
+                value={accountId}
+                onChange={setAccountId}
+                options={householdAccounts.map((a) => ({ value: a.id, label: a.name, emoji: a.icon }))}
+              />
             </>
           )}
 
           {mode === "contribution" && (
             <>
               <label className="hm-label">{t("bills.chooseAccountLabel")}</label>
-              <select className="hm-input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-                {contributionAccounts.map((a) => <option key={a.id} value={a.id}>{a.icon} {a.name} — {a.spaceName}</option>)}
-              </select>
+              <SelectField
+                title={t("bills.chooseAccountLabel")}
+                value={accountId}
+                onChange={setAccountId}
+                options={contributionAccounts.map((a) => ({ value: a.id, label: `${a.name} — ${a.spaceName}`, emoji: a.icon }))}
+              />
             </>
           )}
 

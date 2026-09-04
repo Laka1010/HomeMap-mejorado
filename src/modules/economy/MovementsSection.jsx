@@ -7,6 +7,7 @@ import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, categoryLabel, categoryEmoji } from "./economyCategories";
 import { CategoryField } from "./CategoryField";
+import { SelectField } from "../../components/SelectField";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 import { toLocalDateString } from "../../utils/dates";
 import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components/MoneyEntry";
@@ -411,9 +412,12 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
                   {accounts.length > 0 && (
                     <>
                       <label className="hm-label">{t("accounts.title")}</label>
-                      <select className="hm-input" value={editValues.account_id || ""} onChange={(e) => setEditValues({ ...editValues, account_id: e.target.value })}>
-                        {accounts.map((a) => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
-                      </select>
+                      <SelectField
+                        title={t("accounts.title")}
+                        value={editValues.account_id || ""}
+                        onChange={(v) => setEditValues({ ...editValues, account_id: v })}
+                        options={accounts.map((a) => ({ value: a.id, label: a.name, emoji: a.icon }))}
+                      />
                     </>
                   )}
 

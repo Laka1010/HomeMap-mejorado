@@ -7,6 +7,7 @@ import { useCurrency } from "../../currency";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 import { EXPENSE_CATEGORIES, DEFAULT_CATEGORY, categoryLabel, categoryEmoji } from "./economyCategories";
 import { CategoryField } from "./CategoryField";
+import { SelectField } from "../../components/SelectField";
 import { toLocalDateString, intlLocale } from "../../utils/dates";
 import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components/MoneyEntry";
 
@@ -330,14 +331,12 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
                   />
 
                   <label className="hm-label">{t("bills.repetitionLabel")}</label>
-                  <select className="hm-input" value={editValues.frequency || "once"} onChange={(e)=> setEditValues({...editValues, frequency: e.target.value})}>
-                    <option value="once">{t("bills.once")}</option>
-                    <option value="monthly">{t("bills.monthly")}</option>
-                    <option value="quarterly">{t("bills.quarterly")}</option>
-                    <option value="semiannual">{t("bills.semiannual")}</option>
-                    <option value="every9months">{t("bills.every9months")}</option>
-                    <option value="yearly">{t("bills.yearly")}</option>
-                  </select>
+                  <SelectField
+                    title={t("bills.repetitionLabel")}
+                    value={editValues.frequency || "once"}
+                    onChange={(v) => setEditValues({ ...editValues, frequency: v })}
+                    options={Object.entries(FREQUENCY_LABELS).map(([value, label]) => ({ value, label }))}
+                  />
 
                   <label className="hm-label">{t("bills.notesLabel")}</label>
                   <textarea className="hm-input" value={editValues.notes || ''} onChange={(e)=> setEditValues({...editValues, notes: e.target.value})} />

@@ -36,6 +36,7 @@ import { BrandMark } from "./components/BrandMark";
 import { PurchaseCompleteAnimation } from "./modules/shopping/PurchaseCompleteAnimation";
 import { DependencyGateModal } from "./components/DependencyGateModal";
 import { AmountHero, FieldGroup, FieldRow, FieldTextRow, SegmentedTabs } from "./components/MoneyEntry";
+import { SelectField } from "./components/SelectField";
 import { supabase } from "./supabaseClient";
 import { securityEventsService } from "./services/securityEventsService";
 import { houseService, MAX_HOMES_PER_USER } from "./services/houseService";
@@ -1534,21 +1535,28 @@ function MoveObjectModal({ state, object, onClose, onMove }) {
         {t("moveObject.chooseLocation", { name: object.name })}
       </p>
       <label className="hm-label">{t("moveObject.roomLabel")}</label>
-      <select className="hm-input" value={roomId} onChange={(e) => handleRoomChange(e.target.value)}>
-        {roomOptions.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
-      </select>
+      <SelectField
+        title={t("moveObject.roomLabel")}
+        value={roomId}
+        onChange={handleRoomChange}
+        options={roomOptions.map((room) => ({ value: room.id, label: room.name }))}
+      />
 
       <label className="hm-label" style={{ marginTop: 14 }}>{t("moveObject.zoneLabel")}</label>
-      <select className="hm-input" value={zoneId} onChange={(e) => handleZoneChange(e.target.value)}>
-        <option value="">{t("moveObject.noZone")}</option>
-        {zoneOptions.map((zone) => <option key={zone.id} value={zone.id}>{zone.name}</option>)}
-      </select>
+      <SelectField
+        title={t("moveObject.zoneLabel")}
+        value={zoneId}
+        onChange={handleZoneChange}
+        options={[{ value: "", label: t("moveObject.noZone") }, ...zoneOptions.map((zone) => ({ value: zone.id, label: zone.name }))]}
+      />
 
       <label className="hm-label" style={{ marginTop: 14 }}>{t("moveObject.boxLabel")}</label>
-      <select className="hm-input" value={containerId} onChange={(e) => setContainerId(e.target.value)}>
-        <option value="">{t("moveObject.noContainer")}</option>
-        {containerOptions.map((container) => <option key={container.id} value={container.id}>{container.name}</option>)}
-      </select>
+      <SelectField
+        title={t("moveObject.boxLabel")}
+        value={containerId}
+        onChange={setContainerId}
+        options={[{ value: "", label: t("moveObject.noContainer") }, ...containerOptions.map((container) => ({ value: container.id, label: container.name }))]}
+      />
 
       <button className="hm-btn hm-btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 20 }} onClick={() => {
         onMove(object.id, {

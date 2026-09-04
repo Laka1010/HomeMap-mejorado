@@ -1,5 +1,7 @@
+import { Children, cloneElement, isValidElement, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useCurrency } from "../currency";
+import { OptionSheet } from "./OptionSheet";
 
 /**
  * Primitivas visuales compartidas para las pantallas de "registrar dinero"
@@ -37,18 +39,25 @@ export function AmountHero({ value, onChange, autoFocus = true }) {
 
 /** Sección: etiqueta en mayúsculas + tarjeta que agrupa una o varias filas. */
 export function FieldGroup({ label, children }) {
+  // El `label` de la sección hace de título del sheet de `FieldRow` con
+  // `options`, así ningún sitio de llamada tiene que repetirlo.
+  const withTitle = Children.map(children, (child) =>
+    isValidElement(child) && child.type === FieldRow && child.props.options
+      ? cloneElement(child, { sheetTitle: child.props.sheetTitle ?? label })
+      : child,
+  );
   return (
     <div className="hm-field-group">
       {label ? <div className="hm-field-label">{label}</div> : null}
-      <div className="hm-field-card">{children}</div>
+      <div className="hm-field-card">{withTitle}</div>
     </div>
   );
 }
 
 /**
  * Fila con icono + contenido y chevron a la derecha.
- * - `options` -> se comporta como un selector nativo (un <select> transparente
- *   cubre toda la fila, así el toque abre el picker del sistema).
+ * - `options` -> abre un bottom sheet propio (`OptionSheet`) en vez del
+ *   `<select>` nativo del sistema. `sheetTitle` lo inyecta `FieldGroup`.
  * - `onClick` -> se comporta como botón.
  * - si no se pasa ninguno de los dos, es una fila informativa.
  */
@@ -61,7 +70,9 @@ export function FieldRow({
   onValueChange,
   onClick,
   chevron = true,
+  sheetTitle,
 }) {
+  const [sheetOpen, setSheetOpen] = useState(false);
   const body = (
     <>
       {Icon ? (
@@ -79,20 +90,20 @@ export function FieldRow({
 
   if (options) {
     return (
-      <label className="hm-field-row">
-        {body}
-        <select
-          className="hm-field-select"
-          value={value}
-          onChange={(e) => onValueChange(e.target.value)}
-        >
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <>
+        <button type="button" className="hm-field-row" onClick={() => setSheetOpen(true)}>
+          {body}
+        </button>
+        {sheetOpen && (
+          <OptionSheet
+            title={sheetTitle}
+            value={value}
+            options={options}
+            onSelect={(v) => { onValueChange(v); setSheetOpen(false); }}
+            onClose={() => setSheetOpen(false)}
+          />
+        )}
+      </>
     );
   }
 
