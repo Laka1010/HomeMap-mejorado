@@ -485,6 +485,9 @@ const GlobalStyle = () => (
     .hm-switch[data-on="true"] .hm-switch-knob { transform: translateX(18px); }
 
     .hm-money-actions { display: flex; gap: 10px; margin-top: 22px; }
+    /* Cancelar + Guardar: mismo ancho y etiqueta centrada, así la fila queda
+       equilibrada en vez de un botón diminuto pegado a la izquierda. */
+    .hm-money-actions > .hm-btn { flex: 1 1 0; justify-content: center; }
     .hm-money-error { font-size: 12.5px; color: var(--danger); margin: 12px 4px 0; font-weight: 600; }
   `}</style>
 );
