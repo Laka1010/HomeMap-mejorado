@@ -2588,7 +2588,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     activeHome,
   } = useHomesAndMembers(user?.id);
   const [shareMembers, setShareMembers] = useState([]);
-  const [isExporting, setIsExporting] = useState(false);
   // Los niños no ven ni economía ni notificaciones (que a menudo son sobre
   // facturas/gastos), así que esta misma flag gatea ambas cosas.
   const canSeeEconomy = !activeHome || activeHome.myRole !== "child";
@@ -2894,27 +2893,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     const handleLogin = (userData) => {
       setUser(mapSupabaseUser(userData));
   };
-
-    const handleImportData = (file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const parsed = JSON.parse(String(reader.result));
-          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-            throw new Error("El archivo no contiene un estado válido.");
-          }
-          const importedState = sanitizeHomeState(parsed);
-          setState(importedState);
-        } catch (error) {
-          console.error("Error importing data:", error);
-          showNotice(t("toast.importError"));
-        }
-      };
-      reader.onerror = () => {
-        showNotice(t("toast.fileReadError"));
-      };
-      reader.readAsText(file);
-    };
 
   const handleLogout = async () => {
       // Se registra ANTES de signOut(): en cuanto la sesión se cierra, el
@@ -3901,37 +3879,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * reales de la casa. Se piden aparte (misma fuente que usa el resto de la
    * app: economyService/houseService) y se fusionan antes de exportar.
    */
-  const handleExportData = async () => {
-    if (isExporting) return;
-    setIsExporting(true);
-    try {
-      const [bills, expenses, income, members] = await Promise.all([
-        economyService.getAllBills(currentHome.id).catch((e) => { console.error("Error exportando facturas:", e); return []; }),
-        economyService.getAllExpenses(currentHome.id, 100000).catch((e) => { console.error("Error exportando gastos:", e); return []; }),
-        economyService.getAllIncome(currentHome.id, 100000).catch((e) => { console.error("Error exportando ingresos:", e); return []; }),
-        houseService.getHouseMembers(currentHome.id).catch((e) => { console.error("Error exportando miembros:", e); return []; }),
-      ]);
-
-      const exportData = {
-        ...state,
-        members,
-        house: { id: currentHome.id, name: currentHome.name, inviteCode: currentHome.inviteCode },
-        economy: { bills, expenses, income },
-        exportedAt: new Date().toISOString(),
-      };
-      delete exportData.activity; // era una lista de ejemplo, no actividad real de la casa
-      delete exportData.bills; // siempre vacío en `state` (ver comentario arriba); las reales están en `economy.bills`
-
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = "haven-datos.json"; a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   const locale = state.profile?.language || "es";
   const themeMode = state.profile?.theme || (state.profile?.darkMode ? "dark" : "system");
   const effectiveTheme = themeMode === "system" ? (prefersDark ? "dark" : "light") : themeMode;
@@ -4114,9 +4061,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onChangePassword={handleChangePassword}
             onLogout={handleLogout}
             onDeleteAccount={handleDeleteAccount}
-            onImportData={handleImportData}
-            onExportData={handleExportData}
-            isExporting={isExporting}
             locale={locale}
             theme={themeMode}
             notifications={state.settings.notifications}

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft, ChevronRight, ExternalLink, User, Lock, Home as HomeIcon, Users, Shield,
-  MessageCircle, Info, Eye, EyeOff, Upload, Download, Trash2, LogOut, Share2,
+  MessageCircle, Info, Eye, EyeOff, Trash2, LogOut, Share2,
   Languages, Coins, Palette, Bell, Calendar, Crown, Sun, Moon, Smartphone, ShieldAlert,
 } from "lucide-react";
 import { useTranslation } from "../../i18n";
@@ -36,9 +36,6 @@ export function AccountHub({
   onChangePassword,
   onLogout,
   onDeleteAccount,
-  onImportData,
-  onExportData,
-  isExporting,
   locale,
   theme,
   notifications,
@@ -85,8 +82,7 @@ export function AccountHub({
   const ownerName = ownerMember?.name || (isAdmin ? displayName : null);
 
   const sections = buildSections({
-    t, isExporting, onExportData, onImportData,
-    setView, openModal, profile, onUpdateProfile, version, theme, onChangeTheme,
+    t, setView, openModal, profile, onUpdateProfile, version, theme, onChangeTheme,
   });
   const dangerRows = buildDangerRows({ t, onLogout, onDeleteAccount });
 
@@ -219,7 +215,7 @@ function ProfileHeader({ avatar, initials, displayName, displayEmail, role, home
  * muestra chevron), "external" (sale de la app, muestra icono de enlace) o
  * "action" (se ejecuta al momento, sin indicador de navegación).
  */
-function buildSections({ t, isExporting, onExportData, onImportData, setView, openModal, profile, onUpdateProfile, version, theme, onChangeTheme }) {
+function buildSections({ t, setView, openModal, profile, onUpdateProfile, version, theme, onChangeTheme }) {
   return [
     {
       id: "account",
@@ -263,8 +259,6 @@ function buildSections({ t, isExporting, onExportData, onImportData, setView, op
       rows: [
         { id: "privacyPolicy", icon: Shield, label: t("ajustes.privacyPolicy"), kind: "external", href: "/privacy-policy.html" },
         { id: "terms", icon: Shield, label: t("ajustes.terms"), kind: "external", href: "/terms.html" },
-        { id: "export", icon: Download, label: isExporting ? t("ajustes.exporting") : t("ajustes.exportData"), kind: "action", onClick: onExportData, disabled: isExporting },
-        { id: "import", custom: true, render: () => <ImportRow onImportData={onImportData} t={t} /> },
       ],
     },
     {
@@ -406,26 +400,6 @@ function AppearanceRow({ theme, onChange, t, isLast }) {
         })}
       </div>
     </div>
-  );
-}
-
-function ImportRow({ onImportData, t }) {
-  const inputRef = useRef(null);
-  return (
-    <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="application/json,.json"
-        style={{ display: "none" }}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file) onImportData(file);
-        }}
-      />
-      <HubRow icon={Upload} label={t("ajustes.importData")} kind="action" onClick={() => inputRef.current?.click()} sectionColor="var(--chart-category)" />
-    </>
   );
 }
 
