@@ -8,7 +8,6 @@ const BOX_COLORS = ["#3D5A80", "#C98A3E", "#6B7A5E", "#8E5B72", "#4C7A8B", "#8B6
 export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
-  const [step, setStep] = useState(1);
   const [direction, setDirection] = useState("next");
   const [data, setData] = useState({
     name: "",
@@ -18,10 +17,17 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
   });
   const [locLevel, setLocLevel] = useState("room"); // room -> zone
 
-  const TOTAL_STEPS = 4;
+  // Si ya se abre desde una habitación (o zona) concreta, no se pregunta la
+  // ubicación: se salta ese paso y el contador se ajusta a los pasos reales.
+  const lockLocation = !!defaults.roomId;
+  const STEP_KEYS = lockLocation ? ["name", "color", "summary"] : ["name", "location", "color", "summary"];
+  const TOTAL_STEPS = STEP_KEYS.length;
+
+  const [step, setStep] = useState(1);
+  const currentKey = STEP_KEYS[step - 1];
 
   const nextStep = () => {
-    if (step === 1 && !data.name.trim()) return;
+    if (currentKey === "name" && !data.name.trim()) return;
     setDirection("next");
     if (step < TOTAL_STEPS) setStep(step + 1);
   };
@@ -65,7 +71,7 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
 
         <div className={`wizard-body transition-${direction}`}>
           <div className="wizard-content-wrapper" key={step}>
-            {step === 1 && (
+            {currentKey === "name" && (
               <div className="wizard-step-container">
                 <h2 className="hm-display wizard-title">{t("wizard.addContainerNameTitle")}</h2>
                 <div className="wizard-input-wrapper">
@@ -82,7 +88,7 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
               </div>
             )}
 
-            {step === 2 && (
+            {currentKey === "location" && (
               <div className="wizard-step-container">
                 <h2 className="hm-display wizard-title">{t("wizard.addContainerLocationTitle")}</h2>
 
@@ -121,7 +127,7 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
               </div>
             )}
 
-            {step === 3 && (
+            {currentKey === "color" && (
               <div className="wizard-step-container">
                 <h2 className="hm-display wizard-title">{t("wizard.addContainerColorTitle")}</h2>
                 <div className="color-grid">
@@ -138,7 +144,7 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
               </div>
             )}
 
-            {step === 4 && (
+            {currentKey === "summary" && (
               <div className="wizard-step-container">
                 <h2 className="hm-display wizard-title">{t("wizard.addContainerSummaryTitle")}</h2>
                 <div className="summary-card">
@@ -168,8 +174,8 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
               <button className="hm-btn hm-btn-primary wizard-main-btn" onClick={handleSave}>
                 <Check size={18} /> {t("wizard.createContainerButton")}
               </button>
-            ) : (step !== 2 && step !== 3) && (
-              <button className="hm-btn hm-btn-primary wizard-main-btn" onClick={nextStep} disabled={step === 1 && !data.name.trim()}>
+            ) : (currentKey !== "location" && currentKey !== "color") && (
+              <button className="hm-btn hm-btn-primary wizard-main-btn" onClick={nextStep} disabled={currentKey === "name" && !data.name.trim()}>
                 {t("wizard.next")} <ChevronRight size={18} />
               </button>
             )}
