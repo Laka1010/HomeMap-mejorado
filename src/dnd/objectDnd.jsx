@@ -125,9 +125,9 @@ function DragGhost({ drag }) {
         position: "fixed",
         left: drag.x,
         top: drag.y,
-        // borde inferior del "fantasma" justo encima del dedo/cursor (gap 10px),
-        // así se ve la tarjeta que llevas en la mano y no queda tapada.
-        transform: "translate(-50%, calc(-100% - 10px))",
+        // el "fantasma" va bien por encima del dedo/cursor (gap 32px) para que
+        // no lo tape la mano y se lea la tarjeta que llevas.
+        transform: "translate(-50%, calc(-100% - 32px))",
         pointerEvents: "none",
         zIndex: 9999,
         background: "var(--surface)",
