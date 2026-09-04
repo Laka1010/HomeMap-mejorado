@@ -2,6 +2,7 @@ import { Search, Package, Home, Box, CheckSquare, ShoppingCart, Wallet, Users, M
 import { useTranslation } from "../../i18n";
 import { useGlobalSearch } from "./useGlobalSearch";
 import { EmptyState } from "../../components/EmptyState";
+import { ObjectDndProvider, useDraggableObject, useObjectDropTarget } from "../../dnd/objectDnd";
 
 const CATEGORY_META = {
   object: { labelKey: "search.type.object", icon: Package },
@@ -19,7 +20,15 @@ const CATEGORY_META = {
  * agrupa los resultados; la lógica de búsqueda en sí vive en useGlobalSearch
  * / searchEngine.js, aquí solo hay presentación y navegación.
  */
-export function GlobalSearchModal({ state, houseId, canSeeEconomy, members, getPath, goTo, onOpenMembers, onClose }) {
+export function GlobalSearchModal(props) {
+  return (
+    <ObjectDndProvider>
+      <GlobalSearchModalInner {...props} />
+    </ObjectDndProvider>
+  );
+}
+
+function GlobalSearchModalInner({ state, houseId, canSeeEconomy, members, getPath, goTo, onMoveObject, onOpenMembers, onClose }) {
   const { t } = useTranslation();
   const { query, setQuery, groups } = useGlobalSearch({ state, houseId, canSeeEconomy, members, getPath, t });
 
@@ -94,27 +103,14 @@ export function GlobalSearchModal({ state, houseId, canSeeEconomy, members, getP
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {group.items.map((entry) => (
-                    <button
+                    <ResultRow
                       key={`${entry.type}-${entry.id}`}
-                      className="hm-card hm-tap"
-                      style={{ padding: 12, cursor: "pointer", textAlign: "left", border: "none", width: "100%" }}
-                      onClick={() => handleSelect(entry)}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                        <GroupIcon size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {entry.title}
-                          </div>
-                          {entry.subtitle && (
-                            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--ink-soft)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {entry.path && <MapPin size={10} style={{ flexShrink: 0 }} />}
-                              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.subtitle}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </button>
+                      entry={entry}
+                      GroupIcon={GroupIcon}
+                      state={state}
+                      onSelect={handleSelect}
+                      onMoveObject={onMoveObject}
+                    />
                   ))}
                   {group.total > group.items.length && (
                     <div style={{ fontSize: 12, color: "var(--ink-soft)", padding: "0 4px" }}>
@@ -128,5 +124,68 @@ export function GlobalSearchModal({ state, houseId, canSeeEconomy, members, getP
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Fila de resultado. Un objeto se puede arrastrar; una habitación o una caja
+ * son destinos: soltar un objeto encima lo mueve ahí (mismo `moveObject` que
+ * el modal "Mover"). El resto de tipos son solo un botón que navega.
+ */
+function ResultRow({ entry, GroupIcon, state, onSelect, onMoveObject }) {
+  const realObject = entry.type === "object" ? state.objects.find((o) => o.id === entry.id) : null;
+  const { dragHandleProps, isDragging, guardClick } = useDraggableObject(realObject || { id: entry.id });
+
+  const isDropTarget = (entry.type === "room" || entry.type === "container") && !!onMoveObject;
+  const targetLocation = entry.type === "room"
+    ? { roomId: entry.id, zoneId: null, containerId: null }
+    // contenedor: normalizeLocation deriva room/zone a partir del contenedor
+    : { roomId: null, zoneId: null, containerId: entry.id };
+  const { ref, isOver } = useObjectDropTarget({
+    id: isDropTarget ? `search-${entry.type}-${entry.id}` : null,
+    onDrop: (obj) => onMoveObject?.(obj.id, targetLocation),
+    canDrop: (obj) => {
+      if (entry.type === "room") return obj.roomId !== entry.id || obj.zoneId || obj.containerId;
+      return obj.containerId !== entry.id;
+    },
+    disabled: !isDropTarget,
+  });
+
+  const canDragObject = entry.type === "object" && !!realObject;
+
+  return (
+    <button
+      ref={ref}
+      className={`hm-card hm-tap${isOver ? " is-over" : ""}`}
+      style={{
+        padding: 12,
+        cursor: "pointer",
+        textAlign: "left",
+        border: isOver ? "1px solid var(--accent)" : "none",
+        outline: isOver ? "2px solid var(--accent)" : "none",
+        outlineOffset: 2,
+        background: isOver ? "var(--accent-soft)" : undefined,
+        opacity: isDragging ? 0.4 : 1,
+        width: "100%",
+        touchAction: canDragObject ? "pan-y" : undefined,
+      }}
+      onPointerDown={canDragObject ? dragHandleProps.onPointerDown : undefined}
+      onClick={guardClick(() => onSelect(entry))}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        <GroupIcon size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {entry.title}
+          </div>
+          {entry.subtitle && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--ink-soft)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {entry.path && <MapPin size={10} style={{ flexShrink: 0 }} />}
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.subtitle}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </button>
   );
 }

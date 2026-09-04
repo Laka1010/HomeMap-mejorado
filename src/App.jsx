@@ -37,6 +37,7 @@ import { PurchaseCompleteAnimation } from "./modules/shopping/PurchaseCompleteAn
 import { DependencyGateModal } from "./components/DependencyGateModal";
 import { AmountHero, FieldGroup, FieldRow, FieldTextRow, SegmentedTabs } from "./components/MoneyEntry";
 import { SelectField } from "./components/SelectField";
+import { ObjectDndProvider, useObjectDnd, useDraggableObject, useObjectDropTarget } from "./dnd/objectDnd";
 import { supabase } from "./supabaseClient";
 import { securityEventsService } from "./services/securityEventsService";
 import { houseService, MAX_HOMES_PER_USER } from "./services/houseService";
@@ -344,6 +345,12 @@ const GlobalStyle = () => (
     /* Tap / elevation */
     @media (hover: hover) { .hm-tap:hover { transform: translateY(-2px); } }
     .hm-tap { transition: transform .18s ease, box-shadow .18s ease; cursor: pointer; }
+
+    /* Arrastrar objetos: mientras dura, se bloquea el scroll y la selección */
+    body.hm-dnd-active { touch-action: none; user-select: none; -webkit-user-select: none; cursor: grabbing; }
+    .hm-drop-target { transition: outline-color .12s ease, background-color .12s ease; outline: 2px solid transparent; outline-offset: 2px; }
+    .hm-drop-target.is-over { outline-color: var(--accent); background: var(--accent-soft); }
+    .hm-dnd-dragging { opacity: .4; }
 
     /* Modal / drawer */
     .hm-room-name-input { color: var(--ink); outline: none; transition: background .15s ease, border-color .15s ease; }
@@ -1739,7 +1746,7 @@ function Dashboard({ state, goTo, openModal, canSeeEconomy, currentHome, houseMe
 /* -------------------------------------------------------------------- */
 /* MI CASA                                                               */
 /* -------------------------------------------------------------------- */
-function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCategories, onUpdateRoom, onDeleteRoom }) {
+function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCategories, onUpdateRoom, onDeleteRoom, onMoveObject }) {
   const { t } = useTranslation();
   const room = view.roomId ? getRoom(state, view.roomId) : null;
   const zone = view.zoneId ? getZone(state, view.zoneId) : null;
@@ -1884,6 +1891,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
     const directContainers = state.containers.filter((c) => c.roomId === room.id && !c.zoneId && !c.parentId);
     const directObjects = state.objects.filter((o) => o.roomId === room.id && !o.zoneId && !o.containerId);
     return (
+      <ObjectDndProvider>
       <div className="hm-fade-in">
        <button className="hm-btn hm-btn-ghost" style={{ paddingLeft: 0, marginBottom: 8 }} onClick={() => setView({})}><ArrowLeft size={16} />{t("room.title")}</button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
@@ -1905,46 +1913,74 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
             <label className="hm-label">{t("room.zonesHeader")}</label>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
               {zones.map((z) => (
-                <div key={z.id} className="hm-card hm-tap hm-card--p16" onClick={() => setView({ roomId: room.id, zoneId: z.id })}>
+                <ObjectDropZone
+                  key={z.id}
+                  id={`zone-${z.id}`}
+                  canDrop={(obj) => obj.zoneId !== z.id || obj.containerId}
+                  onDropObject={(obj) => onMoveObject?.(obj.id, { roomId: room.id, zoneId: z.id, containerId: null })}
+                  className="hm-card hm-tap hm-card--p16"
+                  style={{ borderRadius: 16 }}
+                  onClick={() => setView({ roomId: room.id, zoneId: z.id })}
+                >
                   <span style={{ fontSize: 20 }}>{z.icon}</span>
                   <div style={{ fontWeight: 600, fontSize: 14, marginTop: 8 }}>{z.name}</div>
                   <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{countObjectsIn(state, (o) => o.zoneId === z.id)} {t("room.objectsLabel")}</div>
-                </div>
+                </ObjectDropZone>
               ))}
             </div>
           </div>
         )}
- 
+
         {directContainers.length > 0 && (
           <div style={{ marginBottom: 22 }}>
             <label className="hm-label">{t("room.boxesInRoom")}</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {directContainers.map((c) => (
-                <span key={c.id} className="hm-card-flat hm-tap hm-card--p14" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-                  onClick={() => goTo({ tab: "cajas", containerId: c.id })}>
+                <ObjectDropZone
+                  key={c.id}
+                  id={`cont-${c.id}`}
+                  canDrop={(obj) => obj.containerId !== c.id}
+                  onDropObject={(obj) => onMoveObject?.(obj.id, { roomId: room.id, zoneId: null, containerId: c.id })}
+                  className="hm-card-flat hm-tap hm-card--p14"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 12 }}
+                  onClick={() => goTo({ tab: "cajas", containerId: c.id })}
+                >
                   <span style={{ width: 10, height: 10, borderRadius: 999, background: c.color }} /> {c.name}
-                </span>
+                </ObjectDropZone>
               ))}
             </div>
           </div>
         )}
- 
+
         <label className="hm-label">{t("room.looseObjectsHeader")}</label>
         {directObjects.length === 0 ? (
-          <EmptyState
-            icon={BoxIcon}
-            title={t("room.emptyObjectsTitle")}
-            subtitle={t("room.emptyObjectsSubtitle")}
-            action={<button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: room.id })}><Plus size={15} />{t("room.addObject")}</button>}
-          />
+          <ObjectDropZone
+            id={`loose-${room.id}`}
+            canDrop={(obj) => obj.zoneId || obj.containerId}
+            onDropObject={(obj) => onMoveObject?.(obj.id, { roomId: room.id, zoneId: null, containerId: null })}
+            style={{ borderRadius: 16 }}
+          >
+            <EmptyState
+              icon={BoxIcon}
+              title={t("room.emptyObjectsTitle")}
+              subtitle={t("room.emptyObjectsSubtitle")}
+              action={<button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: room.id })}><Plus size={15} />{t("room.addObject")}</button>}
+            />
+          </ObjectDropZone>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <ObjectDropZone
+            id={`loose-${room.id}`}
+            canDrop={(obj) => obj.zoneId || obj.containerId}
+            onDropObject={(obj) => onMoveObject?.(obj.id, { roomId: room.id, zoneId: null, containerId: null })}
+            style={{ display: "flex", flexDirection: "column", gap: 8, borderRadius: 12 }}
+          >
             {directObjects.map((o) => (
-              <ObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} />
+              <DraggableObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} />
             ))}
-          </div>
+          </ObjectDropZone>
         )}
       </div>
+      </ObjectDndProvider>
     );
   }
 
@@ -1952,6 +1988,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
   const containersInZone = state.containers.filter((c) => c.zoneId === zone.id && !c.parentId);
   const objectsInZone = state.objects.filter((o) => o.zoneId === zone.id && !o.containerId);
   return (
+    <ObjectDndProvider>
     <div className="hm-fade-in">
       <button className="hm-btn hm-btn-ghost" style={{ paddingLeft: 0, marginBottom: 8 }} onClick={() => setView({ roomId: room.id })}><ArrowLeft size={16} />{room.name}</button>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
@@ -1964,35 +2001,56 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
           <button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: room.id, zoneId: zone.id })}><Plus size={15} />{t("room.addObject")}</button>
         </div>
       </div>
- 
+
       {containersInZone.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <label className="hm-label">{t("room.containersHeader")}</label>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
             {containersInZone.map((c) => (
-              <div key={c.id} className="hm-card hm-tap hm-card--p14" onClick={() => goTo({ tab: "cajas", containerId: c.id })}>
+              <ObjectDropZone
+                key={c.id}
+                id={`cont-${c.id}`}
+                canDrop={(obj) => obj.containerId !== c.id}
+                onDropObject={(obj) => onMoveObject?.(obj.id, { roomId: room.id, zoneId: zone.id, containerId: c.id })}
+                className="hm-card hm-tap hm-card--p14"
+                style={{ borderRadius: 12 }}
+                onClick={() => goTo({ tab: "cajas", containerId: c.id })}
+              >
                 <span style={{ width: 12, height: 12, borderRadius: 999, background: c.color, display: "inline-block" }} />
                 <div style={{ fontWeight: 600, fontSize: 14, marginTop: 8 }}>{c.name}</div>
                 <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{objectCountInContainer(state, c.id)} {t("room.objectsLabel")}</div>
-              </div>
+              </ObjectDropZone>
             ))}
           </div>
         </div>
       )}
       <label className="hm-label">{t("room.objectsHeader")}</label>
       {objectsInZone.length === 0 ? (
-        <EmptyState
-          icon={BoxIcon}
-          title={t("room.zoneEmptyTitle")}
-          subtitle={t("room.zoneEmptySubtitle")}
-          action={<button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: room.id, zoneId: zone.id })}><Plus size={15} />{t("room.addObject")}</button>}
-        />
+        <ObjectDropZone
+          id={`zoneloose-${zone.id}`}
+          canDrop={(obj) => obj.zoneId !== zone.id || obj.containerId}
+          onDropObject={(obj) => onMoveObject?.(obj.id, { roomId: room.id, zoneId: zone.id, containerId: null })}
+          style={{ borderRadius: 16 }}
+        >
+          <EmptyState
+            icon={BoxIcon}
+            title={t("room.zoneEmptyTitle")}
+            subtitle={t("room.zoneEmptySubtitle")}
+            action={<button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: room.id, zoneId: zone.id })}><Plus size={15} />{t("room.addObject")}</button>}
+          />
+        </ObjectDropZone>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {objectsInZone.map((o) => <ObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} />)}
-        </div>
+        <ObjectDropZone
+          id={`zoneloose-${zone.id}`}
+          canDrop={(obj) => obj.zoneId !== zone.id || obj.containerId}
+          onDropObject={(obj) => onMoveObject?.(obj.id, { roomId: room.id, zoneId: zone.id, containerId: null })}
+          style={{ display: "flex", flexDirection: "column", gap: 8, borderRadius: 12 }}
+        >
+          {objectsInZone.map((o) => <DraggableObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} />)}
+        </ObjectDropZone>
       )}
     </div>
+    </ObjectDndProvider>
   );
 }
 
@@ -2104,15 +2162,48 @@ function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onClose })
   );
 }
 
-function ObjectRow({ o, onClick, path }) {
+function ObjectRow({ o, onClick, path, dragHandleProps, dragging }) {
   return (
-    <div className="hm-card hm-tap hm-card--p12" style={{ display: "flex", alignItems: "center", gap: 10 }} onClick={onClick}>
+    <div
+      className={`hm-card hm-tap hm-card--p12${dragging ? " hm-dnd-dragging" : ""}`}
+      style={{ display: "flex", alignItems: "center", gap: 10, ...dragHandleProps?.style }}
+      onClick={onClick}
+      onPointerDown={dragHandleProps?.onPointerDown}
+    >
       <CategoryIcon category={o.category} size={18} style={{ color: "var(--ink-soft)", flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 14 }}>{o.name}</div>
         <div style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>{path && path.length > 0 ? path.join(" · ") : o.category}</div>
       </div>
       <ChevronRight size={16} style={{ color: "var(--ink-soft)" }} />
+    </div>
+  );
+}
+
+/** ObjectRow que además se puede arrastrar a una zona/caja para moverlo. */
+function DraggableObjectRow({ o, onClick, path }) {
+  const { dragHandleProps, isDragging, guardClick } = useDraggableObject(o);
+  return (
+    <ObjectRow o={o} path={path} onClick={guardClick(onClick)} dragHandleProps={dragHandleProps} dragging={isDragging} />
+  );
+}
+
+/** Contenedor que resalta cuando se arrastra un objeto encima y lo mueve al soltar. */
+function ObjectDropZone({ id, onDropObject, canDrop, className = "", style, children, onClick, ...rest }) {
+  const dnd = useObjectDnd();
+  const { ref, isOver } = useObjectDropTarget({ id, onDrop: onDropObject, canDrop });
+  const guardedClick = onClick
+    ? (e) => { if (dnd?.isSuppressingClick()) return; onClick(e); }
+    : undefined;
+  return (
+    <div
+      ref={ref}
+      className={`hm-drop-target ${isOver ? "is-over" : ""} ${className}`.trim()}
+      style={style}
+      onClick={guardedClick}
+      {...rest}
+    >
+      {children}
     </div>
   );
 }
@@ -3896,7 +3987,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             {route.tab === "hogar" && (
               cajasView?.containerId
                 ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} />
-                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateCategories={updateCategories} onUpdateRoom={updateRoom} onDeleteRoom={requestDeleteRoom} />
+                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateCategories={updateCategories} onUpdateRoom={updateRoom} onDeleteRoom={requestDeleteRoom} onMoveObject={moveObject} />
             )}
 
             {/* ✅ ORGANIZACIÓN - Shopping, Tasks, Calendar */}
@@ -4101,6 +4192,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             members={houseMembers}
             getPath={getEntityPath}
             goTo={goTo}
+            onMoveObject={moveObject}
             onOpenMembers={() => openModal("houseSettings")}
             onClose={closeModal}
           />
