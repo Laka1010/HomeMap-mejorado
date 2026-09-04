@@ -1879,6 +1879,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
           onRename={(nextName) => onUpdateRoom?.(room.id, { name: nextName })}
           onDelete={() => onDeleteRoom?.(room.id)}
           onExpand={() => setView({ roomId: room.id })}
+          onOpenZone={(zoneId) => setView({ roomId: room.id, zoneId })}
           onClose={() => setView({})}
         />
       )}
@@ -2060,7 +2061,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
  * (o se toca "Ver habitación") para expandir a la vista completa, y hacia abajo
  * (o tocando el fondo) para cerrar. Ver useSheetGesture.
  */
-function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onClose }) {
+function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onOpenZone, onClose }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, sheetStyle, isSuppressingClick } = useSheetGesture(onClose, onExpand);
   const [name, setName] = useState(room.name);
@@ -2071,8 +2072,10 @@ function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onClose })
     onRename?.(trimmed);
   };
 
+  const zones = state.zones.filter((z) => z.roomId === room.id);
   const directContainers = state.containers.filter((c) => c.roomId === room.id && !c.zoneId && !c.parentId);
   const looseObjects = state.objects.filter((o) => o.roomId === room.id && !o.zoneId && !o.containerId);
+  const isEmpty = zones.length === 0 && directContainers.length === 0 && looseObjects.length === 0;
 
   const guardedGo = (target) => {
     if (isSuppressingClick()) return;
@@ -2118,6 +2121,25 @@ function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onClose })
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "4px 20px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
+          {zones.length > 0 && (
+            <div>
+              <label className="hm-label">{t("room.zonesHeader")}</label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
+                {zones.map((z) => (
+                  <div
+                    key={z.id}
+                    className="hm-card hm-tap hm-card--p14"
+                    onClick={() => { if (!isSuppressingClick()) onOpenZone?.(z.id); }}
+                  >
+                    <span style={{ fontSize: 18 }}>{z.icon}</span>
+                    <div style={{ fontWeight: 600, fontSize: 13.5, marginTop: 6 }}>{z.name}</div>
+                    <div style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>{countObjectsIn(state, (o) => o.zoneId === z.id)} {t("room.objectsLabel")}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {directContainers.length > 0 && (
             <div>
               <label className="hm-label">{t("room.boxesInRoom")}</label>
@@ -2147,7 +2169,7 @@ function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onClose })
             </div>
           )}
 
-          {directContainers.length === 0 && looseObjects.length === 0 && (
+          {isEmpty && (
             <div style={{ textAlign: "center", color: "var(--ink-soft)", fontSize: 13, padding: "10px 0" }}>
               {t("room.emptyObjectsTitle")}
             </div>
