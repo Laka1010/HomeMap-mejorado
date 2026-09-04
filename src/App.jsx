@@ -1903,8 +1903,9 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
               <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{t("room.objects", { count: roomObjectCount(state, room.id) })}</span>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button id="create-zone-cta" className="hm-btn hm-btn-soft" onClick={() => openModal("addZone", { roomId: room.id })}><Plus size={15} />{t("room.addZone")}</button>
+            <button className="hm-btn hm-btn-soft" onClick={() => openModal("addContainer", { roomId: room.id })}><Plus size={15} />{t("room.addContainer")}</button>
             <button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: room.id })}><Plus size={15} />{t("room.addObject")}</button>
           </div>
         </div>
