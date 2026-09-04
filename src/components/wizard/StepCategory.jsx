@@ -1,15 +1,6 @@
 import { Plus } from "lucide-react";
 import { useTranslation } from "../../i18n";
-
-const CATEGORY_ICONS = {
-  "Tecnología": "⚡",
-  "Videojuegos": "🎮",
-  "Ropa": "👕",
-  "Libros": "📚",
-  "Cocina": "🍳",
-  "Documentos": "📄",
-  "Otros": "📦",
-};
+import { objectCategoryEmoji } from "../../utils/categoryEmoji";
 
 export function StepCategory({ data, onChange, categories, onNext }) {
   const { t } = useTranslation();
@@ -33,7 +24,7 @@ export function StepCategory({ data, onChange, categories, onNext }) {
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') selectCategory(cat); }}
             aria-pressed={data.category === cat}
           >
-            <span className="category-emoji">{CATEGORY_ICONS[cat] || "🏷️"}</span>
+            <span className="category-emoji">{objectCategoryEmoji(cat)}</span>
             <span className="category-name">{cat}</span>
           </button>
         ))}

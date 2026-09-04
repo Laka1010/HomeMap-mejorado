@@ -73,3 +73,33 @@ export function categoryLabel(value, t) {
   const key = CATEGORY_LABEL_KEYS[value];
   return key ? t(key) : (value || "");
 }
+
+/**
+ * Emoji por categoría. Misma convención que `CATEGORY_LABEL_KEYS`: la clave es
+ * el valor canónico en español (el que se guarda en BD). Se usa para pintar el
+ * selector en cuadrícula y las filas de movimientos/facturas. Si el valor no
+ * está en el catálogo (una categoría antigua de texto libre) cae en 🏷️.
+ */
+const CATEGORY_EMOJI = {
+  "Alimentación": "🍽️",
+  "Transporte": "🚗",
+  "Vivienda": "🏠",
+  "Suministros": "💡",
+  "Salud": "🩺",
+  "Educación": "🎓",
+  "Ocio": "🎉",
+  "Ropa": "👕",
+  "Suscripciones": "🔄",
+  "Regalos": "🎁",
+  "Otros": "📦",
+  "Salario": "💰",
+  "Regalos recibidos": "🎀",
+  "Extraordinario": "✨",
+};
+
+export const CATEGORY_EMOJI_FALLBACK = "🏷️";
+
+/** Emoji de una categoría de Economía. */
+export function categoryEmoji(value) {
+  return CATEGORY_EMOJI[value] || CATEGORY_EMOJI_FALLBACK;
+}

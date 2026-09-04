@@ -4,7 +4,8 @@ import { economyGoalsService } from "./services/economyGoalsService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { normalizeText } from "../../utils/textMatch";
-import { EXPENSE_CATEGORIES, categoryLabel } from "./economyCategories";
+import { EXPENSE_CATEGORIES, categoryLabel, categoryEmoji } from "./economyCategories";
+import { CategoryField } from "./CategoryField";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 
 /**
@@ -101,7 +102,7 @@ function GoalRow({ goal, current, onDelete, formatCurrency, t }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
           <Target size={13} style={{ color: "var(--ink-soft)", flexShrink: 0 }} />
-          <span style={{ fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{isLimit ? categoryLabel(goal.name, t) : t("goals.savingsName")}</span>
+          <span style={{ fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{isLimit ? `${categoryEmoji(goal.name)} ${categoryLabel(goal.name, t)}` : t("goals.savingsName")}</span>
         </div>
         <button className="hm-btn hm-btn-ghost hm-btn--compact" onClick={onDelete} aria-label={t("goals.deleteAria")} style={{ color: "var(--ink-soft)", flexShrink: 0 }}>
           <Trash2 size={13} />
@@ -178,9 +179,12 @@ function AddGoalModal({ onCreate, onClose }) {
           {type === "spending_limit" && (
             <>
               <label className="hm-label">{t("goals.categoryLabel")}</label>
-              <select className="hm-input" value={category} onChange={(e) => setCategory(e.target.value)}>
-                {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
-              </select>
+              <CategoryField
+                categories={EXPENSE_CATEGORIES}
+                value={category}
+                onChange={setCategory}
+                title={t("goals.categoryLabel")}
+              />
             </>
           )}
 

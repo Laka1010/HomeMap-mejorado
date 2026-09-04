@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Tag, Plus, Trash2, Edit3, Check } from "lucide-react";
 import { useTranslation } from "../../i18n";
+import { objectCategoryEmoji } from "../../utils/categoryEmoji";
 
 export function CategoriesSection({ categories = [], onChange }) {
   const { t } = useTranslation();
@@ -57,7 +58,13 @@ export function CategoriesSection({ categories = [], onChange }) {
 
       <div style={{ display: "grid", gap: 8 }}>
         {local.map((cat, idx) => (
-          <div key={idx} className="hm-card hm-card--p16" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div key={idx} className="hm-card hm-card--p16" style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <div
+              style={{ width: 36, height: 36, borderRadius: 10, background: "var(--surface-alt)", display: "grid", placeItems: "center", fontSize: 19, flexShrink: 0 }}
+              aria-hidden="true"
+            >
+              {objectCategoryEmoji(cat)}
+            </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {editingIndex === idx ? (
                 <input className="hm-input" value={cat} onChange={(e) => handleEdit(idx, e.target.value)} />

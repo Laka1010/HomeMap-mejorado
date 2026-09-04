@@ -1,7 +1,8 @@
 import { Fragment } from "react";
-import { MapPin, Tag, Calendar, Euro, FileText } from "lucide-react";
+import { MapPin, Calendar, Euro, FileText } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
+import { objectCategoryEmoji } from "../../utils/categoryEmoji";
 
 export function StepSummary({ data, state }) {
   const { t } = useTranslation();
@@ -35,7 +36,7 @@ export function StepSummary({ data, state }) {
           <div className="summary-main">
             <h3 className="summary-name">{data.name}</h3>
             <div className="summary-category">
-              <Tag size={12} /> {data.category}
+              <span aria-hidden="true">{objectCategoryEmoji(data.category)}</span> {data.category}
             </div>
           </div>
 

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { economyService } from "./services/economyService";
-import { Plus, Calendar, CheckCircle2, PenSquare, Tag, Repeat, StickyNote } from "lucide-react";
+import { Plus, Calendar, CheckCircle2, PenSquare, Repeat, StickyNote } from "lucide-react";
 import { PayBillModal } from "./PayBillModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
-import { EXPENSE_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "./economyCategories";
+import { EXPENSE_CATEGORIES, DEFAULT_CATEGORY, categoryLabel, categoryEmoji } from "./economyCategories";
+import { CategoryField } from "./CategoryField";
 import { toLocalDateString, intlLocale } from "../../utils/dates";
 import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components/MoneyEntry";
 
@@ -220,7 +221,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{bill.name}</div>
-                <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{categoryLabel(bill.category || "Otros", t)} · {bill.due_date ? new Date(bill.due_date).toLocaleDateString(intlLocale(locale)) : "-"}</div>
+                <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{categoryEmoji(bill.category || "Otros")} {categoryLabel(bill.category || "Otros", t)} · {bill.due_date ? new Date(bill.due_date).toLocaleDateString(intlLocale(locale)) : "-"}</div>
                 {statusText && <div style={{ fontSize: 11.5, color: statusColor, fontWeight: 700, marginTop: 2 }}>{statusText}</div>}
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
@@ -265,7 +266,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
               {!isEditing ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontSize: 14, color: "var(--ink-soft)" }}>{categoryLabel(selectedBill.category, t)} • {FREQUENCY_LABELS[selectedBill.frequency] || t("bills.once")}</div>
+                    <div style={{ fontSize: 14, color: "var(--ink-soft)" }}>{categoryEmoji(selectedBill.category)} {categoryLabel(selectedBill.category, t)} • {FREQUENCY_LABELS[selectedBill.frequency] || t("bills.once")}</div>
                     <div style={{ fontWeight: 700 }}>{formatCurrency(selectedBill.amount)}</div>
                   </div>
 
@@ -321,9 +322,12 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
                   <input type="date" className="hm-input" value={editValues.due_date ? editValues.due_date.slice(0,10) : ''} onChange={(e)=> setEditValues({...editValues, due_date: e.target.value})} />
 
                   <label className="hm-label">{t("bills.categoryLabel")}</label>
-                  <select className="hm-input" value={editValues.category || DEFAULT_CATEGORY} onChange={(e)=> setEditValues({...editValues, category: e.target.value})}>
-                    {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
-                  </select>
+                  <CategoryField
+                    categories={EXPENSE_CATEGORIES}
+                    value={editValues.category || DEFAULT_CATEGORY}
+                    onChange={(c) => setEditValues({ ...editValues, category: c })}
+                    title={t("bills.categoryLabel")}
+                  />
 
                   <label className="hm-label">{t("bills.repetitionLabel")}</label>
                   <select className="hm-input" value={editValues.frequency || "once"} onChange={(e)=> setEditValues({...editValues, frequency: e.target.value})}>
@@ -433,12 +437,12 @@ function AddBillModal({ spaceId, userId, onClose, onCreated }) {
           </FieldGroup>
 
           <FieldGroup label={t("bills.categoryLabel")}>
-            <FieldRow
-              icon={Tag}
-              title={categoryLabel(category || DEFAULT_CATEGORY, t)}
-              options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: categoryLabel(c, t) }))}
+            <CategoryField
+              categories={EXPENSE_CATEGORIES}
               value={category || DEFAULT_CATEGORY}
-              onValueChange={setCategory}
+              onChange={setCategory}
+              variant="row"
+              title={t("bills.categoryLabel")}
             />
           </FieldGroup>
 

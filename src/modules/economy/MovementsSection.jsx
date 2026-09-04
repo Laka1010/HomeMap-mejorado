@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, TrendingUp, TrendingDown, ArrowLeftRight, ShoppingCart, PenSquare, Tag, Wallet, StickyNote, Calendar } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, ArrowLeftRight, ShoppingCart, PenSquare, Wallet, StickyNote, Calendar } from "lucide-react";
 import { economyService } from "./services/economyService";
 import { accountsService } from "./services/accountsService";
 import { transfersService } from "./services/transfersService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "./economyCategories";
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, categoryLabel, categoryEmoji } from "./economyCategories";
+import { CategoryField } from "./CategoryField";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 import { toLocalDateString } from "../../utils/dates";
 import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components/MoneyEntry";
@@ -288,7 +289,7 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
               const transferDirection = internal ? t("movements.transferInternal") : outgoing ? t("movements.transferOut") : t("movements.transferIn");
               const subtitle = isTransfer
                 ? `${transferDirection} · ${item.date}`
-                : `${categoryLabel(item.category || "Otros", t)} · ${item.date}`;
+                : `${categoryEmoji(item.category || "Otros")} ${categoryLabel(item.category || "Otros", t)} · ${item.date}`;
               return (
                 <div
                   key={item.id}
@@ -350,7 +351,7 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
               {!isEditing ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontSize: 14, color: "var(--ink-soft)" }}>{categoryLabel(selected.category || "Otros", t)}</div>
+                    <div style={{ fontSize: 14, color: "var(--ink-soft)" }}>{categoryEmoji(selected.category || "Otros")} {categoryLabel(selected.category || "Otros", t)}</div>
                     <div style={{ fontWeight: 700, color: accent }}>{formatCurrency(selected.amount)}</div>
                   </div>
                   <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("movements.dateLabel")} <strong>{selected.date}</strong></div>
@@ -400,9 +401,12 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
                   <input type="date" className="hm-input" value={editValues.date ? editValues.date.slice(0, 10) : ""} onChange={(e) => setEditValues({ ...editValues, date: e.target.value })} />
 
                   <label className="hm-label">{t("movements.categoryLabel")}</label>
-                  <select className="hm-input" value={editValues.category || DEFAULT_CATEGORY} onChange={(e) => setEditValues({ ...editValues, category: e.target.value })}>
-                    {(type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
-                  </select>
+                  <CategoryField
+                    categories={type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES}
+                    value={editValues.category || DEFAULT_CATEGORY}
+                    onChange={(c) => setEditValues({ ...editValues, category: c })}
+                    title={t("movements.categoryLabel")}
+                  />
 
                   {accounts.length > 0 && (
                     <>
@@ -504,12 +508,12 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated 
           </FieldGroup>
 
           <FieldGroup label={t("movements.categoryLabel")}>
-            <FieldRow
-              icon={Tag}
-              title={categoryLabel(category, t)}
-              options={categories.map((c) => ({ value: c, label: categoryLabel(c, t) }))}
+            <CategoryField
+              categories={categories}
               value={category}
-              onValueChange={setCategory}
+              onChange={setCategory}
+              variant="row"
+              title={t("movements.categoryLabel")}
             />
           </FieldGroup>
 

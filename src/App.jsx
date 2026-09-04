@@ -2,11 +2,11 @@ import { useState, useEffect, useMemo, useCallback, useRef, useId, Fragment, laz
 import {
   Home, Search, Package, ShoppingCart, Settings, Plus, MapPin,
   ChevronRight, X, Sun, Moon, Sofa, UtensilsCrossed, BedDouble, Bath,
-  Archive, Car, Briefcase, Cable, Watch, Gamepad2, Headphones, Lightbulb,
+  Archive, Car, Briefcase, Watch, Headphones,
   Box as BoxIcon, Ruler, Check, AlertTriangle, Upload,
   Sparkles, ArrowLeft, Trash2, Filter, ChevronDown, PenSquare, Boxes,
-  ClipboardList, Layers, Link as LinkIcon, Calendar, Tag, StickyNote,
-  Grid3x3, ExternalLink, MapPinOff, RotateCcw, Zap, Share2, Eye, EyeOff,
+  Layers, Link as LinkIcon, Calendar, Tag, StickyNote,
+  ExternalLink, MapPinOff, RotateCcw, Zap, Share2, Eye, EyeOff,
   ShieldCheck, Bell, User, Building2, CheckSquare, TrendingUp, Repeat
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
@@ -14,6 +14,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { I18nProvider, useTranslation } from "./i18n";
 import { CurrencyProvider, useCurrency } from "./currency";
 import { formatCurrencyValue } from "./utils/currencyUtils";
+import { objectCategoryEmoji } from "./utils/categoryEmoji";
 // Pantallas de ajustes: solo se montan al abrir su modal, así que se cargan
 // bajo demanda (mismo componente y props, sin cambio de comportamiento).
 const HouseSettingsScreen = lazy(() => import("./components/settings/HouseSettingsScreen").then((m) => ({ default: m.HouseSettingsScreen })));
@@ -500,11 +501,6 @@ const ROOM_ICON_OPTIONS = [
   { key: "trastero", label: "Trastero" }, { key: "garaje", label: "Garaje" },
   { key: "oficina", label: "Oficina" },
 ];
-const CATEGORY_ICONS = {
-  "Tecnología": Cable, "Ropa": Tag, "Videojuegos": Gamepad2, "Libros": ClipboardList,
-  "Cocina": UtensilsCrossed, "Herramientas": Grid3x3, "Navidad": Lightbulb,
-  "Documentos": StickyNote, "Otros": BoxIcon,
-};
 const DEFAULT_CATEGORIES = ["Comida", "Viajes", "Muebles", "Electrónica", "Regalos"];
 const BOX_COLORS = ["#3D5A80", "#C98A3E", "#6B7A5E", "#8E5B72", "#4C7A8B", "#8B6B4C"];
 const APP_VERSION = "1.1.0";
@@ -520,9 +516,12 @@ function RoomIcon({ iconKey, size = 20, ...props }) {
   const Cmp = ROOM_ICONS[iconKey] || Home;
   return <Cmp size={size} {...props} />;
 }
-function CategoryIcon({ category, size = 16, ...props }) {
-  const Cmp = CATEGORY_ICONS[category] || BoxIcon;
-  return <Cmp size={size} {...props} />;
+function CategoryIcon({ category, size = 16, style }) {
+  return (
+    <span aria-hidden="true" style={{ fontSize: size, lineHeight: 1, display: "inline-grid", placeItems: "center", ...style }}>
+      {objectCategoryEmoji(category)}
+    </span>
+  );
 }
 
 /* -------------------------------------------------------------------- */
@@ -1807,7 +1806,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))", gap: 10 }}>
               {categoriesInUse.map((cat) => (
                 <div key={cat} className="hm-card hm-tap hm-card--p14" onClick={() => setSelectedCategory(cat)}>
-                  <CategoryIcon category={cat} size={26} style={{ color: "var(--accent)" }} />
+                  <span style={{ fontSize: 26, lineHeight: 1 }} aria-hidden="true">{objectCategoryEmoji(cat)}</span>
                   <div className="hm-display" style={{ fontWeight: 600, fontSize: 15, marginTop: 10 }}>{cat}</div>
                   <div style={{ fontSize: 12, color: "var(--ink-soft)", margin: "3px 0 10px" }}>
                     {t("common.objectsCount", { count: state.objects.filter((o) => o.category === cat).length })}
