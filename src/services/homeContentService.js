@@ -128,6 +128,16 @@ export const homeContentService = {
     if (error) throw error;
   },
 
+  /**
+   * A diferencia de deleteRoom, no hace falta desvincular nada a mano antes:
+   * containers.zone_id y objects.zone_id son `on delete set null`, así que
+   * la caja/objeto sobrevive suelta en la habitación en vez de borrarse.
+   */
+  async deleteZone(zoneId) {
+    const { error } = await supabase.from("zones").delete().eq("id", zoneId);
+    if (error) throw error;
+  },
+
   async createContainer(houseId, container) {
     const { error } = await supabase.from("containers").insert({
       id: container.id,
@@ -139,6 +149,12 @@ export const homeContentService = {
       color: container.color ?? null,
       photo: container.photo ?? null,
     });
+    if (error) throw error;
+  },
+
+  /** Igual que deleteZone: containers.parent_id y objects.container_id son `on delete set null`. */
+  async deleteContainer(containerId) {
+    const { error } = await supabase.from("containers").delete().eq("id", containerId);
     if (error) throw error;
   },
 

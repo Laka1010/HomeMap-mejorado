@@ -1746,7 +1746,7 @@ function Dashboard({ state, goTo, openModal, canSeeEconomy, currentHome, houseMe
 /* -------------------------------------------------------------------- */
 /* MI CASA                                                               */
 /* -------------------------------------------------------------------- */
-function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCategories, onUpdateRoom, onDeleteRoom, onMoveObject }) {
+function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCategories, onUpdateRoom, onDeleteRoom, onDeleteZone, onMoveObject }) {
   const { t } = useTranslation();
   const room = view.roomId ? getRoom(state, view.roomId) : null;
   const zone = view.zoneId ? getZone(state, view.zoneId) : null;
@@ -2001,6 +2001,13 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
         <div style={{ display: "flex", gap: 8 }}>
           <button className="hm-btn hm-btn-soft" onClick={() => openModal("addContainer", { roomId: room.id, zoneId: zone.id })}><Plus size={15} />{t("room.addContainer")}</button>
           <button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: room.id, zoneId: zone.id })}><Plus size={15} />{t("room.addObject")}</button>
+          <button
+            className="hm-btn hm-btn-ghost hm-text-danger hm-btn--compact"
+            onClick={() => onDeleteZone?.(zone.id)}
+            aria-label={t("room.deleteZone")}
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
       </div>
 
@@ -2234,7 +2241,7 @@ function ObjectDropZone({ id, onDropObject, canDrop, className = "", style, chil
 /* -------------------------------------------------------------------- */
 /* CAJAS                                                                 */
 /* -------------------------------------------------------------------- */
-function Cajas({ state, view, setView, openModal, goTo }) {
+function Cajas({ state, view, setView, openModal, goTo, onDeleteContainer }) {
   const { t } = useTranslation();
   const activeContainer = view.containerId ? getContainer(state, view.containerId) : null;
 
@@ -2258,9 +2265,18 @@ function Cajas({ state, view, setView, openModal, goTo }) {
             </div>
             <Route path={locationPath(state, activeContainer)} size="sm" />
           </div>
-          <button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: activeContainer.roomId, zoneId: activeContainer.zoneId, containerId: activeContainer.id })}>
-            <Plus size={16} /> {t("room.addObjectToBox")}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: activeContainer.roomId, zoneId: activeContainer.zoneId, containerId: activeContainer.id })}>
+              <Plus size={16} /> {t("room.addObjectToBox")}
+            </button>
+            <button
+              className="hm-btn hm-btn-ghost hm-text-danger hm-btn--compact"
+              onClick={() => onDeleteContainer?.(activeContainer.id)}
+              aria-label={t("room.deleteContainer")}
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
 
         {childContainers.length > 0 && (
@@ -3202,6 +3218,72 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       onCancel: () => setConfirmDialog(null),
     });
   };
+  /**
+   * A diferencia de deleteRoom, aquí no hay borrado en cascada: en la BD
+   * (zones.id / containers.zone_id) las cajas y objetos de la zona tienen
+   * `on delete set null`, así que solo se desvinculan de la zona (quedan
+   * sueltos en la habitación) en vez de desaparecer.
+   */
+  const deleteZone = (zoneId) => {
+    const zone = getZone(state, zoneId);
+    if (!zone) return;
+    dispatch((s) => ({
+      ...s,
+      zones: s.zones.filter((z) => z.id !== zoneId),
+      containers: s.containers.map((c) => (c.zoneId === zoneId ? { ...c, zoneId: null } : c)),
+      objects: s.objects.map((o) => (o.zoneId === zoneId ? { ...o, zoneId: null } : o)),
+    }));
+    showNotice(t("toast.zoneDeleted", { name: zone.name }));
+    homeContentService.deleteZone(zoneId).catch((error) => {
+      console.error("Error deleting zone:", error);
+      showNotice(t("toast.zoneDeleteError"));
+    });
+  };
+  const requestDeleteZone = (zoneId) => {
+    const zone = getZone(state, zoneId);
+    if (!zone) return;
+    setConfirmDialog({
+      title: t("confirm.deleteZoneTitle"),
+      message: t("confirm.deleteZoneMessage", { name: zone.name }),
+      isDangerous: true,
+      confirmLabel: t("confirm.deleteZoneConfirm"),
+      onConfirm: () => { setConfirmDialog(null); deleteZone(zoneId); },
+      onCancel: () => setConfirmDialog(null),
+    });
+  };
+  /**
+   * Igual que deleteZone: containers.parent_id y objects.container_id tienen
+   * `on delete set null`, así que las cajas hijas suben a la habitación/zona
+   * y los objetos quedan sueltos en vez de borrarse con la caja.
+   */
+  const deleteContainer = (containerId) => {
+    const container = getContainer(state, containerId);
+    if (!container) return;
+    dispatch((s) => ({
+      ...s,
+      containers: s.containers
+        .filter((c) => c.id !== containerId)
+        .map((c) => (c.parentId === containerId ? { ...c, parentId: null } : c)),
+      objects: s.objects.map((o) => (o.containerId === containerId ? { ...o, containerId: null } : o)),
+    }));
+    showNotice(t("toast.containerDeleted", { name: container.name }));
+    homeContentService.deleteContainer(containerId).catch((error) => {
+      console.error("Error deleting container:", error);
+      showNotice(t("toast.containerDeleteError"));
+    });
+  };
+  const requestDeleteContainer = (containerId) => {
+    const container = getContainer(state, containerId);
+    if (!container) return;
+    setConfirmDialog({
+      title: t("confirm.deleteContainerTitle"),
+      message: t("confirm.deleteContainerMessage", { name: container.name }),
+      isDangerous: true,
+      confirmLabel: t("confirm.deleteContainerConfirm"),
+      onConfirm: () => { setConfirmDialog(null); deleteContainer(containerId); },
+      onCancel: () => setConfirmDialog(null),
+    });
+  };
   const addZone = (zone) => {
     dispatch((s) => ({ ...s, zones: [...s.zones, zone] }));
     showNotice(t("toast.zoneCreated", { name: zone.name }));
@@ -3956,8 +4038,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
                 vino, que sigue intacta en `micasaView`. */}
             {route.tab === "hogar" && (
               cajasView?.containerId
-                ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} />
-                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateCategories={updateCategories} onUpdateRoom={updateRoom} onDeleteRoom={requestDeleteRoom} onMoveObject={moveObject} />
+                ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onDeleteContainer={requestDeleteContainer} />
+                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateCategories={updateCategories} onUpdateRoom={updateRoom} onDeleteRoom={requestDeleteRoom} onDeleteZone={requestDeleteZone} onMoveObject={moveObject} />
             )}
 
             {/* ✅ ORGANIZACIÓN - Shopping, Tasks, Calendar */}
