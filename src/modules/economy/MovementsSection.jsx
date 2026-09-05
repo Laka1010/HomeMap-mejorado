@@ -27,7 +27,7 @@ import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components
  * (AccountsSection -> TransferModal), que es donde el usuario elige cuenta
  * origen y destino. Este listado es solo lectura para no duplicar ese alta.
  */
-export default function MovementsSection({ currentHome, spaceId, user, initialType = "expenses" }) {
+export default function MovementsSection({ currentHome, spaceId, user, initialType = "expenses", readOnly = false }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const [type, setType] = useState(initialType);
@@ -240,7 +240,7 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
             existe el selector de cuenta origen/destino. Mostrar un "Añadir"
             que abriera un formulario distinto sería un segundo sitio para la
             misma operación. */}
-        {type !== "transfers" ? (
+        {readOnly ? null : type !== "transfers" ? (
           <button
             className="hm-btn hm-btn-primary hm-btn--compact"
             onClick={() => setShowAdd(true)}
@@ -372,7 +372,7 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
                     <div style={{ fontSize: 12.5, color: "var(--danger)", background: "var(--danger-soft)", padding: "8px 10px", borderRadius: 8 }}>{actionError}</div>
                   )}
 
-                  {!confirmingDelete ? (
+                  {readOnly ? null : !confirmingDelete ? (
                     <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                       <button className="hm-btn hm-btn-soft" onClick={() => setIsEditing(true)}>{t("movements.edit")}</button>
                       <button className="hm-btn hm-btn-ghost" onClick={() => { setActionError(""); setConfirmingDelete(true); }} style={{ color: "var(--danger)" }}>{t("movements.delete")}</button>

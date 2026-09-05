@@ -142,6 +142,76 @@ export const financialSpacesService = {
     }));
   },
 
+  // --- Espacios "child": economía propia de un miembro niño, creada y
+  // supervisada por el admin de la casa (ver
+  // supabase/migrations/20260905_092_child_financial_spaces.sql). El niño es
+  // 'contributor' de su espacio; el admin, 'viewer'. Toda mutación pasa por
+  // RPCs SECURITY DEFINER gateadas con is_house_admin().
+
+  /** El espacio child de `childUserId` en `houseId`, o null si aún no tiene. */
+  async getChildSpaceFor(houseId, childUserId) {
+    if (!houseId || !childUserId) return null;
+    const { data, error } = await supabase
+      .from("financial_spaces")
+      .select("id, name, icon, owner_id, house_id, archived_at")
+      .eq("type", "child")
+      .eq("house_id", houseId)
+      .eq("owner_id", childUserId)
+      .is("archived_at", null)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  /** `icon`: emoji, opcional (default '🧒' en la función de BD). */
+  async createChildSpace(childUserId, houseId, name, icon) {
+    const { data, error } = await supabase.rpc("create_child_financial_space", {
+      p_child_user_id: childUserId,
+      p_house_id: houseId,
+      p_name: name,
+      ...(icon ? { p_icon: icon } : {}),
+    });
+    if (error) {
+      logIfPermissionDenied(error, "authz_rpc_rejected", { resourceType: "house", resourceId: houseId });
+      throw error;
+    }
+    return data;
+  },
+
+  /** Envía dinero (paga) desde una cuenta del adulto a la cuenta del niño. */
+  async fundChildSpace(fromAccountId, childSpaceId, amount, note) {
+    const { data, error } = await supabase.rpc("fund_child_financial_space", {
+      p_from_account_id: fromAccountId,
+      p_child_space_id: childSpaceId,
+      p_amount: amount,
+      ...(note ? { p_note: note } : {}),
+    });
+    if (error) {
+      logIfPermissionDenied(error, "authz_rpc_rejected", { resourceType: "financial_space", resourceId: childSpaceId });
+      throw error;
+    }
+    return data;
+  },
+
+  async renameChildSpace(spaceId, name) {
+    const { error } = await supabase.rpc("rename_child_financial_space", {
+      p_space_id: spaceId,
+      p_name: name,
+    });
+    if (error) {
+      logIfPermissionDenied(error, "authz_rpc_rejected", { resourceType: "financial_space", resourceId: spaceId });
+      throw error;
+    }
+  },
+
+  async archiveChildSpace(spaceId) {
+    const { error } = await supabase.rpc("archive_child_financial_space", { p_space_id: spaceId });
+    if (error) {
+      logIfPermissionDenied(error, "authz_rpc_rejected", { resourceType: "financial_space", resourceId: spaceId });
+      throw error;
+    }
+  },
+
   async addMember(spaceId, userId) {
     const { error } = await supabase.rpc("add_financial_space_member", {
       p_space_id: spaceId,

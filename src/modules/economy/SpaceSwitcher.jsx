@@ -13,7 +13,7 @@ import { useDragToDismiss } from "../../hooks/useDragToDismiss";
  * Household / cualquier Workspace compartido son la misma fila de lista,
  * sin distinción visual por tipo.
  */
-export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpaceCreated }) {
+export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpaceCreated, canCreate = true, showLocked = true }) {
   const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -31,13 +31,13 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
   // my_financial_spaces) y se excluyen aquí para no duplicarlos.
   useEffect(() => {
     let cancelled = false;
-    if (!houseId) { setLockedSpaces([]); return; }
+    if (!houseId || !showLocked) { setLockedSpaces([]); return; }
     financialSpacesService.listHousematesPersonalSpaces(houseId).then((list) => {
       if (cancelled) return;
       setLockedSpaces(list.filter((s) => !spaces.some((accessible) => accessible.id === s.id)));
     }).catch(() => { if (!cancelled) setLockedSpaces([]); });
     return () => { cancelled = true; };
-  }, [houseId, spaces]);
+  }, [houseId, spaces, showLocked]);
 
   return (
     <>
@@ -152,13 +152,15 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
                 </div>
               )}
 
-              <button
-                className="hm-btn hm-btn-soft hm-btn--full"
-                style={{ marginTop: 14 }}
-                onClick={() => { setShowPicker(false); setShowCreate(true); }}
-              >
-                <Plus size={16} /> {t("spaces.addSharedSpace")}
-              </button>
+              {canCreate && (
+                <button
+                  className="hm-btn hm-btn-soft hm-btn--full"
+                  style={{ marginTop: 14 }}
+                  onClick={() => { setShowPicker(false); setShowCreate(true); }}
+                >
+                  <Plus size={16} /> {t("spaces.addSharedSpace")}
+                </button>
+              )}
             </div>
           </div>
         </div>

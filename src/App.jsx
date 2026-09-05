@@ -53,6 +53,8 @@ import { shoppingPurchasesService } from "./services/shoppingPurchasesService";
 import { categoriesService } from "./services/categoriesService";
 import { activityService } from "./services/activityService";
 import { economyService } from "./modules/economy/services/economyService";
+import { financialSpacesService } from "./modules/economy/services/financialSpacesService";
+import { accountsService } from "./modules/economy/services/accountsService";
 import { applyTemplate } from "./modules/homeTemplates/applyTemplate";
 import { Dashboard as DashboardModule, DashboardOverview } from "./modules";
 
@@ -2604,9 +2606,14 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     activeHome,
   } = useHomesAndMembers(user?.id);
   const [shareMembers, setShareMembers] = useState([]);
-  // Los niños no ven ni economía ni notificaciones (que a menudo son sobre
-  // facturas/gastos), así que esta misma flag gatea ambas cosas.
-  const canSeeEconomy = !activeHome || activeHome.myRole !== "child";
+  // Un niño con un espacio de economía propio (creado por el admin desde su
+  // ficha, ver create_child_financial_space) SÍ ve la pestaña Economía —
+  // acotada a ese espacio. El resto de niños siguen sin verla, igual que las
+  // notificaciones (que a menudo son sobre facturas/gastos). Guardamos el
+  // conjunto de casas donde el niño tiene un espacio propio para que el gate
+  // funcione aunque cambie de casa activa.
+  const [childSpaceHouseIds, setChildSpaceHouseIds] = useState(() => new Set());
+  const canSeeEconomy = !activeHome || activeHome.myRole !== "child" || childSpaceHouseIds.has(activeHome.id);
   const [state, setState, loaded] = useHomeMapState(currentHomeId, user?.id);
   // Los avisos se lanzan desde manejadores de este componente, que es el que
   // renderiza el CurrencyProvider y por tanto no puede consumirlo. Se formatea
@@ -2648,6 +2655,32 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * pestaña de Economía activa, que vuelve a pedir los datos.
    */
   const [economyVersion, setEconomyVersion] = useState(0);
+
+  // Gate de "¿el niño tiene ya un espacio de economía propio?". Solo se
+  // consulta si el usuario es niño en alguna casa (si no, canSeeEconomy ya es
+  // true por rol). Se recarga al cambiar de casa, al subir economyVersion y al
+  // volver el foco a la ventana — así, si el admin acaba de crear el espacio
+  // en otra ventana, el niño lo ve sin tener que recargar la app entera.
+  const userIsChildSomewhere = homes.some((h) => h.myRole === "child");
+  useEffect(() => {
+    if (!user?.id || !userIsChildSomewhere) {
+      setChildSpaceHouseIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    const load = () => financialSpacesService.listMySpaces()
+      .then((list) => {
+        if (!cancelled) {
+          setChildSpaceHouseIds(new Set((list || []).filter((s) => s.type === "child").map((s) => s.house_id)));
+        }
+      })
+      .catch(() => {});
+    load();
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => { cancelled = true; window.removeEventListener("focus", onFocus); };
+  }, [user?.id, userIsChildSomewhere, currentHomeId, economyVersion]);
+
   /**
    * Recibo animado de "compra completada" (ver PurchaseCompleteAnimation).
    * Una sola ranura de estado a propósito: aunque se cierren dos compras
@@ -2741,6 +2774,117 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       console.error("Error changing member economy access:", error);
       showNotice(error?.message || t("toast.economyAccessUpdateError"));
     }
+  };
+
+  // --- Espacio de economía de un miembro niño (create_child_financial_space).
+  // Se carga al abrir la ficha de un miembro child; `funderAccounts` son las
+  // cuentas del adulto desde las que puede enviarle una paga.
+  const [viewingMemberChildSpace, setViewingMemberChildSpace] = useState(null);
+  const [childSpaceLoading, setChildSpaceLoading] = useState(false);
+  const [funderAccounts, setFunderAccounts] = useState([]);
+
+  const reloadViewingMemberChildSpace = useCallback(async () => {
+    if (!activeHome?.id || viewingMember?.role !== "child" || !viewingMember?.user_id) {
+      setViewingMemberChildSpace(null);
+      return;
+    }
+    setChildSpaceLoading(true);
+    try {
+      const space = await financialSpacesService.getChildSpaceFor(activeHome.id, viewingMember.user_id);
+      setViewingMemberChildSpace(space || null);
+    } catch (error) {
+      console.error("Error loading child space:", error);
+      setViewingMemberChildSpace(null);
+    } finally {
+      setChildSpaceLoading(false);
+    }
+  }, [activeHome?.id, viewingMember?.role, viewingMember?.user_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!activeHome?.id || viewingMember?.role !== "child") {
+      setViewingMemberChildSpace(null);
+      setFunderAccounts([]);
+      return;
+    }
+    reloadViewingMemberChildSpace();
+    // Cuentas del adulto (espacios donde puede contribuir) para el modal de paga.
+    financialSpacesService.listMySpaces()
+      .then(async (list) => {
+        const usable = (list || []).filter((s) => ["contributor", "manager", "owner"].includes(s.my_role));
+        const groups = await Promise.all(usable.map(async (s) => {
+          try {
+            const accts = await accountsService.listAccounts(s.id);
+            return accts.filter((a) => a.status === "active").map((a) => ({ ...a, spaceName: s.name }));
+          } catch {
+            return [];
+          }
+        }));
+        if (!cancelled) setFunderAccounts(groups.flat());
+      })
+      .catch(() => { if (!cancelled) setFunderAccounts([]); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeHome?.id, viewingMember?.user_id, viewingMember?.role]);
+
+  const handleCreateChildSpace = async (name, icon) => {
+    if (!activeHome?.id || !viewingMember?.user_id) return;
+    try {
+      await financialSpacesService.createChildSpace(viewingMember.user_id, activeHome.id, name, icon);
+      await reloadViewingMemberChildSpace();
+      setEconomyVersion((v) => v + 1);
+      showNotice(t("toast.childSpaceCreated"));
+    } catch (error) {
+      console.error("Error creating child space:", error);
+      showNotice(error?.message || t("toast.childSpaceCreateError"));
+    }
+  };
+
+  const handleFundChildSpace = async (fromAccountId, amount, note) => {
+    if (!viewingMemberChildSpace?.id) return;
+    try {
+      await financialSpacesService.fundChildSpace(fromAccountId, viewingMemberChildSpace.id, amount, note);
+      setEconomyVersion((v) => v + 1);
+      showNotice(t("toast.childSpaceFunded"));
+    } catch (error) {
+      console.error("Error funding child space:", error);
+      showNotice(error?.message || t("toast.childSpaceFundError"));
+    }
+  };
+
+  const handleRenameChildSpace = async (name) => {
+    if (!viewingMemberChildSpace?.id) return;
+    try {
+      await financialSpacesService.renameChildSpace(viewingMemberChildSpace.id, name);
+      await reloadViewingMemberChildSpace();
+      setEconomyVersion((v) => v + 1);
+      showNotice(t("toast.childSpaceRenamed"));
+    } catch (error) {
+      console.error("Error renaming child space:", error);
+      showNotice(error?.message || t("toast.childSpaceRenameError"));
+    }
+  };
+
+  const handleArchiveChildSpace = () => {
+    if (!viewingMemberChildSpace?.id) return;
+    setConfirmDialog({
+      title: t("memberDetail.childSpaceArchiveConfirmTitle"),
+      message: t("memberDetail.childSpaceArchiveConfirmMessage", { name: viewingMember?.name || "" }),
+      isDangerous: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await financialSpacesService.archiveChildSpace(viewingMemberChildSpace.id);
+          await reloadViewingMemberChildSpace();
+          setEconomyVersion((v) => v + 1);
+          showNotice(t("toast.childSpaceArchived"));
+        } catch (error) {
+          console.error("Error archiving child space:", error);
+          showNotice(error?.message || t("toast.childSpaceArchiveError"));
+        }
+      },
+      onCancel: () => setConfirmDialog(null),
+    });
   };
 
   const handleRemoveHouseMember = async (memberId) => {
@@ -4099,7 +4243,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             )}
 
             {/* 💰 ECONOMÍA - Bills and Finance (solo admin/adult; RLS lo aplica también en el servidor) */}
-            {route.tab === "economia" && canSeeEconomy && <Suspense fallback={null}><EconomyModule state={state} dispatch={dispatch} openModal={openModal} currentHome={currentHome} user={user} refreshToken={economyVersion} /></Suspense>}
+            {route.tab === "economia" && canSeeEconomy && <Suspense fallback={null}><EconomyModule state={state} dispatch={dispatch} openModal={openModal} currentHome={currentHome} user={user} refreshToken={economyVersion} childMode={currentHome?.myRole === "child"} /></Suspense>}
             {route.tab === "economia" && !canSeeEconomy && (
               <div className="hm-card hm-card--p24 hm-card--center">
                 <ShieldCheck size={26} style={{ color: "var(--accent)", marginBottom: 10 }} />
@@ -4197,6 +4341,14 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onChangeEconomyAccess={handleChangeMemberEconomyAccess}
             onTransferOwnership={handleTransferOwnership}
             onRemoveMember={confirmRemoveMemberFromDetail}
+            childSpace={viewingMemberChildSpace}
+            childSpaceLoading={childSpaceLoading}
+            funderAccounts={funderAccounts}
+            currencyCode={(activeHome || currentHome)?.currency_code}
+            onCreateChildSpace={handleCreateChildSpace}
+            onFundChildSpace={handleFundChildSpace}
+            onRenameChildSpace={handleRenameChildSpace}
+            onArchiveChildSpace={handleArchiveChildSpace}
             onClose={() => setViewingMember(null)}
           />
         </Suspense>

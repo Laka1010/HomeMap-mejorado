@@ -16,7 +16,7 @@ import { useTranslation } from "../../i18n";
  * ocultaba fuera de Household, lo cual no tenía sentido — Netflix, Spotify o
  * el gimnasio son facturas personales tan legítimas como la luz del hogar).
  */
-export function EconomyModule({ state, dispatch, openModal, currentHome, user, refreshToken }) {
+export function EconomyModule({ state, dispatch, openModal, currentHome, user, refreshToken, childMode = false }) {
   const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState("overview");
   const [movementsType, setMovementsType] = useState("expenses");
@@ -31,7 +31,11 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
     let cancelled = false;
     financialSpacesService.listMySpaces().then((list) => {
       if (cancelled) return;
-      const scoped = list.filter((s) => s.type === "personal" || s.house_id === currentHome?.id);
+      // Un niño con espacio propio solo ve ESE espacio (nada de Personal ni
+      // Hogar); el resto de miembros ven Personal + los de esta casa.
+      const scoped = childMode
+        ? list.filter((s) => s.type === "child" && s.house_id === currentHome?.id)
+        : list.filter((s) => s.type === "personal" || s.house_id === currentHome?.id);
       setSpaces(scoped);
       setCurrentSpaceId((prev) => {
         if (prev && scoped.some((s) => s.id === prev)) return prev;
@@ -39,7 +43,13 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
       });
     });
     return () => { cancelled = true; };
-  }, [currentHome?.id, refreshToken]);
+  }, [currentHome?.id, refreshToken, childMode]);
+
+  const activeSpace = spaces.find((s) => s.id === currentSpaceId);
+  // El adulto que supervisa el espacio de un niño entra como 'viewer': ve
+  // todo pero no registra ni edita movimientos (la RLS ya lo impide en el
+  // back; esto además oculta los botones para que no falle al pulsar).
+  const readOnly = activeSpace?.my_role === "viewer";
 
   const goToPage = (page, opts) => {
     if (opts?.movementsType) setMovementsType(opts.movementsType);
@@ -81,7 +91,21 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
             activeSpaceId={currentSpaceId}
             onChange={setCurrentSpaceId}
             onSpaceCreated={handleSpaceCreated}
+            canCreate={!childMode}
+            showLocked={!childMode}
           />
+          {readOnly && (
+            <div
+              style={{
+                marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 12, fontWeight: 600, color: "var(--ink-soft)",
+                background: "var(--surface-alt)", border: "1px solid var(--border)",
+                borderRadius: 999, padding: "4px 10px",
+              }}
+            >
+              👀 {t("economy.readOnlyBadge")}
+            </div>
+          )}
         </div>
 
         {/* Tabs de navegación — grid fijo de 2 columnas (nunca auto-fit):
@@ -138,11 +162,11 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
           )}
 
           {currentPage === "bills" && (
-            <BillsSection currentHome={currentHome} spaceId={currentSpaceId} spaces={spaces} state={state} dispatch={dispatch} user={user} />
+            <BillsSection currentHome={currentHome} spaceId={currentSpaceId} spaces={spaces} state={state} dispatch={dispatch} user={user} readOnly={readOnly} />
           )}
 
           {currentPage === "movements" && (
-            <MovementsSection currentHome={currentHome} spaceId={currentSpaceId} user={user} initialType={movementsType} />
+            <MovementsSection currentHome={currentHome} spaceId={currentSpaceId} user={user} initialType={movementsType} readOnly={readOnly} />
           )}
 
           {currentPage === "statistics" && (

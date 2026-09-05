@@ -11,7 +11,7 @@ import { SelectField } from "../../components/SelectField";
 import { toLocalDateString, intlLocale } from "../../utils/dates";
 import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components/MoneyEntry";
 
-export default function BillsSection({ currentHome, spaceId, spaces, state, dispatch, user }) {
+export default function BillsSection({ currentHome, spaceId, spaces, state, dispatch, user, readOnly = false }) {
   const { t, locale } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const FREQUENCY_LABELS = {
@@ -175,9 +175,11 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
           <button style={filterPill(filter === "upcoming")} onClick={() => setFilter("upcoming")}>{t("bills.filterUpcoming")}</button>
           <button style={filterPill(filter === "paid")} onClick={() => setFilter("paid")}>{t("bills.filterPaid")}</button>
         </div>
-        <button className="hm-btn hm-btn-primary hm-btn--compact" onClick={() => setShowAdd(true)}>
-          <Plus size={15} /> {t("bills.add")}
-        </button>
+        {!readOnly && (
+          <button className="hm-btn hm-btn-primary hm-btn--compact" onClick={() => setShowAdd(true)}>
+            <Plus size={15} /> {t("bills.add")}
+          </button>
+        )}
       </div>
 
       <div className="hm-card" style={{ padding: 18 }}>
@@ -293,7 +295,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
                     <div style={{ fontSize: 12.5, color: "var(--danger)", background: "var(--danger-soft)", padding: "8px 10px", borderRadius: 8 }}>{actionError}</div>
                   )}
 
-                  {!confirmingDelete ? (
+                  {readOnly ? null : !confirmingDelete ? (
                     <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                       {selectedBill.status === "pending" && (
                         <button className="hm-btn hm-btn-primary" onClick={() => setPayingBill(selectedBill)}>{t("bills.markAsPaidButton")}</button>
