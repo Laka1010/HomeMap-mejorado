@@ -16,7 +16,7 @@ import { useTranslation } from "../../i18n";
  * ocultaba fuera de Household, lo cual no tenía sentido — Netflix, Spotify o
  * el gimnasio son facturas personales tan legítimas como la luz del hogar).
  */
-export function EconomyModule({ state, dispatch, openModal, currentHome, user, refreshToken, childMode = false }) {
+export function EconomyModule({ state, dispatch, openModal, currentHome, user, refreshToken, childMode = false, onLogPaymentToCalendar }) {
   const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState("overview");
   const [movementsType, setMovementsType] = useState("expenses");
@@ -162,11 +162,11 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
           )}
 
           {currentPage === "bills" && (
-            <BillsSection currentHome={currentHome} spaceId={currentSpaceId} spaces={spaces} state={state} dispatch={dispatch} user={user} readOnly={readOnly} />
+            <BillsSection currentHome={currentHome} spaceId={currentSpaceId} spaces={spaces} state={state} dispatch={dispatch} user={user} readOnly={readOnly} onLogPaymentToCalendar={onLogPaymentToCalendar} />
           )}
 
           {currentPage === "movements" && (
-            <MovementsSection currentHome={currentHome} spaceId={currentSpaceId} user={user} initialType={movementsType} readOnly={readOnly} />
+            <MovementsSection currentHome={currentHome} spaceId={currentSpaceId} user={user} initialType={movementsType} readOnly={readOnly} onLogPaymentToCalendar={onLogPaymentToCalendar} />
           )}
 
           {currentPage === "statistics" && (

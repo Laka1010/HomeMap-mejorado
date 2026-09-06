@@ -10,7 +10,7 @@ import { CategoryField } from "./CategoryField";
 import { SelectField } from "../../components/SelectField";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 import { toLocalDateString } from "../../utils/dates";
-import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components/MoneyEntry";
+import { AmountHero, FieldGroup, FieldRow, FieldTextRow, ToggleCard } from "../../components/MoneyEntry";
 
 /**
  * Movimientos = "qué ha pasado con mi dinero": las tres formas en que el
@@ -27,7 +27,7 @@ import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components
  * (AccountsSection -> TransferModal), que es donde el usuario elige cuenta
  * origen y destino. Este listado es solo lectura para no duplicar ese alta.
  */
-export default function MovementsSection({ currentHome, spaceId, user, initialType = "expenses", readOnly = false }) {
+export default function MovementsSection({ currentHome, spaceId, user, initialType = "expenses", readOnly = false, onLogPaymentToCalendar }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const [type, setType] = useState(initialType);
@@ -443,13 +443,14 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
           accounts={accounts}
           onClose={() => setShowAdd(false)}
           onCreated={() => { setShowAdd(false); loadItems(); }}
+          onLogPaymentToCalendar={onLogPaymentToCalendar}
         />
       )}
     </div>
   );
 }
 
-function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated }) {
+function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated, onLogPaymentToCalendar }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const categories = type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
@@ -462,6 +463,7 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated 
   const [date, setDate] = useState(() => toLocalDateString(new Date()));
   const [accountId, setAccountId] = useState(accounts.find((a) => a.is_default)?.id || accounts[0]?.id || "");
   const [notes, setNotes] = useState("");
+  const [addToCalendar, setAddToCalendar] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -486,6 +488,15 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated 
     try {
       if (type === "expenses") await economyService.createExpense(payload);
       else await economyService.createIncome(payload);
+      if (addToCalendar) {
+        onLogPaymentToCalendar?.({
+          title: payload.name,
+          amount: payload.amount,
+          date: payload.date,
+          category: payload.category,
+          kind: type === "expenses" ? "expense" : "income",
+        });
+      }
       onCreated();
     } catch (err) {
       console.error("Error creating movement:", err);
@@ -540,6 +551,16 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated 
           <FieldGroup label={t("movements.notesLabel")}>
             <FieldTextRow icon={StickyNote} value={notes} onChange={setNotes} />
           </FieldGroup>
+
+          <div style={{ marginTop: 6 }}>
+            <ToggleCard
+              icon={Calendar}
+              title={t("common.addToCalendar")}
+              subtitle={t("common.addToCalendarHint")}
+              checked={addToCalendar}
+              onChange={setAddToCalendar}
+            />
+          </div>
 
           {error && <p className="hm-money-error">{error}</p>}
 

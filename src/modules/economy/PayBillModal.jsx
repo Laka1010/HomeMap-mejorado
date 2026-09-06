@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { Wallet, HeartHandshake } from "lucide-react";
+import { Wallet, HeartHandshake, Calendar } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { economyService } from "./services/economyService";
 import { accountsService } from "./services/accountsService";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 import { SelectField } from "../../components/SelectField";
+import { ToggleCard } from "../../components/MoneyEntry";
+import { toLocalDateString } from "../../utils/dates";
 
 /**
  * "¿Cómo quieres pagarla?" — desde una cuenta del propio Household, o
@@ -14,7 +16,7 @@ import { SelectField } from "../../components/SelectField";
  * a un RPC atómico (pay_bill_from_account / pay_bill_via_contribution) que
  * crea el gasto y marca la factura pagada en una sola transacción.
  */
-export function PayBillModal({ bill, spaceId, spaces, onClose, onPaid }) {
+export function PayBillModal({ bill, spaceId, spaces, onClose, onPaid, onLogPaymentToCalendar }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
@@ -22,6 +24,7 @@ export function PayBillModal({ bill, spaceId, spaces, onClose, onPaid }) {
   const [householdAccounts, setHouseholdAccounts] = useState([]);
   const [contributionAccounts, setContributionAccounts] = useState([]);
   const [accountId, setAccountId] = useState("");
+  const [addToCalendar, setAddToCalendar] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -51,6 +54,15 @@ export function PayBillModal({ bill, spaceId, spaces, onClose, onPaid }) {
     try {
       if (mode === "account") await economyService.payBillFromAccount(bill.id, accountId);
       else await economyService.payBillViaContribution(bill.id, accountId);
+      if (addToCalendar) {
+        onLogPaymentToCalendar?.({
+          title: bill.name,
+          amount: bill.amount,
+          date: toLocalDateString(new Date()),
+          category: bill.category,
+          kind: "bill",
+        });
+      }
       onPaid();
     } catch (err) {
       console.error("Error paying bill:", err);
@@ -115,6 +127,18 @@ export function PayBillModal({ bill, spaceId, spaces, onClose, onPaid }) {
                 options={contributionAccounts.map((a) => ({ value: a.id, label: `${a.name} — ${a.spaceName}`, emoji: a.icon }))}
               />
             </>
+          )}
+
+          {mode && (
+            <div style={{ marginTop: 16 }}>
+              <ToggleCard
+                icon={Calendar}
+                title={t("common.addToCalendar")}
+                subtitle={t("common.addToCalendarHint")}
+                checked={addToCalendar}
+                onChange={setAddToCalendar}
+              />
+            </div>
           )}
 
           {error && <p style={{ fontSize: 12.5, color: "var(--danger)", margin: "10px 0 0" }}>{error}</p>}

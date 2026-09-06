@@ -11,7 +11,7 @@ import { SelectField } from "../../components/SelectField";
 import { toLocalDateString, intlLocale } from "../../utils/dates";
 import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components/MoneyEntry";
 
-export default function BillsSection({ currentHome, spaceId, spaces, state, dispatch, user, readOnly = false }) {
+export default function BillsSection({ currentHome, spaceId, spaces, state, dispatch, user, readOnly = false, onLogPaymentToCalendar }) {
   const { t, locale } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const FREQUENCY_LABELS = {
@@ -361,6 +361,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
           spaces={spaces}
           onClose={() => setPayingBill(null)}
           onPaid={handleBillPaid}
+          onLogPaymentToCalendar={onLogPaymentToCalendar}
         />
       )}
 

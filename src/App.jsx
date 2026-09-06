@@ -35,7 +35,7 @@ import { WelcomeGate } from "./components/onboarding/WelcomeGate";
 import { BrandMark } from "./components/BrandMark";
 import { PurchaseCompleteAnimation } from "./modules/shopping/PurchaseCompleteAnimation";
 import { DependencyGateModal } from "./components/DependencyGateModal";
-import { AmountHero, FieldGroup, FieldRow, FieldTextRow, SegmentedTabs } from "./components/MoneyEntry";
+import { AmountHero, FieldGroup, FieldRow, FieldTextRow, SegmentedTabs, ToggleCard } from "./components/MoneyEntry";
 import { SelectField } from "./components/SelectField";
 import { ObjectDndProvider, useObjectDnd, useDraggableObject, useObjectDropTarget } from "./dnd/objectDnd";
 import { supabase } from "./supabaseClient";
@@ -1207,6 +1207,7 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState(DEFAULT_CATEGORY);
   const [date, setDate] = useState(() => toLocalDateString(new Date()));
+  const [addToCalendar, setAddToCalendar] = useState(true);
   const isExpense = type === "expense";
 
   const categoryOptions = isExpense ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
@@ -1215,7 +1216,7 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
 
   const submit = () => {
     if (!valid) return;
-    const payload = { name: name.trim(), amount: parsedAmount, category: category || DEFAULT_CATEGORY, date: date || toLocalDateString(new Date()) };
+    const payload = { name: name.trim(), amount: parsedAmount, category: category || DEFAULT_CATEGORY, date: date || toLocalDateString(new Date()), addToCalendar };
     if (isExpense) onSaveExpense(payload);
     else onSaveIncome(payload);
   };
@@ -1250,6 +1251,16 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
       <FieldGroup label={t("movements.dateLabel").replace(":", "")}>
         <FieldTextRow icon={Calendar} type="date" value={date} onChange={setDate} />
       </FieldGroup>
+
+      <div className="hm-mt-20">
+        <ToggleCard
+          icon={Calendar}
+          title={t("common.addToCalendar")}
+          subtitle={t("common.addToCalendarHint")}
+          checked={addToCalendar}
+          onChange={setAddToCalendar}
+        />
+      </div>
 
       <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" disabled={!valid} onClick={submit}>
         {isExpense ? t("addMovement.registerExpense") : t("addMovement.registerIncome")}
@@ -1344,6 +1355,7 @@ function AddExpenseQuickModal({ payload, onClose, onCreate, onUpdate }) {
   const [category, setCategory] = useState(
     EXPENSE_CATEGORIES.includes(payload?.category) ? payload.category : DEFAULT_CATEGORY,
   );
+  const [addToCalendar, setAddToCalendar] = useState(true);
   const parsedAmount = parseFloat(amount);
   const valid = parsedAmount > 0;
 
@@ -1365,13 +1377,25 @@ function AddExpenseQuickModal({ payload, onClose, onCreate, onUpdate }) {
         />
       </FieldGroup>
 
+      {!isEdit && (
+        <div className="hm-mt-20">
+          <ToggleCard
+            icon={Calendar}
+            title={t("common.addToCalendar")}
+            subtitle={t("common.addToCalendarHint")}
+            checked={addToCalendar}
+            onChange={setAddToCalendar}
+          />
+        </div>
+      )}
+
       <button
         className="hm-btn hm-btn-primary hm-btn--full hm-mt-20"
         disabled={!valid}
         onClick={() => {
           const data = { name: name.trim() || t("quickAdd.registerExpenseTitle"), amount: parsedAmount, category: category || DEFAULT_CATEGORY };
           if (isEdit) onUpdate(payload.expenseId, data);
-          else onCreate(data);
+          else onCreate({ ...data, addToCalendar });
         }}
       >
         {isEdit ? t("quickAdd.saveChanges") : t("quickAdd.register")}
@@ -3612,6 +3636,10 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         shopping_purchase_id: purchaseId,
       });
       setEconomyVersion((v) => v + 1);
+      // El gasto de una compra no tiene formulario propio (nace solo al
+      // cerrar la compra), así que no hay casilla que marcar: se anota
+      // siempre en el calendario, en la fecha de hoy.
+      logPaymentToCalendar({ title: store || t("actionCenter.shopping"), amount, date: toLocalDateString(new Date()), category: DEFAULT_CATEGORY, kind: "expense" });
       showNotice(t("toast.purchaseExpenseAdded", { amount: formatAmount(amount) }), {
         label: t("common.edit"),
         onClick: () => openModal("addExpense", {
@@ -3908,6 +3936,45 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       showNotice(t("toast.calendarEventSaveError"));
     });
   };
+  /**
+   * Registra en el calendario un pago ya efectuado (gasto, ingreso o factura
+   * pagada). Mismo camino que addCalendarEvent — evento manual en
+   * state.calendarEvents + fila en calendar_events — pero disparado desde los
+   * formularios de dinero cuando el usuario deja marcada la casilla "Añadir
+   * al calendario". El evento va en la fecha del movimiento a la hora en que
+   * se registra (no de todo el día), con importe y categoría en las notas. Si
+   * no hay fecha o casa, no hace nada (el pago en sí ya se ha guardado por su
+   * camino normal).
+   */
+  const logPaymentToCalendar = ({ title, amount, date, category, kind }) => {
+    if (!currentHome?.id || !date) return;
+    const emoji = kind === "income" ? "💰" : "💳";
+    const noteParts = [
+      amount != null ? formatAmount(amount) : "",
+      category ? categoryLabel(category, t) : "",
+    ].filter(Boolean);
+    const now = new Date();
+    const startTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const next = {
+      id: "cev-" + uid(),
+      title: `${emoji} ${title || t("addMovement.title")}`.trim(),
+      location: "",
+      allDay: false,
+      startDate: String(date).slice(0, 10),
+      startTime,
+      endDate: "",
+      endTime: "",
+      repeat: "none",
+      alert: "none",
+      notes: noteParts.join(" · "),
+      url: "",
+    };
+    dispatch((s) => ({ ...s, calendarEvents: [...(s.calendarEvents || []), next] }));
+    calendarEventService.createEvent(currentHome.id, next).catch((error) => {
+      console.error("Error saving payment calendar event:", error);
+    });
+  };
+
   const editCalendarEvent = (eventId, patch) => {
     dispatch((s) => ({
       ...s,
@@ -3972,6 +4039,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     setEconomyVersion((v) => v + 1);
     showNotice(t("toast.expenseRegistered", { name: e.name || (e.amount ? formatAmount(e.amount) : '') }));
     closeModal();
+    if (e.addToCalendar) {
+      logPaymentToCalendar({ title: e.name, amount: e.amount, date: e.date || toLocalDateString(new Date()), category: e.category, kind: "expense" });
+    }
     economyService.createExpense({
       house_id: currentHome.id,
       created_by: user.id,
@@ -4013,6 +4083,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     setEconomyVersion((v) => v + 1);
     showNotice(t("toast.incomeRegistered", { name: inc.name || (inc.amount ? formatAmount(inc.amount) : '') }));
     closeModal();
+    if (inc.addToCalendar) {
+      logPaymentToCalendar({ title: inc.name, amount: inc.amount, date: inc.date || toLocalDateString(new Date()), category: inc.category, kind: "income" });
+    }
     economyService.createIncome({
       house_id: currentHome.id,
       created_by: user.id,
@@ -4262,7 +4335,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             )}
 
             {/* 💰 ECONOMÍA - Bills and Finance (solo admin/adult; RLS lo aplica también en el servidor) */}
-            {route.tab === "economia" && canSeeEconomy && <Suspense fallback={null}><EconomyModule state={state} dispatch={dispatch} openModal={openModal} currentHome={currentHome} user={user} refreshToken={economyVersion} childMode={currentHome?.myRole === "child"} /></Suspense>}
+            {route.tab === "economia" && canSeeEconomy && <Suspense fallback={null}><EconomyModule state={state} dispatch={dispatch} openModal={openModal} currentHome={currentHome} user={user} refreshToken={economyVersion} childMode={currentHome?.myRole === "child"} onLogPaymentToCalendar={logPaymentToCalendar} /></Suspense>}
             {route.tab === "economia" && !canSeeEconomy && (
               <div className="hm-card hm-card--p24 hm-card--center">
                 <ShieldCheck size={26} style={{ color: "var(--accent)", marginBottom: 10 }} />
