@@ -1880,6 +1880,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
           goTo={goTo}
           onRename={(nextName) => onUpdateRoom?.(room.id, { name: nextName })}
           onDelete={() => onDeleteRoom?.(room.id)}
+          onMoveObject={onMoveObject}
           onExpand={() => setView({ roomId: room.id })}
           onOpenZone={(zoneId) => setView({ roomId: room.id, zoneId })}
           onClose={() => setView({})}
@@ -2071,7 +2072,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
  * (o se toca "Ver habitación") para expandir a la vista completa, y hacia abajo
  * (o tocando el fondo) para cerrar. Ver useSheetGesture.
  */
-function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onOpenZone, onClose }) {
+function RoomSheet({ room, state, goTo, onRename, onDelete, onMoveObject, onExpand, onOpenZone, onClose }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, sheetStyle, isSuppressingClick } = useSheetGesture(onClose, onExpand);
   const [name, setName] = useState(room.name);
@@ -2130,21 +2131,26 @@ function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onOpenZone
           </button>
         </div>
 
+        <ObjectDndProvider>
         <div style={{ flex: 1, overflowY: "auto", padding: "4px 20px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
           {zones.length > 0 && (
             <div>
               <label className="hm-label">{t("room.zonesHeader")}</label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
                 {zones.map((z) => (
-                  <div
+                  <ObjectDropZone
                     key={z.id}
+                    id={`zone-${z.id}`}
+                    canDrop={(obj) => obj.zoneId !== z.id || obj.containerId}
+                    onDropObject={(obj) => onMoveObject?.(obj.id, { roomId: room.id, zoneId: z.id, containerId: null })}
                     className="hm-card hm-tap hm-card--p14"
+                    style={{ borderRadius: 16 }}
                     onClick={() => { if (!isSuppressingClick()) onOpenZone?.(z.id); }}
                   >
                     <span style={{ fontSize: 18 }}>{z.icon}</span>
                     <div style={{ fontWeight: 600, fontSize: 13.5, marginTop: 6 }}>{z.name}</div>
                     <div style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>{countObjectsIn(state, (o) => o.zoneId === z.id)} {t("room.objectsLabel")}</div>
-                  </div>
+                  </ObjectDropZone>
                 ))}
               </div>
             </div>
@@ -2155,14 +2161,17 @@ function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onOpenZone
               <label className="hm-label">{t("room.boxesInRoom")}</label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {directContainers.map((c) => (
-                  <span
+                  <ObjectDropZone
                     key={c.id}
+                    id={`cont-${c.id}`}
+                    canDrop={(obj) => obj.containerId !== c.id}
+                    onDropObject={(obj) => onMoveObject?.(obj.id, { roomId: room.id, zoneId: null, containerId: c.id })}
                     className="hm-card-flat hm-tap hm-card--p14"
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 12 }}
                     onClick={() => guardedGo({ tab: "cajas", containerId: c.id })}
                   >
                     <span style={{ width: 10, height: 10, borderRadius: 999, background: c.color }} /> {c.name}
-                  </span>
+                  </ObjectDropZone>
                 ))}
               </div>
             </div>
@@ -2171,11 +2180,16 @@ function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onOpenZone
           {looseObjects.length > 0 && (
             <div>
               <label className="hm-label">{t("room.looseObjectsHeader")}</label>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <ObjectDropZone
+                id={`loose-${room.id}`}
+                canDrop={(obj) => obj.zoneId || obj.containerId}
+                onDropObject={(obj) => onMoveObject?.(obj.id, { roomId: room.id, zoneId: null, containerId: null })}
+                style={{ display: "flex", flexDirection: "column", gap: 8, borderRadius: 12 }}
+              >
                 {looseObjects.slice(0, 8).map((o) => (
-                  <ObjectRow key={o.id} o={o} onClick={() => guardedGo({ tab: "objectDetail", objectId: o.id })} />
+                  <DraggableObjectRow key={o.id} o={o} onClick={() => guardedGo({ tab: "objectDetail", objectId: o.id })} />
                 ))}
-              </div>
+              </ObjectDropZone>
             </div>
           )}
 
@@ -2189,6 +2203,7 @@ function RoomSheet({ room, state, goTo, onRename, onDelete, onExpand, onOpenZone
             {t("room.viewRoom")} <ChevronRight size={15} />
           </button>
         </div>
+        </ObjectDndProvider>
       </div>
     </div>
   );
@@ -3020,9 +3035,13 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const handleNotificationAction = (notification) => {
     const handlers = buildNotificationActionHandlers({ dispatch, openModal, goTo, setOrganizationTab });
     const handler = notification.action?.type && handlers[notification.action.type];
-    if (handler) handler(notification.action.payload || {});
     markNotificationRead(notification.id);
+    // Cerrar el panel de notificaciones ANTES de ejecutar el handler: algunas
+    // acciones (log_expense, open_house_settings) abren otro modal, y si
+    // `closeModal()` corriera después anularía ese `openModal()` en el mismo
+    // ciclo de render y no se abriría nada.
     closeModal();
+    if (handler) handler(notification.action.payload || {});
   };
 
   useEffect(() => {
