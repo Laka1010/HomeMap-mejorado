@@ -34,22 +34,45 @@ Asegúrate de actualizar `versionCode` y `versionName` en `android/app/build.gra
 
 ## 4. Política de privacidad y términos
 
-La app ya incluye:
+La app incluye `public/privacy-policy.html` y `public/terms.html`, y **ya están
+publicados** en GitHub Pages (rama `gh-pages`, generada por
+`scripts/publish-legal.ps1`):
 
-- `public/privacy-policy.html`
-- `public/terms.html`
+- Política de privacidad: <https://laka1010.github.io/HomeMap-mejorado/privacy-policy.html>
+- Términos: <https://laka1010.github.io/HomeMap-mejorado/terms.html>
 
-Para la ficha de Play Store necesitarás una URL pública accesible por Google. Si no tienes hosting propio, puedes usar un servicio de páginas estáticas o vincular la app a una web pública que aloje estos archivos.
+> Si editas los `.html` de `public/`, vuelve a ejecutar
+> `powershell -ExecutionPolicy Bypass -File scripts/publish-legal.ps1` para
+> republicar. Comprueba una vez que en GitHub → Settings → Pages la fuente sea
+> `gh-pages` / `/ (root)`.
 
-### Posible texto de la ficha
+### Texto de la ficha (listo para pegar)
 
-- Nombre de la app: `Haven`
-- Descripción corta: `Organiza tu hogar, localiza tus objetos y gestiona compras, tareas y gastos.`
-- Descripción larga: `Haven te ayuda a organizar habitaciones, cajas y objetos de tu hogar. Busca al instante dónde está cada cosa, comparte el acceso con tu familia o compañeros de piso y lleva las listas de la compra, las tareas y la economía del hogar en un solo sitio.`
-- Categoría: `Productividad`
-- Clasificación de contenido: `Todos`
-- Correo de soporte: `havenhome.app1@gmail.com`
-- URL de política de privacidad: `https://tudominio.com/privacy-policy.html`
+- **Nombre de la app:** `Haven`
+- **Descripción corta (máx. 80):** `Organiza tu hogar: encuentra tus cosas y gestiona compras, tareas y gastos.`
+- **Descripción larga:**
+
+  ```
+  Haven es la app para organizar tu casa y todo lo que pasa en ella, solo o en familia.
+
+  • ¿Dónde está…? Registra habitaciones, zonas, cajas y objetos, y encuentra al instante dónde guardaste cada cosa.
+  • Compras. Listas de la compra compartidas, con categorías e historial de lo que ya compraste.
+  • Tareas. Reparte las tareas del hogar entre los miembros y no pierdas de vista lo pendiente.
+  • Economía. Cuentas, gastos, ingresos y facturas recurrentes del hogar, con espacios separados y un espacio propio para los más pequeños.
+  • Calendario. Pagos y eventos del hogar en un calendario que puedes suscribir desde Google o Apple Calendar.
+
+  Comparte el acceso con tu familia o tus compañeros de piso con un código de invitación y cada quien ve lo que le corresponde según su rol.
+
+  Disponible en español, catalán e inglés.
+  ```
+
+- **Categoría:** `Estilo de vida` (alternativa: `Productividad`)
+- **Clasificación de contenido:** `Todos`
+- **Correo de soporte:** `havenhome.app1@gmail.com`
+- **URL de política de privacidad:** `https://laka1010.github.io/HomeMap-mejorado/privacy-policy.html`
+- **Data safety:** los datos (hogar, economía, compras) se almacenan en Supabase
+  (proveedor de backend); no se comparten con terceros para publicidad; el
+  usuario puede borrar su cuenta desde la propia app.
 
 ## 5. Permisos y justificación
 
@@ -63,16 +86,27 @@ No se piden cámara ni acceso a fotos: la función de fotos y el escaneo con IA 
 
 ## 6. Checklist de publicación
 
-- [ ] Keystore creado y configurado
-- [ ] `android/keystore.properties` con valores reales
-- [ ] Build AAB generado y firmado
-- [ ] Capturas de pantalla de la app (mínimo 2-3)
-- [ ] Icono adaptativo / feature graphic
-- [ ] Página de privacidad pública
-- [ ] Datos de contacto y correo de soporte
-- [ ] Descripción corta y larga definidas
-- [ ] Versión y `versionCode` actualizados
-- [ ] Revisión de permisos y justificación correcta
+Hecho:
+
+- [x] Keystore creado y configurado (`android/release-keystore.jks`, en `.gitignore`)
+- [x] `android/keystore.properties` con valores reales (fuera de git)
+- [x] Página de privacidad y términos públicos (GitHub Pages, ver §4)
+- [x] Datos de contacto y correo de soporte (`havenhome.app1@gmail.com`)
+- [x] Descripción corta y larga definidas (ver §4)
+- [x] Versión sincronizada Android/iOS/`package.json` (`1.1.0`, `versionCode`/`build` 2)
+- [x] Permisos revisados (solo `INTERNET`, ver §5)
+
+Pendiente antes de subir:
+
+- [ ] Build AAB generado y firmado (`npm run android:bundle`)
+- [ ] Capturas de pantalla (mín. 2-4 por dispositivo; teléfono obligatorio)
+- [ ] Icono de 512×512 y feature graphic de 1024×500
+- [ ] Rellenar el formulario **Data safety** en Play Console (ver §4)
+- [ ] Cuestionario de clasificación de contenido (IARC)
+- [ ] **Supabase → Authentication → Policies:** activar *Leaked Password
+      Protection* (comprobación contra HaveIBeenPwned). Es un toggle, sin
+      cambio de código.
+- [ ] Confirmar en GitHub → Settings → Pages que la fuente es `gh-pages` / root
 
 ## 7. Recursos de publicación
 
