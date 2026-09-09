@@ -375,8 +375,8 @@ const AUTH_STYLES = `
           display: flex;
           align-items: safe center;
           justify-content: center;
-          background: #f0f2f0;
-          background: linear-gradient(135deg, #f6f7f5 0%, #eef0ec 100%);
+          background: var(--bg);
+          background: linear-gradient(135deg, var(--bg) 0%, var(--surface-alt) 100%);
           padding: 24px;
           gap: 60px;
         }
@@ -396,7 +396,7 @@ const AUTH_STYLES = `
         .auth-logo {
           width: 64px;
           height: 64px;
-          background: #F3F4F6;
+          background: var(--surface-alt);
           border: 1px solid var(--border);
           border-radius: 20px;
           display: flex;
@@ -527,8 +527,8 @@ const AUTH_STYLES = `
         .spinner {
           width: 24px;
           height: 24px;
-          border: 3px solid rgba(255,255,255,0.3);
-          border-top-color: white;
+          border: 3px solid rgba(128,128,128,0.3);
+          border-top-color: currentColor;
           border-radius: 50%;
           animation: hmSpin 0.8s linear infinite;
         }
@@ -538,6 +538,6 @@ const AUTH_STYLES = `
         }
         @media (max-width: 480px) {
           .auth-card { padding: 40px 24px; border-radius: 0; box-shadow: none; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
-          .auth-container { padding: 0; background: white; }
+          .auth-container { padding: 0; background: var(--surface); }
         }
       `;
