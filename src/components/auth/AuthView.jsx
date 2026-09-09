@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Lock, User, ArrowRight, Sparkles } from "lucide-react";
+import { Mail, Lock, User, ArrowRight } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { BrandMark } from "../BrandMark";
 import { useTranslation } from "../../i18n";
@@ -251,9 +251,6 @@ export function AuthView({ onLogin }) {
       </div>
 
       <div className="auth-visual-info">
-        <div className="info-badge">
-          <Sparkles size={14} /> {t("auth.newVersionBadge")}
-        </div>
         <h2 className="hm-display info-title">{t("auth.infoTitle")}</h2>
         <p className="info-text">
           {t("auth.infoText")}
@@ -501,18 +498,6 @@ const AUTH_STYLES = `
         .auth-visual-info {
           max-width: 380px;
           display: none;
-        }
-        .info-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          background: var(--accent-soft);
-          color: var(--accent);
-          padding: 6px 14px;
-          border-radius: 99px;
-          font-size: 12px;
-          font-weight: 700;
-          margin-bottom: 24px;
         }
         .info-title {
           font-size: 44px;
