@@ -1664,6 +1664,41 @@ function FitCheckerModal({ onClose, presetItem }) {
 /* -------------------------------------------------------------------- */
 /* OBJECT DETAIL                                                        */
 /* -------------------------------------------------------------------- */
+/**
+ * Nombre editable en línea, mismo patrón que el input del nombre de habitación
+ * en RoomSheet: se escribe directamente sobre el título, Enter o salir del foco
+ * guarda, Escape cancela. `value` manda; si cambia desde fuera (otro
+ * dispositivo) se resincroniza siempre que no se esté editando en ese momento.
+ */
+function EditableName({ value, onCommit, ariaLabel, className = "", style }) {
+  const [draft, setDraft] = useState(value);
+  const editingRef = useRef(false);
+  useEffect(() => {
+    if (!editingRef.current) setDraft(value);
+  }, [value]);
+  const commit = () => {
+    editingRef.current = false;
+    const trimmed = draft.trim();
+    if (!trimmed || trimmed === value) { setDraft(value); return; }
+    onCommit(trimmed);
+  };
+  return (
+    <input
+      className={`hm-room-name-input ${className}`.trim()}
+      value={draft}
+      onFocus={() => { editingRef.current = true; }}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        else if (e.key === "Escape") { setDraft(value); editingRef.current = false; e.currentTarget.blur(); }
+      }}
+      aria-label={ariaLabel}
+      style={{ border: "1px solid transparent", background: "transparent", borderRadius: 8, padding: "2px 6px", marginLeft: -6, minWidth: 0, ...style }}
+    />
+  );
+}
+
 function ObjectDetail({ state, objectId, onBack, onDelete, dispatch, onMove, onUpdateObject }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
@@ -1687,7 +1722,13 @@ function ObjectDetail({ state, objectId, onBack, onDelete, dispatch, onMove, onU
             <CategoryIcon category={obj.category} size={28} style={{ color: "var(--accent)" }} />
           </div>
           <div style={{ flex: 1, minWidth: 150 }}>
-            <h2 className="hm-display" style={{ fontSize: 24, margin: "0 0 6px", fontWeight: 600 }}>{obj.name}</h2>
+            <EditableName
+              value={obj.name}
+              onCommit={(name) => onUpdateObject?.(obj.id, { name })}
+              ariaLabel={t("room.objectNameLabel")}
+              className="hm-display"
+              style={{ fontSize: 24, fontWeight: 600, width: "100%", marginBottom: 6 }}
+            />
             <span className="hm-card-flat" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", fontSize: 12.5, fontWeight: 600, color: "var(--accent)" }}>
               <CategoryIcon category={obj.category} size={12} />{obj.category}
             </span>
@@ -1775,7 +1816,7 @@ function Dashboard({ state, goTo, openModal, canSeeEconomy, currentHome, houseMe
 /* -------------------------------------------------------------------- */
 /* MI CASA                                                               */
 /* -------------------------------------------------------------------- */
-function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCategories, onUpdateRoom, onDeleteRoom, onDeleteZone, onMoveObject }) {
+function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCategories, onUpdateRoom, onUpdateZone, onDeleteRoom, onDeleteZone, onMoveObject }) {
   const { t } = useTranslation();
   const room = view.roomId ? getRoom(state, view.roomId) : null;
   const zone = view.zoneId ? getZone(state, view.zoneId) : null;
@@ -2025,7 +2066,16 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
       <button className="hm-btn hm-btn-ghost" style={{ paddingLeft: 0, marginBottom: 8 }} onClick={() => setView({ roomId: room.id })}><ArrowLeft size={16} />{room.name}</button>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
         <div>
-          <h1 className="hm-display" style={{ fontSize: 24, fontWeight: 600, margin: 0 }}>{zone.icon} {zone.name}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span className="hm-display" style={{ fontSize: 24, lineHeight: 1 }}>{zone.icon}</span>
+            <EditableName
+              value={zone.name}
+              onCommit={(name) => onUpdateZone?.(zone.id, { name })}
+              ariaLabel={t("room.zoneNameLabel")}
+              className="hm-display"
+              style={{ fontSize: 24, fontWeight: 600, flex: 1 }}
+            />
+          </div>
           <Route path={locationPath(state, { roomId: room.id, zoneId: zone.id })} size="sm" />
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -2285,7 +2335,7 @@ function ObjectDropZone({ id, onDropObject, canDrop, className = "", style, chil
 /* -------------------------------------------------------------------- */
 /* CAJAS                                                                 */
 /* -------------------------------------------------------------------- */
-function Cajas({ state, view, setView, openModal, goTo, onDeleteContainer }) {
+function Cajas({ state, view, setView, openModal, goTo, onUpdateContainer, onDeleteContainer }) {
   const { t } = useTranslation();
   const activeContainer = view.containerId ? getContainer(state, view.containerId) : null;
 
@@ -2305,7 +2355,13 @@ function Cajas({ state, view, setView, openModal, goTo, onDeleteContainer }) {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
               <span style={{ width: 34, height: 34, borderRadius: 10, background: activeContainer.color, flexShrink: 0 }} />
-              <h1 className="hm-display" style={{ fontSize: 24, fontWeight: 600, margin: 0 }}>{activeContainer.name}</h1>
+              <EditableName
+                value={activeContainer.name}
+                onCommit={(name) => onUpdateContainer?.(activeContainer.id, { name })}
+                ariaLabel={t("room.containerNameLabel")}
+                className="hm-display"
+                style={{ fontSize: 24, fontWeight: 600, flex: 1 }}
+              />
             </div>
             <Route path={locationPath(state, activeContainer)} size="sm" />
           </div>
@@ -3384,6 +3440,22 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       showNotice(t("toast.roomUpdateError"));
     });
   };
+  const updateZone = (zoneId, patch) => {
+    dispatch((s) => ({ ...s, zones: s.zones.map((z) => (z.id === zoneId ? { ...z, ...patch } : z)) }));
+    showNotice(t("toast.zoneUpdated"));
+    homeContentService.updateZone(zoneId, patch).catch((error) => {
+      console.error("Error updating zone:", error);
+      showNotice(t("toast.zoneUpdateError"));
+    });
+  };
+  const updateContainer = (containerId, patch) => {
+    dispatch((s) => ({ ...s, containers: s.containers.map((c) => (c.id === containerId ? { ...c, ...patch } : c)) }));
+    showNotice(t("toast.containerUpdated"));
+    homeContentService.updateContainer(containerId, patch).catch((error) => {
+      console.error("Error updating container:", error);
+      showNotice(t("toast.containerUpdateError"));
+    });
+  };
   const deleteRoom = (roomId) => {
     const room = state.rooms.find((r) => r.id === roomId);
     if (!room) return;
@@ -4114,6 +4186,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       ...s,
       objects: s.objects.map((o) => (o.id === objectId ? { ...o, ...patch } : o)),
     }));
+    showNotice(t("toast.objectUpdated"));
     homeContentService.updateObject(objectId, patch).catch((error) => {
       console.error("Error updating object:", error);
       showNotice(t("toast.objectUpdateError"));
@@ -4285,8 +4358,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
                 vino, que sigue intacta en `micasaView`. */}
             {route.tab === "hogar" && (
               cajasView?.containerId
-                ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onDeleteContainer={requestDeleteContainer} />
-                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateCategories={updateCategories} onUpdateRoom={updateRoom} onDeleteRoom={requestDeleteRoom} onDeleteZone={requestDeleteZone} onMoveObject={moveObject} />
+                ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateContainer={updateContainer} onDeleteContainer={requestDeleteContainer} />
+                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateCategories={updateCategories} onUpdateRoom={updateRoom} onUpdateZone={updateZone} onDeleteRoom={requestDeleteRoom} onDeleteZone={requestDeleteZone} onMoveObject={moveObject} />
             )}
 
             {/* ✅ ORGANIZACIÓN - Shopping, Tasks, Calendar */}

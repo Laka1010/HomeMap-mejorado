@@ -128,6 +128,15 @@ export const homeContentService = {
     if (error) throw error;
   },
 
+  async updateZone(zoneId, patch) {
+    const row = {};
+    if ("name" in patch) row.name = patch.name;
+    if ("icon" in patch) row.icon = patch.icon ?? null;
+    if ("photo" in patch) row.photo = patch.photo ?? null;
+    const { error } = await supabase.from("zones").update(row).eq("id", zoneId);
+    if (error) throw error;
+  },
+
   /**
    * A diferencia de deleteRoom, no hace falta desvincular nada a mano antes:
    * containers.zone_id y objects.zone_id son `on delete set null`, así que
@@ -149,6 +158,15 @@ export const homeContentService = {
       color: container.color ?? null,
       photo: container.photo ?? null,
     });
+    if (error) throw error;
+  },
+
+  async updateContainer(containerId, patch) {
+    const row = {};
+    if ("name" in patch) row.name = patch.name;
+    if ("color" in patch) row.color = patch.color ?? null;
+    if ("photo" in patch) row.photo = patch.photo ?? null;
+    const { error } = await supabase.from("containers").update(row).eq("id", containerId);
     if (error) throw error;
   },
 
