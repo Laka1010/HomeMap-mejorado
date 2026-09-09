@@ -2,11 +2,10 @@ import { useEffect, useState } from "react";
 import {
   ArrowLeft, ChevronRight, ExternalLink, User, Lock, Home as HomeIcon, Users, Shield,
   MessageCircle, Info, Eye, EyeOff, Trash2, LogOut, Share2,
-  Languages, Coins, Palette, Bell, Calendar, Crown, Sun, Moon, Smartphone, ShieldAlert,
+  Languages, Palette, Bell, Calendar, Crown, Sun, Moon, Smartphone, ShieldAlert,
 } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { LanguageSection } from "./LanguageSection";
-import { CurrencySection } from "./CurrencySection";
 import { NotificationSection } from "./NotificationSection";
 import { SupportSection } from "./SupportSection";
 import { AboutSection } from "./AboutSection";
@@ -39,20 +38,17 @@ export function AccountHub({
   locale,
   theme,
   notifications,
-  currency,
   onChangeLanguage,
   onChangeTheme,
   onToggleNotificationCategory,
   onChangeNotificationLevel,
-  onChangeCurrency,
-  isCurrencyLoading,
   build,
   openModal,
   onClose,
   version,
 }) {
   const { t } = useTranslation();
-  // null | "editProfile" | "homeInfo" | "language" | "currency" | "appearance"
+  // null | "editProfile" | "homeInfo" | "language" | "appearance"
   // | "notifications" | "support" | "about" — cada una es una pantalla propia,
   // de responsabilidad única, en vez de reutilizar la vieja pantalla "Ajustes"
   // que las mezclaba todas. Ver `renderView` más abajo.
@@ -82,7 +78,7 @@ export function AccountHub({
   const ownerName = ownerMember?.name || (isAdmin ? displayName : null);
 
   const sections = buildSections({
-    t, setView, openModal, profile, onUpdateProfile, version, theme, onChangeTheme,
+    t, setView, openModal, version, theme, onChangeTheme,
   });
   const dangerRows = buildDangerRows({ t, onLogout, onDeleteAccount });
 
@@ -117,8 +113,6 @@ export function AccountHub({
               />
             ) : view === "language" ? (
               <LanguageSection locale={locale} onChange={onChangeLanguage} />
-            ) : view === "currency" ? (
-              <CurrencySection currency={currency} isAdmin={isAdmin} onChange={onChangeCurrency} isLoading={isCurrencyLoading} />
             ) : view === "notifications" ? (
               <NotificationSection notifications={notifications} onToggleCategory={onToggleNotificationCategory} onChangeLevel={onChangeNotificationLevel} />
             ) : view === "support" ? (
@@ -215,7 +209,7 @@ function ProfileHeader({ avatar, initials, displayName, displayEmail, role, home
  * muestra chevron), "external" (sale de la app, muestra icono de enlace) o
  * "action" (se ejecuta al momento, sin indicador de navegación).
  */
-function buildSections({ t, setView, openModal, profile, onUpdateProfile, version, theme, onChangeTheme }) {
+function buildSections({ t, setView, openModal, version, theme, onChangeTheme }) {
   return [
     {
       id: "account",
@@ -245,10 +239,8 @@ function buildSections({ t, setView, openModal, profile, onUpdateProfile, versio
       title: t("accountHub.preferencesSection"),
       rows: [
         { id: "language", icon: Languages, label: t("settings.languageSection"), kind: "nav", onClick: () => setView("language") },
-        { id: "currency", icon: Coins, label: t("settings.currency"), kind: "nav", onClick: () => setView("currency") },
         { id: "appearance", custom: true, render: (isLast) => <AppearanceRow theme={theme} onChange={onChangeTheme} t={t} isLast={isLast} /> },
         { id: "notifications", icon: Bell, label: t("settings.notificationsSection"), kind: "nav", onClick: () => setView("notifications") },
-        { id: "units", custom: true, render: (isLast) => <UnitsRow profile={profile} onUpdateProfile={onUpdateProfile} t={t} isLast={isLast} /> },
       ],
     },
     {
@@ -338,31 +330,6 @@ function HubRow({ icon: Icon, label, onClick, href, kind = "nav", danger, disabl
     return <a className="hm-tap" href={href} target="_blank" rel="noreferrer" style={style}>{content}</a>;
   }
   return <button className="hm-tap" onClick={onClick} disabled={disabled} style={style}>{content}</button>;
-}
-
-function UnitsRow({ profile, onUpdateProfile, t, isLast }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 16px", borderBottom: isLast ? "none" : "1px solid var(--border)" }}>
-      <IconBadge icon={Palette} color="var(--chart-income)" />
-      <span style={{ flex: 1, fontSize: 15, fontWeight: 500 }}>{t("ajustes.unitsLabel")}</span>
-      <div style={{ display: "flex", background: "var(--surface-alt)", borderRadius: 999, padding: 3 }}>
-        {["cm", "in"].map((unit) => (
-          <button
-            key={unit}
-            className="hm-tap"
-            onClick={() => onUpdateProfile({ units: unit })}
-            style={{
-              border: "none", borderRadius: 999, padding: "5px 12px", fontSize: 12.5, fontWeight: 700,
-              cursor: "pointer", background: profile.units === unit ? "var(--accent)" : "transparent",
-              color: profile.units === unit ? "var(--accent-ink)" : "var(--ink-soft)",
-            }}
-          >
-            {unit === "cm" ? t("ajustes.unitsCm") : t("ajustes.unitsIn")}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 const APPEARANCE_OPTIONS = [

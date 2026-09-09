@@ -563,7 +563,6 @@ function buildEmptyState(t) {
       darkMode: false,
       theme: "system",
       language: "es",
-      units: "cm",
     },
     settings: {
       notifications: {
@@ -609,7 +608,7 @@ function getHouseStorageKey(userId, homeId) {
  * casa recién creada hereda lo que ya tienes configurado en tus otras casas
  * en vez de volver a los valores por defecto / al nombre de la cuenta.
  */
-const CARRIED_PROFILE_KEYS = ["userName", "lastName", "email", "language", "theme", "darkMode", "units"];
+const CARRIED_PROFILE_KEYS = ["userName", "lastName", "email", "language", "theme", "darkMode"];
 
 function readCarryOverPreferences(userId, currentHomeId) {
   try {
@@ -1148,20 +1147,28 @@ function StatChip({ value, label }) {
  * vías (el escaneo de tickets, y repetir una compra del historial), que son
  * las que alimentan el emoji del icono en la lista.
  */
-function AddShoppingModal({ onClose, onSave }) {
+function AddShoppingModal({ onClose, onSave, item }) {
   const { t } = useTranslation();
-  const [form, setForm] = useState({ name: "", price: "", category: "", notes: "", priority: "week" });
+  const isEdit = !!item;
+  const [form, setForm] = useState({
+    name: item?.name ?? "",
+    price: item?.price != null && item?.price !== "" ? String(item.price) : "",
+    category: item?.category ?? "",
+    notes: item?.notes ?? "",
+    priority: item?.priority ?? "week",
+  });
   const patch = (fields) => setForm((f) => ({ ...f, ...fields }));
 
   const submit = () => {
     if (!form.name.trim()) return;
     const parsedPrice = form.price === "" ? "" : parseFloat(form.price.toString().replace(/,/g, "."));
-    onSave({ id: "s-" + uid(), photo: null, ...form, name: form.name.trim(), price: parsedPrice });
+    const base = isEdit ? { ...item } : { id: "s-" + uid(), photo: null };
+    onSave({ ...base, ...form, name: form.name.trim(), price: parsedPrice });
     onClose();
   };
 
   return (
-    <Modal title={t("modal.addShoppingTitle")} onClose={onClose}>
+    <Modal title={isEdit ? t("modal.editShoppingTitle") : t("modal.addShoppingTitle")} onClose={onClose}>
       <FieldGroup label={t("addShopping.name")}>
         <FieldTextRow icon={ShoppingCart} value={form.name} autoFocus onChange={(v) => patch({ name: v })} onEnter={submit} />
       </FieldGroup>
@@ -1192,7 +1199,7 @@ function AddShoppingModal({ onClose, onSave }) {
       </FieldGroup>
 
       <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" disabled={!form.name.trim()} onClick={submit}>
-        <Plus size={16} /> {t("addShopping.addButton")}
+        {isEdit ? <><Check size={16} /> {t("common.save")}</> : <><Plus size={16} /> {t("addShopping.addButton")}</>}
       </button>
     </Modal>
   );
@@ -3598,6 +3605,25 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       showNotice(t("toast.shoppingItemSaveError"));
     });
   };
+  const updateShoppingItem = (item) => {
+    const patch = {
+      name: item.name,
+      price: item.price,
+      category: item.category || null,
+      notes: item.notes || null,
+      priority: item.priority || null,
+    };
+    dispatch((s) => ({
+      ...s,
+      shoppingItems: (s.shoppingItems || []).map((i) => (i.id === item.id ? { ...i, ...patch } : i)),
+    }));
+    showNotice(t("toast.shoppingItemUpdated"));
+    closeModal();
+    shoppingService.updateItem(item.id, patch).catch((error) => {
+      console.error("Error updating shopping item:", error);
+      showNotice(t("toast.shoppingItemSaveError"));
+    });
+  };
   const addShoppingList = async (name, suggestedItems = []) => {
     const trimmed = (name || "").trim();
     if (!trimmed) return;
@@ -4466,13 +4492,10 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             locale={locale}
             theme={themeMode}
             notifications={state.settings.notifications}
-            currency={activeHome?.currency_code || "EUR"}
             onChangeLanguage={(nextLocale) => updateProfile({ language: nextLocale })}
             onChangeTheme={(nextTheme) => updateProfile({ theme: nextTheme })}
             onToggleNotificationCategory={toggleNotificationCategory}
             onChangeNotificationLevel={setNotificationLevel}
-            onChangeCurrency={handleChangeCurrency}
-            isCurrencyLoading={currencyLoading}
             build={APP_BUILD}
             openModal={openModal}
             onClose={closeModal}
@@ -4618,6 +4641,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       )}
       {modal?.type === "addObject" && <AddObjectWizard state={state} defaults={modal.payload} onClose={closeModal} onSave={addObject} />}
       {modal?.type === "addShopping" && <AddShoppingModal onClose={closeModal} onSave={(item) => addShopping({ ...item, listId: modal.payload?.listId || null })} /> }
+      {modal?.type === "editShopping" && <AddShoppingModal item={modal.payload?.item} onClose={closeModal} onSave={updateShoppingItem} /> }
 
       {modal?.type === "addCalendarEvent" && (
         <AddCalendarEventModal

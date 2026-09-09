@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Check, Clock3, Flame, History, Plus, Receipt, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Clock3, Flame, History, Pencil, Plus, Receipt, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
 import { ModuleCard } from "../core/ModuleCard";
 import { shoppingService } from "../../services/shoppingService";
 import { getCategoryIcon, getPriorityMeta, isUrgent } from "./shoppingMeta";
@@ -49,7 +49,7 @@ function PriorityBadge({ priority }) {
   );
 }
 
-function ShoppingItemCard({ item, onToggle, onDelete }) {
+function ShoppingItemCard({ item, onToggle, onDelete, onEdit }) {
   const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const compactBtn = { fontSize: 12, height: "auto", minHeight: 0, padding: "5px 10px", gap: 5 };
@@ -74,6 +74,16 @@ function ShoppingItemCard({ item, onToggle, onDelete }) {
           >
             <Check size={13} style={{ width: 13, height: 13 }} /> {item.completed ? t("shoppingModule.markPending") : t("shoppingModule.markPurchased")}
           </button>
+          {onEdit && !confirming && (
+            <button
+              className="hm-btn hm-btn-ghost hm-btn--compact"
+              style={{ ...compactBtn, padding: "5px 8px" }}
+              onClick={() => onEdit(item)}
+              aria-label={t("common.edit")}
+            >
+              <Pencil size={13} style={{ width: 13, height: 13 }} />
+            </button>
+          )}
           {onDelete && (confirming ? (
             <span style={{ display: "inline-flex", gap: 4 }}>
               <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ ...compactBtn, padding: "5px 8px" }} onClick={() => setConfirming(false)}>{t("shoppingModule.no")}</button>
@@ -95,7 +105,7 @@ function ShoppingItemCard({ item, onToggle, onDelete }) {
   );
 }
 
-function ItemSection({ icon: Icon, title, items, onToggle, onDelete, muted, action }) {
+function ItemSection({ icon: Icon, title, items, onToggle, onDelete, onEdit, muted, action }) {
   if (items.length === 0) return null;
   return (
     <div style={muted ? { opacity: 0.7 } : undefined}>
@@ -105,7 +115,7 @@ function ItemSection({ icon: Icon, title, items, onToggle, onDelete, muted, acti
         {action ? <span style={{ marginLeft: "auto" }}>{action}</span> : null}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-        {items.map((item) => <ShoppingItemCard key={item.id} item={item} onToggle={onToggle} onDelete={onDelete} />)}
+        {items.map((item) => <ShoppingItemCard key={item.id} item={item} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} />)}
       </div>
     </div>
   );
@@ -201,6 +211,8 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
       console.error("Error deleting shopping item:", error);
     });
   };
+
+  const editItem = (item) => openModal("editShopping", { item });
 
   const addFrequentSuggestion = (suggestion) => {
     if (!activeList || !addShopping) return;
@@ -334,8 +346,8 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-          <ItemSection icon={Flame} title={t("shoppingModule.todaySection")} items={todayItems} onToggle={togglePurchased} onDelete={deleteItem} />
-          <ItemSection icon={Clock3} title={t("shoppingModule.laterSection")} items={laterItems} onToggle={togglePurchased} onDelete={deleteItem} />
+          <ItemSection icon={Flame} title={t("shoppingModule.todaySection")} items={todayItems} onToggle={togglePurchased} onDelete={deleteItem} onEdit={editItem} />
+          <ItemSection icon={Clock3} title={t("shoppingModule.laterSection")} items={laterItems} onToggle={togglePurchased} onDelete={deleteItem} onEdit={editItem} />
           <FrequentSuggestions suggestions={frequentSuggestions} onAdd={addFrequentSuggestion} />
           <ItemSection
             icon={Check}
@@ -343,6 +355,7 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
             items={completedItems}
             onToggle={togglePurchased}
             onDelete={deleteItem}
+            onEdit={editItem}
             muted
             action={confirmingClearPurchased ? (
               <span style={{ display: "inline-flex", gap: 4 }}>
