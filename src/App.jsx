@@ -124,7 +124,10 @@ const GlobalStyle = () => (
       --accent: #5E8C61;
       --accent-ink: #FFFFFF;
       --accent-soft: #E7EEE7;
-      --pin: #C98A3E;
+      /* --pin oscurecido de #C98A3E a #8A5A20: como texto sobre --pin-soft
+         (breadcrumbs de Hogar, badges) el original daba 2.4:1, por debajo de
+         WCAG AA; #8A5A20 sube a ~4.9:1. AUDITORIA_HAVEN_1.0.md Fase 12. */
+      --pin: #8A5A20;
       --pin-soft: #F7E8D0;
       --success: #3F7857;
       --success-soft: #DEEAE2;
@@ -2676,6 +2679,14 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     mapTabToNewPillar, goTo, selectTab,
   } = useHomeNavigation(canSeeEconomy);
   const { prefersDark } = useTheme(state?.profile?.theme, state?.profile?.darkMode);
+  // Tema para las pantallas de "shell" (sesión, recuperación, AuthView,
+  // WelcomeGate) que se renderizan ANTES de cargar la casa: todavía no hay
+  // perfil, así que se resuelve como "system" contra prefers-color-scheme.
+  const shellDark = (() => {
+    const tm = state?.profile?.theme || (state?.profile?.darkMode ? "dark" : "system");
+    return tm === "system" ? prefersDark : tm === "dark";
+  })();
+  const shellRootClass = "hm-root" + (shellDark ? " dark" : "");
   const {
     modal, setModal, openModal, closeModal,
     notice, setNotice, showNotice,
@@ -3260,7 +3271,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
   if (authLoading) {
     return (
-      <div className="hm-root" style={{ padding: 40, textAlign: "center" }}>
+      <div className={shellRootClass} style={{ padding: 40, textAlign: "center" }}>
         <GlobalStyle />
         {t("common.loadingSession")}
       </div>
@@ -3269,7 +3280,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
   if (passwordRecovery) {
     return (
-      <div className="hm-root" style={{ background: "var(--bg)" }}>
+      <div className={shellRootClass} style={{ background: "var(--bg)" }}>
         <GlobalStyle />
         <ResetPasswordView
           onDone={() => {
@@ -3283,7 +3294,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
   if (!user) {
     return (
-      <div className="hm-root" style={{ background: "var(--bg)" }}>
+      <div className={shellRootClass} style={{ background: "var(--bg)" }}>
         <GlobalStyle />
         <AuthView onLogin={handleLogin} />
       </div>
@@ -3292,7 +3303,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
   if (homesLoadError) {
     return (
-      <div className="hm-root" style={{ padding: 40, textAlign: "center" }}>
+      <div className={shellRootClass} style={{ padding: 40, textAlign: "center" }}>
         <GlobalStyle />
         <div style={{ fontWeight: 700, marginBottom: 8 }}>{t("common.homesLoadErrorTitle")}</div>
         <div style={{ color: "var(--ink-soft)", fontSize: 13.5, marginBottom: 18 }}>{t("common.homesLoadErrorSubtitle")}</div>
@@ -3303,7 +3314,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
   if (!homesLoaded) {
     return (
-      <div className="hm-root" style={{ padding: 40, textAlign: "center" }}>
+      <div className={shellRootClass} style={{ padding: 40, textAlign: "center" }}>
         <GlobalStyle />
         {t("common.loadingHomes")}
       </div>
@@ -3312,7 +3323,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
   if (homes.length === 0) {
     return (
-      <div className="hm-root">
+      <div className={shellRootClass}>
         <GlobalStyle />
         <WelcomeGate onCreateHouse={createHomeFromGate} onJoinHouse={joinHomeFromGate} onLogout={handleLogout} />
       </div>
@@ -4471,7 +4482,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         </Modal>
       )}
       {modal?.type === "createHome" && (
-        <div className="hm-root">
+        <div className={"hm-root" + (isDarkMode ? " dark" : "")}>
           <GlobalStyle />
           <WelcomeGate initialStep="create" onCreateHouse={createHome} onCancel={closeModal} />
         </div>
@@ -4590,7 +4601,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       )}
 
       {modal?.type === "dependencyGate" && modal.payload.missing.createModal === "houseGate" && (
-        <div className="hm-root">
+        <div className={"hm-root" + (isDarkMode ? " dark" : "")}>
           <GlobalStyle />
           <WelcomeGate
             title={t(modal.payload.missing.title)}

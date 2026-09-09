@@ -44,14 +44,14 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           position: fixed;
           inset: 0;
           z-index: 2000;
-          background: #ffffff;
+          background: var(--bg);
           overflow-y: auto;
           display: flex;
           align-items: center;
           justify-content: center;
           padding: 32px 20px;
           font-family: 'Inter', sans-serif;
-          color: #1a1a1a;
+          color: var(--ink);
         }
         .wg-cancel {
           position: absolute;
@@ -61,14 +61,14 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           height: 36px;
           border-radius: 50%;
           border: none;
-          background: #f2f2f2;
-          color: #6b6b6b;
+          background: var(--surface-alt);
+          color: var(--ink-soft);
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
         }
-        .wg-cancel:hover { background: #e5e5e5; color: #1a1a1a; }
+        .wg-cancel:hover { background: var(--border); color: var(--ink); }
         .wg-panel {
           width: 100%;
           max-width: 440px;
@@ -88,12 +88,12 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           font-size: 30px;
           font-weight: 700;
           margin: 0 0 20px;
-          color: #1a1a1a;
+          color: var(--ink);
         }
         .wg-subtitle {
           font-size: 15.5px;
           line-height: 1.6;
-          color: #6b6b6b;
+          color: var(--ink-soft);
           margin: 0 0 48px;
           max-width: 360px;
         }
@@ -106,7 +106,7 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
         .wg-option-card {
           width: 100%;
           text-align: left;
-          border: 1px solid #e5e5e5;
+          border: 1px solid var(--border);
           border-radius: 18px;
           padding: 24px;
           display: flex;
@@ -122,7 +122,7 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
         }
         .wg-option-desc {
           font-size: 13.5px;
-          color: #6b6b6b;
+          color: var(--ink-soft);
           line-height: 1.5;
           margin: 0;
         }
@@ -142,17 +142,17 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
         }
         .wg-btn:active { transform: scale(0.98); }
         .wg-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .wg-btn-primary { background: #1a1a1a; color: #fff; }
-        .wg-btn-soft { background: #f2f2f2; color: #1a1a1a; }
+        .wg-btn-primary { background: var(--ink); color: var(--bg); }
+        .wg-btn-soft { background: var(--surface-alt); color: var(--ink); }
         .wg-logout {
           margin-top: 40px;
           background: none;
           border: none;
-          color: #9b9b9b;
+          color: var(--ink-soft);
           font-size: 13px;
           cursor: pointer;
         }
-        .wg-logout:hover { color: #6b6b6b; text-decoration: underline; }
+        .wg-logout:hover { color: var(--ink); text-decoration: underline; }
 
         .wg-back {
           align-self: flex-start;
@@ -161,13 +161,13 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           gap: 6px;
           background: none;
           border: none;
-          color: #6b6b6b;
+          color: var(--ink-soft);
           font-size: 14px;
           font-weight: 600;
           cursor: pointer;
           margin-bottom: 32px;
         }
-        .wg-back:hover { color: #1a1a1a; }
+        .wg-back:hover { color: var(--ink); }
         .wg-form {
           width: 100%;
           display: flex;
@@ -180,22 +180,23 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           font-weight: 700;
           letter-spacing: 0.04em;
           text-transform: uppercase;
-          color: #6b6b6b;
+          color: var(--ink-soft);
         }
         .wg-input {
           height: 50px;
           border-radius: 12px;
-          border: 1px solid #e5e5e5;
+          border: 1px solid var(--border);
           padding: 0 16px;
           font-size: 15px;
           width: 100%;
           box-sizing: border-box;
-          background: #fafafa;
+          background: var(--surface-alt);
+          color: var(--ink);
         }
         .wg-input:focus {
           outline: none;
-          border-color: #1a1a1a;
-          background: #fff;
+          border-color: var(--accent);
+          background: var(--surface);
         }
         .wg-input-code {
           text-align: center;
@@ -204,8 +205,8 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           text-transform: uppercase;
         }
         .wg-error {
-          background: #fdecec;
-          color: #c0392b;
+          background: var(--danger-soft);
+          color: var(--danger);
           border-radius: 10px;
           padding: 10px 12px;
           font-size: 13px;
@@ -214,8 +215,8 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
         .wg-spinner {
           width: 18px;
           height: 18px;
-          border: 2.5px solid rgba(255,255,255,0.35);
-          border-top-color: #fff;
+          border: 2.5px solid rgba(128,128,128,0.3);
+          border-top-color: currentColor;
           border-radius: 50%;
           animation: hmSpin 0.8s linear infinite;
         }
@@ -224,20 +225,20 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
         .wg-startmode-card {
           width: 100%;
           text-align: left;
-          border: 1px solid #e5e5e5;
+          border: 1px solid var(--border);
           border-radius: 18px;
           padding: 20px 22px;
           display: flex;
           align-items: center;
           gap: 16px;
-          background: #fff;
+          background: var(--surface);
           cursor: pointer;
           transition: border-color 0.15s, transform 0.1s, background 0.15s;
         }
-        .wg-startmode-card:hover { border-color: #1a1a1a; }
+        .wg-startmode-card:hover { border-color: var(--accent); }
         .wg-startmode-card:active { transform: scale(0.99); }
         .wg-startmode-card--disabled { cursor: not-allowed; opacity: 0.6; }
-        .wg-startmode-card--disabled:hover { border-color: #e5e5e5; }
+        .wg-startmode-card--disabled:hover { border-color: var(--border); }
         .wg-startmode-emoji { font-size: 32px; line-height: 1; flex-shrink: 0; }
         .wg-startmode-body { flex: 1; min-width: 0; }
         .wg-startmode-title-row { display: flex; align-items: center; gap: 8px; }
@@ -247,13 +248,13 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.04em;
-          color: #9b6b2e;
-          background: #fbeecf;
+          color: var(--pin);
+          background: var(--pin-soft);
           border-radius: 999px;
           padding: 3px 9px;
         }
-        .wg-startmode-desc { font-size: 13px; color: #6b6b6b; margin: 4px 0 0; line-height: 1.4; }
-        .wg-startmode-note { font-size: 12px; color: #9b9b9b; margin: 6px 0 0; font-style: italic; }
+        .wg-startmode-desc { font-size: 13px; color: var(--ink-soft); margin: 4px 0 0; line-height: 1.4; }
+        .wg-startmode-note { font-size: 12px; color: var(--ink-soft); margin: 6px 0 0; font-style: italic; }
 
         /* Template gallery */
         .wg-template-grid {
@@ -264,17 +265,17 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
         }
         .wg-template-card {
           text-align: left;
-          border: 1px solid #e5e5e5;
+          border: 1px solid var(--border);
           border-radius: 20px;
           padding: 22px;
           display: flex;
           flex-direction: column;
           gap: 12px;
-          background: #fff;
+          background: var(--surface);
           cursor: pointer;
           transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
         }
-        .wg-template-card:hover { border-color: #1a1a1a; transform: translateY(-2px); box-shadow: 0 8px 20px -12px rgba(0,0,0,0.25); }
+        .wg-template-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 20px -12px rgba(0,0,0,0.25); }
         .wg-template-card:active { transform: translateY(0); }
         .wg-template-badge {
           width: 52px;
@@ -286,13 +287,13 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           font-size: 26px;
         }
         .wg-template-name { font-size: 16px; font-weight: 700; margin: 0; }
-        .wg-template-desc { font-size: 13px; color: #6b6b6b; margin: 0; line-height: 1.45; flex: 1; }
+        .wg-template-desc { font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.45; flex: 1; }
         .wg-template-counts { display: flex; flex-wrap: wrap; gap: 6px; }
         .wg-template-count-pill {
           font-size: 11.5px;
           font-weight: 600;
-          color: #6b6b6b;
-          background: #f2f2f2;
+          color: var(--ink-soft);
+          background: var(--surface-alt);
           border-radius: 999px;
           padding: 4px 10px;
         }
@@ -304,7 +305,7 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.04em;
-          color: #6b6b6b;
+          color: var(--ink-soft);
           margin: 0 0 12px;
         }
         .wg-builder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
@@ -312,7 +313,7 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           display: flex;
           align-items: center;
           gap: 10px;
-          border: 1px solid #e5e5e5;
+          border: 1px solid var(--border);
           border-radius: 12px;
           padding: 10px 12px;
           cursor: pointer;
@@ -320,25 +321,25 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           font-weight: 600;
           user-select: none;
         }
-        .wg-check-row.checked { border-color: #1a1a1a; background: #f7f7f7; }
+        .wg-check-row.checked { border-color: var(--accent); background: var(--surface-alt); }
         .wg-check-box {
           width: 18px;
           height: 18px;
           border-radius: 6px;
-          border: 1.5px solid #c9c9c9;
+          border: 1.5px solid var(--border);
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          color: #fff;
+          color: var(--accent-ink);
         }
-        .wg-check-row.checked .wg-check-box { background: #1a1a1a; border-color: #1a1a1a; }
+        .wg-check-row.checked .wg-check-box { background: var(--accent); border-color: var(--accent); }
 
         /* Preview */
         .wg-preview-card {
           width: 100%;
-          background: #fafafa;
-          border: 1px solid #e5e5e5;
+          background: var(--surface-alt);
+          border: 1px solid var(--border);
           border-radius: 20px;
           padding: 26px;
           display: flex;
@@ -352,8 +353,8 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
           width: 22px;
           height: 22px;
           border-radius: 50%;
-          background: #1a1a1a;
-          color: #fff;
+          background: var(--accent);
+          color: var(--accent-ink);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -361,9 +362,9 @@ export function WelcomeGate({ onCreateHouse, onJoinHouse, onLogout, title, subti
         }
         .wg-preview-note {
           font-size: 13px;
-          color: #6b6b6b;
+          color: var(--ink-soft);
           line-height: 1.5;
-          background: #fbeecf;
+          background: var(--pin-soft);
           border-radius: 12px;
           padding: 12px 14px;
         }
@@ -575,7 +576,7 @@ function StartModeStep({ error, isSubmitting, onEmpty, onTemplate }) {
             <span className="wg-startmode-title-row"><span className="wg-startmode-title">{t("homeTemplates.chooseStart.emptyTitle")}</span></span>
             <p className="wg-startmode-desc">{t("homeTemplates.chooseStart.emptyDesc")}</p>
           </span>
-          {isSubmitting ? <div className="wg-spinner" style={{ borderTopColor: "#1a1a1a", borderColor: "rgba(0,0,0,0.15)" }} /> : null}
+          {isSubmitting ? <div className="wg-spinner" /> : null}
         </button>
 
         <button type="button" className="wg-startmode-card" onClick={onTemplate} disabled={isSubmitting}>
