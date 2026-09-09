@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { X, Check, Plus } from "lucide-react";
 import { useTranslation } from "../i18n";
 import { useDragToDismiss } from "../hooks/useDragToDismiss";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 /**
  * Selector de categoría en cuadrícula (bottom sheet). Cada categoría se pinta
@@ -21,6 +22,8 @@ import { useDragToDismiss } from "../hooks/useDragToDismiss";
 export function CategoryPickerModal({ title, value, options = [], onSelect, onClose, onAddNew }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const [pending, setPending] = useState(null);
 
   const pick = (next) => {
@@ -35,13 +38,21 @@ export function CategoryPickerModal({ title, value, options = [], onSelect, onCl
 
   return (
     <div className="hm-modal-overlay" onClick={() => { if (isSuppressingClick()) return; onClose(); }}>
-      <div className="hm-modal hm-scroll" onClick={(e) => e.stopPropagation()} style={sheetStyle}>
+      <div
+        ref={trapRef}
+        className="hm-modal hm-scroll"
+        onClick={(e) => e.stopPropagation()}
+        style={sheetStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
 
         <div style={{ padding: "0 24px 16px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-          <div className="hm-display" style={{ fontSize: 26, fontWeight: 700 }}>{title || t("addMovement.categoryLabel")}</div>
+          <div id={titleId} className="hm-display" style={{ fontSize: 26, fontWeight: 700 }}>{title || t("addMovement.categoryLabel")}</div>
           <button
             className="hm-btn hm-btn-ghost hm-justify-center"
             style={{ width: 36, height: 36, minHeight: 36, padding: 0, borderRadius: "50%", background: "var(--surface-alt)", flexShrink: 0 }}

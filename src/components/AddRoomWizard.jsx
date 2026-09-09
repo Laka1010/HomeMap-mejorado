@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { X, ChevronLeft, ChevronRight, Check, Home, UtensilsCrossed, BedDouble, Bath, Archive, Car, Briefcase } from "lucide-react";
 import { useTranslation } from "../i18n";
 import { useDragToDismiss } from "../hooks/useDragToDismiss";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 const ROOM_ICON_OPTIONS_BASE = [
   { key: "salon", emoji: "🏠", icon: Home },
@@ -16,6 +17,8 @@ const ROOM_ICON_OPTIONS_BASE = [
 export function AddRoomWizard({ onClose, onSave }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const ROOM_ICON_OPTIONS = ROOM_ICON_OPTIONS_BASE.map((opt) => ({ ...opt, label: t(`roomIcons.${opt.key}`) }));
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState("next");
@@ -52,7 +55,15 @@ export function AddRoomWizard({ onClose, onSave }) {
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
-      <div className="wizard-modal" onClick={(e) => e.stopPropagation()} style={sheetStyle}>
+      <div
+        ref={trapRef}
+        className="wizard-modal"
+        onClick={(e) => e.stopPropagation()}
+        style={sheetStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
@@ -69,7 +80,7 @@ export function AddRoomWizard({ onClose, onSave }) {
           <div className="wizard-content-wrapper" key={step}>
             {step === 1 && (
               <div className="wizard-step-container">
-                <h2 className="hm-display wizard-title">{t("wizard.addRoomNameTitle")}</h2>
+                <h2 id={titleId} className="hm-display wizard-title">{t("wizard.addRoomNameTitle")}</h2>
                 <div className="wizard-input-wrapper">
                   <input
                     type="text"
@@ -86,7 +97,7 @@ export function AddRoomWizard({ onClose, onSave }) {
 
             {step === 2 && (
               <div className="wizard-step-container">
-                <h2 className="hm-display wizard-title">{t("wizard.addRoomIconTitle")}</h2>
+                <h2 id={titleId} className="hm-display wizard-title">{t("wizard.addRoomIconTitle")}</h2>
                 <div className="icon-grid">
                   {ROOM_ICON_OPTIONS.map((opt) => (
                     <button
@@ -104,7 +115,7 @@ export function AddRoomWizard({ onClose, onSave }) {
 
             {step === 3 && (
               <div className="wizard-step-container">
-                <h2 className="hm-display wizard-title">{t("wizard.addRoomSummaryTitle")}</h2>
+                <h2 id={titleId} className="hm-display wizard-title">{t("wizard.addRoomSummaryTitle")}</h2>
                 <div className="summary-card">
                   <div className="summary-room-icon">
                     <span style={{ fontSize: 48 }}>

@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Wallet, HeartHandshake, Calendar } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { economyService } from "./services/economyService";
 import { accountsService } from "./services/accountsService";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { SelectField } from "../../components/SelectField";
 import { ToggleCard } from "../../components/MoneyEntry";
 import { toLocalDateString } from "../../utils/dates";
@@ -20,6 +21,8 @@ export function PayBillModal({ bill, spaceId, spaces, onClose, onPaid, onLogPaym
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const [mode, setMode] = useState(null); // null | 'account' | 'contribution'
   const [householdAccounts, setHouseholdAccounts] = useState([]);
   const [contributionAccounts, setContributionAccounts] = useState([]);
@@ -73,13 +76,21 @@ export function PayBillModal({ bill, spaceId, spaces, onClose, onPaid, onLogPaym
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="hm-modal hm-scroll"
+        style={{ maxWidth: 440, ...sheetStyle }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("bills.close")}>✕</button>
-          <h3 className="hm-display hm-modal-title">{bill.name}</h3>
+          <h3 id={titleId} className="hm-display hm-modal-title">{bill.name}</h3>
         </div>
         <div className="hm-modal-body">
           <div style={{ textAlign: "center", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>{formatCurrency(bill.amount)}</div>

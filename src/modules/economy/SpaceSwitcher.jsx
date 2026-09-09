@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { ChevronDown, Plus, Check, Lock, X } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { financialSpacesService } from "./services/financialSpacesService";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 /**
  * Selector de Workspace: un botón único (icono + nombre + chevron) que abre
@@ -20,6 +21,8 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
   const [lockedSpaces, setLockedSpaces] = useState([]);
   const closePicker = () => setShowPicker(false);
   const { handleRef: pickerHandleRef, handleMouseDown: pickerHandleMouseDown, isSuppressingClick: isPickerSuppressingClick, sheetStyle: pickerSheetStyle } = useDragToDismiss(closePicker);
+  const pickerTrapRef = useFocusTrap({ onEscape: closePicker, active: showPicker });
+  const pickerTitleId = useId();
 
   const activeSpace = spaces.find((s) => s.id === activeSpaceId);
 
@@ -71,13 +74,21 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
 
       {showPicker && (
         <div className="hm-modal-overlay" onClick={(e) => { if (isPickerSuppressingClick()) return; closePicker(e); }}>
-          <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...pickerSheetStyle }} onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={pickerTrapRef}
+            className="hm-modal hm-scroll"
+            style={{ maxWidth: 440, ...pickerSheetStyle }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={pickerTitleId}
+          >
             <div ref={pickerHandleRef} className="hm-modal-handle-wrap" onMouseDown={pickerHandleMouseDown}>
               <div className="hm-modal-handle" />
             </div>
             <div className="hm-modal-header">
               <button className="hm-modal-close" onClick={closePicker} aria-label={t("spaces.cancel")}><X size={20} /></button>
-              <h3 className="hm-display hm-modal-title">{t("spaces.workspaceLabel")}</h3>
+              <h3 id={pickerTitleId} className="hm-display hm-modal-title">{t("spaces.workspaceLabel")}</h3>
             </div>
             <div className="hm-modal-body">
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -183,6 +194,8 @@ export function SpaceSwitcher({ spaces, houseId, activeSpaceId, onChange, onSpac
 export function CreateSharedSpaceModal({ houseId, onClose, onCreated }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -202,13 +215,21 @@ export function CreateSharedSpaceModal({ houseId, onClose, onCreated }) {
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="hm-modal hm-scroll"
+        style={{ maxWidth: 440, ...sheetStyle }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("spaces.cancel")}><X size={20} /></button>
-          <h3 className="hm-display hm-modal-title">{t("spaces.newSharedSpaceTitle")}</h3>
+          <h3 id={titleId} className="hm-display hm-modal-title">{t("spaces.newSharedSpaceTitle")}</h3>
         </div>
         <div className="hm-modal-body">
           <label className="hm-label">{t("spaces.nameLabel")}</label>

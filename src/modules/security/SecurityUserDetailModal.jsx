@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { X, Smartphone, Monitor, LogOut } from "lucide-react";
 import { securityAdminService } from "./services/securityAdminService";
 import { AccountStatusBadge } from "./SeverityBadge";
 import { SecuritySpinner } from "./SecuritySpinner";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 /**
  * Detalle de un usuario + las 7 acciones de administración. Cada botón
@@ -15,6 +16,8 @@ export function SecurityUserDetailModal({ userId, onClose, onChanged }) {
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const [pending, setPending] = useState(null); // { action, label, requiresReason, danger }
   const [reason, setReason] = useState("");
 
@@ -77,9 +80,16 @@ export function SecurityUserDetailModal({ userId, onClose, onChanged }) {
 
   return (
     <div className="hm-modal-overlay" onClick={onClose}>
-      <div className="hm-modal sc-user-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="hm-modal sc-user-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div className="sc-modal-header">
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Security User</div>
+          <div id={titleId} style={{ fontWeight: 700, fontSize: 16 }}>Security User</div>
           <button className="hm-btn hm-btn-ghost hm-square-54 hm-justify-center" onClick={onClose} aria-label="Cerrar">
             <X size={18} />
           </button>

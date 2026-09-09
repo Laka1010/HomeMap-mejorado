@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "../../i18n";
 import { transfersService } from "./services/transfersService";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { SelectField } from "../../components/SelectField";
 
 /**
@@ -14,6 +15,8 @@ import { SelectField } from "../../components/SelectField";
 export function TransferModal({ spaceId, spaces, accounts, initialToSpaceId, onClose, onDone }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const otherSpaces = (spaces || []).filter((s) => s.id !== spaceId);
   const canTransfer = accounts.length >= 2;
   const canContribute = otherSpaces.length > 0 && accounts.length >= 1;
@@ -72,13 +75,21 @@ export function TransferModal({ spaceId, spaces, accounts, initialToSpaceId, onC
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="hm-modal hm-scroll"
+        style={{ maxWidth: 440, ...sheetStyle }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("transfers.cancel")}>✕</button>
-          <h3 className="hm-display hm-modal-title">{t("transfers.title")}</h3>
+          <h3 id={titleId} className="hm-display hm-modal-title">{t("transfers.title")}</h3>
         </div>
         <div className="hm-modal-body">
           {canTransfer && canContribute && (

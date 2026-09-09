@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { X, Check } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { getCurrenciesList } from "../../utils/currencyUtils";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 /**
  * Selector de moneda a pantalla completa (bottom sheet). Se abre desde la fila
@@ -12,6 +13,8 @@ import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 export function CurrencyPickerModal({ currency, onSelect, onClose }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const [pendingCode, setPendingCode] = useState(null);
   const currencies = getCurrenciesList();
 
@@ -27,14 +30,22 @@ export function CurrencyPickerModal({ currency, onSelect, onClose }) {
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(); }}>
-      <div className="hm-modal hm-scroll" onClick={(e) => e.stopPropagation()} style={sheetStyle}>
+      <div
+        ref={trapRef}
+        className="hm-modal hm-scroll"
+        onClick={(e) => e.stopPropagation()}
+        style={sheetStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
 
         <div style={{ padding: "0 24px 16px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
           <div>
-            <div className="hm-display" style={{ fontSize: 26, fontWeight: 700 }}>{t("settings.currency")}</div>
+            <div id={titleId} className="hm-display" style={{ fontSize: 26, fontWeight: 700 }}>{t("settings.currency")}</div>
             <div style={{ marginTop: 4, color: "var(--ink-soft)", fontSize: 14 }}>{t("settings.currencyPickerSubtitle")}</div>
           </div>
           <button

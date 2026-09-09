@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   ArrowLeft, Shield, Repeat, UserMinus, Package, ShoppingCart, CheckSquare,
   Wallet, FileText, Home as HomeIcon, Calendar, Check, X, PiggyBank, Send, Pencil, Archive,
@@ -7,6 +7,7 @@ import { useTranslation } from "../../i18n";
 import { memberStatsService } from "../../services/memberStatsService";
 import { SelectField } from "../SelectField";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 /**
  * Información del miembro — solo Owner/Admin puede llegar aquí (ver
@@ -340,6 +341,8 @@ export function MemberDetailScreen({
 function ChildSpaceNameModal({ title, confirmLabel, initialValue = "", onClose, onSubmit }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const [name, setName] = useState(initialValue);
 
   const submit = () => {
@@ -350,13 +353,21 @@ function ChildSpaceNameModal({ title, confirmLabel, initialValue = "", onClose, 
 
   return (
     <div className="hm-modal-overlay" style={{ zIndex: 1400 }} onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="hm-modal hm-scroll"
+        style={{ maxWidth: 440, ...sheetStyle }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("common.cancel")}><X size={20} /></button>
-          <h3 className="hm-display hm-modal-title">{title}</h3>
+          <h3 id={titleId} className="hm-display hm-modal-title">{title}</h3>
         </div>
         <div className="hm-modal-body">
           <label className="hm-label">{t("memberDetail.childSpaceNameLabel")}</label>
@@ -382,6 +393,8 @@ function ChildSpaceNameModal({ title, confirmLabel, initialValue = "", onClose, 
 function FundChildSpaceModal({ childName, accounts = [], currencyCode = "EUR", onClose, onSubmit }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const [accountId, setAccountId] = useState(accounts[0]?.id || "");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -391,13 +404,21 @@ function FundChildSpaceModal({ childName, accounts = [], currencyCode = "EUR", o
 
   return (
     <div className="hm-modal-overlay" style={{ zIndex: 1400 }} onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="hm-modal hm-scroll"
+        style={{ maxWidth: 440, ...sheetStyle }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("common.cancel")}><X size={20} /></button>
-          <h3 className="hm-display hm-modal-title">{t("memberDetail.childSpaceFundTitle", { name: childName })}</h3>
+          <h3 id={titleId} className="hm-display hm-modal-title">{t("memberDetail.childSpaceFundTitle", { name: childName })}</h3>
         </div>
         <div className="hm-modal-body">
           {accounts.length === 0 ? (

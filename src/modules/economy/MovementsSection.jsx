@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Plus, TrendingUp, TrendingDown, ArrowLeftRight, ShoppingCart, PenSquare, Wallet, StickyNote, Calendar } from "lucide-react";
 import { economyService } from "./services/economyService";
 import { accountsService } from "./services/accountsService";
@@ -9,6 +9,7 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, categoryLabel,
 import { CategoryField } from "./CategoryField";
 import { SelectField } from "../../components/SelectField";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { toLocalDateString } from "../../utils/dates";
 import { AmountHero, FieldGroup, FieldRow, FieldTextRow, ToggleCard } from "../../components/MoneyEntry";
 
@@ -135,6 +136,8 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
   };
 
   const { handleRef: detailHandleRef, handleMouseDown: detailHandleMouseDown, isSuppressingClick: isDetailSuppressingClick, sheetStyle: detailSheetStyle } = useDragToDismiss(closeDetail);
+  const detailTrapRef = useFocusTrap({ onEscape: closeDetail, active: showDetail && !!selected });
+  const detailTitleId = useId();
 
   const saveEdit = async () => {
     if (!selected) return;
@@ -340,13 +343,21 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
 
       {showDetail && selected && (
         <div className="hm-modal-overlay" onClick={(e) => { if (isDetailSuppressingClick()) return; closeDetail(e); }}>
-          <div className="hm-modal hm-scroll" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, ...detailSheetStyle }}>
+          <div
+            ref={detailTrapRef}
+            className="hm-modal hm-scroll"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 480, ...detailSheetStyle }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={detailTitleId}
+          >
             <div ref={detailHandleRef} className="hm-modal-handle-wrap" onMouseDown={detailHandleMouseDown}>
               <div className="hm-modal-handle" />
             </div>
             <div className="hm-modal-header">
               <button className="hm-modal-close" onClick={closeDetail} aria-label={t("common.close")}>✕</button>
-              <h3 className="hm-display hm-modal-title">{selected.name}</h3>
+              <h3 id={detailTitleId} className="hm-display hm-modal-title">{selected.name}</h3>
             </div>
             <div className="hm-modal-body">
               {!isEditing ? (
@@ -453,6 +464,8 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
 function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated, onLogPaymentToCalendar }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const categories = type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
@@ -507,13 +520,21 @@ function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated,
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="hm-modal hm-scroll"
+        style={{ maxWidth: 440, ...sheetStyle }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("movements.cancel")}>✕</button>
-          <h3 className="hm-display hm-modal-title">{t("movements.add")}</h3>
+          <h3 id={titleId} className="hm-display hm-modal-title">{t("movements.add")}</h3>
         </div>
         <div className="hm-modal-body">
           <AmountHero value={amount} onChange={setAmount} />

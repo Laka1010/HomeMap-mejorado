@@ -9,11 +9,13 @@ import { StepDetails } from "./wizard/StepDetails";
 import { StepSummary } from "./wizard/StepSummary";
 import { useTranslation } from "../i18n";
 import { useDragToDismiss } from "../hooks/useDragToDismiss";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { toLocalDateString } from "../utils/dates";
 
 export function AddObjectWizard({ state, onClose, onSave, defaults = {} }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
   // Si ya estamos dentro de una habitación/zona/caja, no hace falta preguntar dónde está.
   const hasLocationContext = Boolean(defaults.roomId);
   const [STEPS] = useState(() => {
@@ -68,7 +70,15 @@ export function AddObjectWizard({ state, onClose, onSave, defaults = {} }) {
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
-      <div className="wizard-modal" onClick={(e) => e.stopPropagation()} style={sheetStyle}>
+      <div
+        ref={trapRef}
+        className="wizard-modal"
+        onClick={(e) => e.stopPropagation()}
+        style={sheetStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("common.dialogLabel")}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>

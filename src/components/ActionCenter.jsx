@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { Plus, Box, ShoppingCart, CheckSquare, CreditCard, Wallet, DollarSign, BoxSelect } from "lucide-react";
 import { useDragToDismiss } from "../hooks/useDragToDismiss";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useTranslation } from "../i18n";
 
 // ActionCenter: Floating Action Button + Bottom Sheet
@@ -118,67 +119,93 @@ export function ActionCenter({ currentTab, openModal, currentHome, canSeeEconomy
 
       {/* Bottom sheet overlay */}
       {open && (
-        <div
-          className="hm-modal-overlay"
-          onClick={() => { if (!isSuppressingClick()) setOpen(false); }}
-        >
-          <div
-            className="hm-pop"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: 920,
-              borderTopLeftRadius: 28,
-              borderTopRightRadius: 28,
-              background: "var(--surface)",
-              paddingBottom: 20,
-              boxShadow: "0 -12px 40px rgba(0,0,0,0.18)",
-              zIndex: 1401,
-              ...sheetStyle,
-            }}
-          >
-            <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
-              <div className="hm-modal-handle" />
-            </div>
-            <div style={{ padding: "0 20px", display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>+</div>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>{t("actionCenter.heading")}</div>
-                <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("actionCenter.subtitle")}</div>
-              </div>
-              <div style={{ marginLeft: "auto" }}>
-                <button className="hm-btn hm-btn-ghost" onClick={() => setOpen(false)}>{t("actionCenter.close")}</button>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 12, padding: "0 20px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-                {orderedActions().map((a, i) => {
-                  if (a.separator) return <div key={`sep-${i}`} style={{ gridColumn: "1/-1", height: 12 }} />;
-
-                  return (
-                    <button
-                      key={a.key}
-                      onClick={() => openAction(a.modal, a.key === "object" ? { roomId: currentHome?.rooms?.[0]?.id } : undefined)}
-                      className="hm-card hm-tap"
-                      style={{ display: "flex", gap: 12, alignItems: "center", padding: 14, borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface)" }}
-                    >
-                      <div style={{ width: 52, height: 52, borderRadius: 12, background: "rgba(0,0,0,0.03)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
-                        <span style={{ color: a.color }}>{a.icon}</span>
-                      </div>
-
-                      <div style={{ textAlign: "left" }}>
-                        <div style={{ fontSize: 15, fontWeight: 700 }}>{a.title}</div>
-                        <div style={{ fontSize: 13, color: "var(--ink-soft)", marginTop: 4 }}>{a.subtitle}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
+        <ActionSheet
+          onClose={() => setOpen(false)}
+          isSuppressingClick={isSuppressingClick}
+          handleRef={handleRef}
+          handleMouseDown={handleMouseDown}
+          sheetStyle={sheetStyle}
+          actions={orderedActions()}
+          openAction={openAction}
+          currentHome={currentHome}
+        />
       )}
     </>
+  );
+}
+
+// Extraído a su propio componente para que solo se monte cuando la hoja está
+// abierta: useFocusTrap atrapa el foco al montar, así que necesita montarse
+// junto con la hoja, no vivir siempre en <ActionCenter>.
+function ActionSheet({ onClose, isSuppressingClick, handleRef, handleMouseDown, sheetStyle, actions, openAction, currentHome }) {
+  const { t } = useTranslation();
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
+
+  return (
+    <div
+      className="hm-modal-overlay"
+      onClick={() => { if (!isSuppressingClick()) onClose(); }}
+    >
+      <div
+        ref={trapRef}
+        className="hm-pop"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        style={{
+          width: "100%",
+          maxWidth: 920,
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          background: "var(--surface)",
+          paddingBottom: 20,
+          boxShadow: "0 -12px 40px rgba(0,0,0,0.18)",
+          zIndex: 1401,
+          ...sheetStyle,
+        }}
+      >
+        <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
+          <div className="hm-modal-handle" />
+        </div>
+        <div style={{ padding: "0 20px", display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>+</div>
+          <div>
+            <div id={titleId} style={{ fontSize: 16, fontWeight: 700 }}>{t("actionCenter.heading")}</div>
+            <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("actionCenter.subtitle")}</div>
+          </div>
+          <div style={{ marginLeft: "auto" }}>
+            <button className="hm-btn hm-btn-ghost" onClick={onClose}>{t("actionCenter.close")}</button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, padding: "0 20px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+            {actions.map((a, i) => {
+              if (a.separator) return <div key={`sep-${i}`} style={{ gridColumn: "1/-1", height: 12 }} />;
+
+              return (
+                <button
+                  key={a.key}
+                  onClick={() => openAction(a.modal, a.key === "object" ? { roomId: currentHome?.rooms?.[0]?.id } : undefined)}
+                  className="hm-card hm-tap"
+                  style={{ display: "flex", gap: 12, alignItems: "center", padding: 14, borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface)" }}
+                >
+                  <div style={{ width: 52, height: 52, borderRadius: 12, background: "rgba(0,0,0,0.03)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
+                    <span style={{ color: a.color }}>{a.icon}</span>
+                  </div>
+
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{a.title}</div>
+                    <div style={{ fontSize: 13, color: "var(--ink-soft)", marginTop: 4 }}>{a.subtitle}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

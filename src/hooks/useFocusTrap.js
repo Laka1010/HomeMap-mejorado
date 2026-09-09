@@ -23,8 +23,13 @@ const FOCUSABLE = [
  * - Tab / Shift+Tab: ciclan dentro del diálogo, sin salir.
  * - Escape: llama a `onEscape` si se pasa.
  * - Al desmontar: devuelve el foco al elemento que lo tenía antes.
+ *
+ * `active` (por defecto `true`): para las hojas que se renderizan de forma
+ * condicional dentro del mismo componente que guarda su estado de apertura
+ * (no montadas/desmontadas por el padre). La trampa se arma al pasar a
+ * `true` y se desarma al volver a `false`, devolviendo el foco.
  */
-export function useFocusTrap({ onEscape } = {}) {
+export function useFocusTrap({ onEscape, active = true } = {}) {
   const containerRef = useRef(null);
   const previouslyFocused = useRef(null);
   const onEscapeRef = useRef(onEscape);
@@ -35,6 +40,8 @@ export function useFocusTrap({ onEscape } = {}) {
   }, []);
 
   useEffect(() => {
+    if (!active) return undefined;
+
     previouslyFocused.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
@@ -93,7 +100,7 @@ export function useFocusTrap({ onEscape } = {}) {
         toRestore.focus();
       }
     };
-  }, []);
+  }, [active]);
 
   return setRef;
 }

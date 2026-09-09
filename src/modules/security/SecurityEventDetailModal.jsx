@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { X } from "lucide-react";
 import { securityAdminService } from "./services/securityAdminService";
 import { SeverityBadge } from "./SeverityBadge";
 import { SecuritySpinner } from "./SecuritySpinner";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 /**
  * Detalle de un evento. Solo muestra lo que la RPC ya ha decidido entregar
@@ -15,6 +16,8 @@ import { SecuritySpinner } from "./SecuritySpinner";
 export function SecurityEventDetailModal({ eventId, onClose }) {
   const [event, setEvent] = useState(null);
   const [error, setError] = useState("");
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
 
   useEffect(() => {
     let cancelled = false;
@@ -26,9 +29,16 @@ export function SecurityEventDetailModal({ eventId, onClose }) {
 
   return (
     <div className="hm-modal-overlay" onClick={onClose}>
-      <div className="hm-modal sc-event-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="hm-modal sc-event-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div className="sc-modal-header">
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Security Event</div>
+          <div id={titleId} style={{ fontWeight: 700, fontSize: 16 }}>Security Event</div>
           <button className="hm-btn hm-btn-ghost hm-square-54 hm-justify-center" onClick={onClose} aria-label="Cerrar">
             <X size={18} />
           </button>

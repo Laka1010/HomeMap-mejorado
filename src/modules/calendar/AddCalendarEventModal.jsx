@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { repeatLabelKey } from "../tasks/taskRepeat";
 import { SelectField } from "../../components/SelectField";
 
@@ -39,6 +40,8 @@ function stamp(dateStr, timeStr, allDay) {
 export function AddCalendarEventModal({ initialDate, event, onClose, onSave, onDelete }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const isEdit = Boolean(event);
 
   const [data, setData] = useState(() => {
@@ -129,14 +132,22 @@ export function AddCalendarEventModal({ initialDate, event, onClose, onSave, onD
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
-      <div className="cev-sheet" onClick={(e) => e.stopPropagation()} style={sheetStyle}>
+      <div
+        ref={trapRef}
+        className="cev-sheet"
+        onClick={(e) => e.stopPropagation()}
+        style={sheetStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
 
         <div className="cev-navbar">
           <button className="cev-navbtn" onClick={onClose}>{t("calendarEvent.cancel")}</button>
-          <div className="cev-navtitle">{isEdit ? t("calendarEvent.editTitle") : t("calendarEvent.newTitle")}</div>
+          <div id={titleId} className="cev-navtitle">{isEdit ? t("calendarEvent.editTitle") : t("calendarEvent.newTitle")}</div>
           <button className="cev-navbtn cev-navbtn--primary" onClick={handleSave} disabled={!canSave}>
             {isEdit ? t("calendarEvent.save") : t("calendarEvent.add")}
           </button>

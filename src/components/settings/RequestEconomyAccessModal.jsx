@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Lock } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { economyAccessService } from "../../modules/economy/services/economyAccessService";
 
 /**
@@ -13,6 +14,8 @@ import { economyAccessService } from "../../modules/economy/services/economyAcce
 export function RequestEconomyAccessModal({ ownerUserId, ownerName, onClose, onSent }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
@@ -33,13 +36,21 @@ export function RequestEconomyAccessModal({ ownerUserId, ownerName, onClose, onS
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose?.(e); }}>
-      <div className="hm-modal" style={{ maxWidth: 420, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="hm-modal"
+        style={{ maxWidth: 420, ...sheetStyle }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("common.close")}>✕</button>
-          <h3 className="hm-display hm-modal-title">{t("economyAccess.requestModalTitle", { name: ownerName })}</h3>
+          <h3 id={titleId} className="hm-display hm-modal-title">{t("economyAccess.requestModalTitle", { name: ownerName })}</h3>
         </div>
         <div className="hm-modal-body">
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 20 }}>

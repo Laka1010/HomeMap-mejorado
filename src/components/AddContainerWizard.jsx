@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { X, ChevronLeft, ChevronRight, Check, MapPin, Box } from "lucide-react";
 import { useTranslation } from "../i18n";
 import { useDragToDismiss } from "../hooks/useDragToDismiss";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 const BOX_COLORS = ["#3D5A80", "#C98A3E", "#6B7A5E", "#8E5B72", "#4C7A8B", "#8B6B4C"];
 
 export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const trapRef = useFocusTrap({ onEscape: onClose });
+  const titleId = useId();
   const [direction, setDirection] = useState("next");
   const [data, setData] = useState({
     name: "",
@@ -56,7 +59,15 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
-      <div className="wizard-modal" onClick={(e) => e.stopPropagation()} style={sheetStyle}>
+      <div
+        ref={trapRef}
+        className="wizard-modal"
+        onClick={(e) => e.stopPropagation()}
+        style={sheetStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
@@ -73,7 +84,7 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
           <div className="wizard-content-wrapper" key={step}>
             {currentKey === "name" && (
               <div className="wizard-step-container">
-                <h2 className="hm-display wizard-title">{t("wizard.addContainerNameTitle")}</h2>
+                <h2 id={titleId} className="hm-display wizard-title">{t("wizard.addContainerNameTitle")}</h2>
                 <div className="wizard-input-wrapper">
                   <input
                     type="text"
@@ -90,7 +101,7 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
 
             {currentKey === "location" && (
               <div className="wizard-step-container">
-                <h2 className="hm-display wizard-title">{t("wizard.addContainerLocationTitle")}</h2>
+                <h2 id={titleId} className="hm-display wizard-title">{t("wizard.addContainerLocationTitle")}</h2>
 
                 {locLevel === "room" ? (
                   <div className="selection-grid">
@@ -129,7 +140,7 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
 
             {currentKey === "color" && (
               <div className="wizard-step-container">
-                <h2 className="hm-display wizard-title">{t("wizard.addContainerColorTitle")}</h2>
+                <h2 id={titleId} className="hm-display wizard-title">{t("wizard.addContainerColorTitle")}</h2>
                 <div className="color-grid">
                   {BOX_COLORS.map((c) => (
                     <button
@@ -146,7 +157,7 @@ export function AddContainerWizard({ state, onClose, onSave, defaults = {} }) {
 
             {currentKey === "summary" && (
               <div className="wizard-step-container">
-                <h2 className="hm-display wizard-title">{t("wizard.addContainerSummaryTitle")}</h2>
+                <h2 id={titleId} className="hm-display wizard-title">{t("wizard.addContainerSummaryTitle")}</h2>
                 <div className="summary-card">
                   <div className="summary-box-preview" style={{ background: data.color }}>
                     <Box size={40} color="#fff" />
