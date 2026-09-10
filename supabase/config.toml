@@ -34,3 +34,13 @@ verify_jwt = false
 # public.house_calendar_feeds. Solo LEE public.calendar_events de ese hogar
 # (nunca datos de economía ni de otros hogares) y solo responde a GET/HEAD.
 verify_jwt = false
+
+[functions.export-security-to-sheet]
+# Deliberadamente false: la llama el cron de Postgres (pg_cron ->
+# _run_security_sheet_export -> net.http_post), no un usuario, así que no hay
+# JWT que verificar. La autorización es el secreto compartido de la cabecera
+# x-export-trigger-secret, comprobado en tiempo constante contra
+# EXPORT_TRIGGER_SECRET. La función solo LEE las vistas security_sheet_*_v con
+# el service_role y escribe su propia tabla de marcas de agua; no expone nada
+# al exterior salvo el POST a la Google Sheet configurada.
+verify_jwt = false
