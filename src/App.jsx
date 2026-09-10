@@ -22,7 +22,6 @@ const AccountHub = lazy(() => import("./components/settings/AccountHub").then((m
 const MemberDetailScreen = lazy(() => import("./components/settings/MemberDetailScreen").then((m) => ({ default: m.MemberDetailScreen })));
 const SecurityCenter = lazy(() => import("./modules/security/SecurityCenter").then((m) => ({ default: m.SecurityCenter })));
 import { AppHeader } from "./components/AppHeader";
-import { NotificationSection } from "./components/settings/NotificationSection";
 import { AddObjectWizard } from "./components/AddObjectWizard";
 import { AddRoomWizard } from "./components/AddRoomWizard";
 import { AddContainerWizard } from "./components/AddContainerWizard";

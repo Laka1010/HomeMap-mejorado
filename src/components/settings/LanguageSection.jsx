@@ -1,4 +1,3 @@
-import { Globe } from "lucide-react";
 import { useTranslation } from "../../i18n";
 
 const options = [
@@ -10,19 +9,13 @@ const options = [
 export function LanguageSection({ locale, onChange }) {
   const { t } = useTranslation();
   return (
-    <section className="hm-card hm-card--p20" style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 40, height: 40, minWidth: 40, minHeight: 40, flexShrink: 0, borderRadius: 14, background: "var(--accent-soft)", display: "grid", placeItems: "center", color: "var(--accent)" }}>
-          <Globe size={20} />
-        </div>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{t("settings.languageSection")}</h2>
-      </div>
-
-      <div style={{ display: "grid", gap: 10 }}>
+    <div>
+      <h1 className="hm-display" style={{ fontSize: 24, fontWeight: 700, margin: "8px 0 20px" }}>{t("settings.languageSection")}</h1>
+      <div className="hm-card hm-card--p20" style={{ display: "grid", gap: 10, maxWidth: 480 }}>
         {options.map((option) => (
           <button
             key={option.value}
-            className={"hm-btn hm-btn-soft" + (locale === option.value ? "" : "")}
+            className="hm-btn hm-btn-soft"
             onClick={() => onChange(option.value)}
             style={{
               justifyContent: "space-between",
@@ -35,6 +28,6 @@ export function LanguageSection({ locale, onChange }) {
           </button>
         ))}
       </div>
-    </section>
+    </div>
   );
 }

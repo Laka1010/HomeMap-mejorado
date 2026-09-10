@@ -315,13 +315,18 @@ function HubRow({ icon: Icon, label, onClick, href, kind = "nav", danger, disabl
   const content = (
     <>
       <IconBadge icon={Icon} color={danger ? "var(--danger)" : sectionColor} />
-      <span style={{ flex: 1, fontSize: 15, color: danger ? "var(--danger)" : "var(--ink)", fontWeight: 500 }}>{label}</span>
-      {trailingText && <span style={{ fontSize: 13, color: "var(--ink-soft)", fontWeight: 500 }}>{trailingText}</span>}
+      <span style={{ flex: 1, fontSize: 15, color: danger ? "var(--danger)" : "var(--ink)", fontWeight: 400 }}>{label}</span>
+      {trailingText && <span style={{ fontSize: 13, color: "var(--ink-soft)", fontWeight: 400 }}>{trailingText}</span>}
       {trailingIcon}
     </>
   );
+  // fontFamily: "inherit" — <button> no hereda la tipografía del documento por
+  // defecto, así que sin esto las filas <button> ("Idioma", "Compartir casa"...)
+  // salían en la fuente del sistema y las filas <a> ("Términos") o la fila
+  // custom de Apariencia en Inter, y unas se veían más gruesas que otras.
   const style = {
     display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 16px",
+    fontFamily: "inherit",
     background: "transparent", border: "none", borderBottom: isLast ? "none" : "1px solid var(--border)",
     cursor: disabled ? "not-allowed" : "pointer", textAlign: "left", textDecoration: "none",
     opacity: disabled ? 0.6 : 1,
@@ -342,7 +347,7 @@ function AppearanceRow({ theme, onChange, t, isLast }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 16px", borderBottom: isLast ? "none" : "1px solid var(--border)" }}>
       <IconBadge icon={Palette} color="var(--chart-income)" />
-      <span style={{ flex: 1, fontSize: 15, fontWeight: 500 }}>{t("settings.appearanceSection")}</span>
+      <span style={{ flex: 1, fontSize: 15, color: "var(--ink)", fontWeight: 400 }}>{t("settings.appearanceSection")}</span>
       <div style={{ display: "flex", background: "var(--surface-alt)", borderRadius: 999, padding: 3 }}>
         {APPEARANCE_OPTIONS.map((option) => {
           const Icon = option.icon;

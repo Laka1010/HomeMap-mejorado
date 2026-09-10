@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LifeBuoy, Copy, Check, MessageCircle } from "lucide-react";
+import { Copy, Check, MessageCircle } from "lucide-react";
 import { useTranslation } from "../../i18n";
 
 const SUPPORT_EMAIL = "havenhome.app1@gmail.com";
@@ -22,15 +22,9 @@ export function SupportSection() {
   };
 
   return (
-    <section className="hm-card hm-card--p20" style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 40, height: 40, minWidth: 40, minHeight: 40, flexShrink: 0, borderRadius: 14, background: "var(--accent-soft)", display: "grid", placeItems: "center", color: "var(--accent)" }}>
-          <LifeBuoy size={20} />
-        </div>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{t("settings.supportSection")}</h2>
-      </div>
-
-      <div className="hm-card-flat hm-card--p16" style={{ display: "grid", gap: 12 }}>
+    <div>
+      <h1 className="hm-display" style={{ fontSize: 24, fontWeight: 700, margin: "8px 0 20px" }}>{t("settings.supportSection")}</h1>
+      <div className="hm-card hm-card--p20" style={{ display: "grid", gap: 12, maxWidth: 480 }}>
         <div style={{ fontWeight: 700, fontSize: 14 }}>{t("settings.supportPanelTitle")}</div>
         <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("settings.supportPanelDescription")}</div>
         <div className="hm-mono" style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)" }}>{SUPPORT_EMAIL}</div>
@@ -51,6 +45,6 @@ export function SupportSection() {
           <MessageCircle size={16} /> {t("settings.supportDiscordButton")}
         </a>
       </div>
-    </section>
+    </div>
   );
 }
