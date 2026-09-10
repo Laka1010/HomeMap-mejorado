@@ -4,7 +4,8 @@ import { economyGoalsService } from "./services/economyGoalsService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { normalizeText } from "../../utils/textMatch";
-import { EXPENSE_CATEGORIES, categoryLabel, categoryEmoji } from "./economyCategories";
+import { categoryLabel, categoryEmoji } from "./economyCategories";
+import { useEconomyCategories } from "./EconomyCategoriesContext";
 import { CategoryField } from "./CategoryField";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
 
@@ -123,8 +124,9 @@ function GoalRow({ goal, current, onDelete, formatCurrency, t }) {
 function AddGoalModal({ onCreate, onClose }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
+  const { expense: expenseCategories } = useEconomyCategories();
   const [type, setType] = useState("spending_limit");
-  const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
+  const [category, setCategory] = useState(expenseCategories[0]);
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -180,7 +182,7 @@ function AddGoalModal({ onCreate, onClose }) {
             <>
               <label className="hm-label">{t("goals.categoryLabel")}</label>
               <CategoryField
-                categories={EXPENSE_CATEGORIES}
+                categories={expenseCategories}
                 value={category}
                 onChange={setCategory}
                 title={t("goals.categoryLabel")}

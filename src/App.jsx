@@ -50,6 +50,7 @@ import { shoppingService } from "./services/shoppingService";
 import { shoppingListsService } from "./services/shoppingListsService";
 import { shoppingPurchasesService } from "./services/shoppingPurchasesService";
 import { categoriesService } from "./services/categoriesService";
+import { economyCategoriesService } from "./services/economyCategoriesService";
 import { activityService } from "./services/activityService";
 import { economyService } from "./modules/economy/services/economyService";
 import { financialSpacesService } from "./modules/economy/services/financialSpacesService";
@@ -79,7 +80,8 @@ import { useHomeNavigation } from "./hooks/useHomeNavigation";
 import { NotificationCenter } from "./components/NotificationCenter";
 import { buildNotificationActionHandlers } from "./notifications/notificationActions";
 import { PRIORITY_LEVELS } from "./modules/shopping/shoppingMeta";
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "./modules/economy/economyCategories";
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, defaultCategoryFor, categoryLabel } from "./modules/economy/economyCategories";
+import { EconomyCategoriesProvider, useEconomyCategories } from "./modules/economy/EconomyCategoriesContext";
 import { normalizeText, fuzzyMatch, fuzzyMatchAny } from "./utils/textMatch";
 import { toLocalDateString } from "./utils/dates";
 import { safeRandomUUID } from "./utils/uuid";
@@ -584,6 +586,7 @@ function buildEmptyState(t) {
     activity,
     members,
     categories: DEFAULT_CATEGORIES,
+    economyCategories: { expense: EXPENSE_CATEGORIES, income: INCOME_CATEGORIES },
   };
 }
 
@@ -767,6 +770,31 @@ function useHomeMapState(currentHomeId, userId) {
       }
 
       try {
+        const remoteEconomyCategories = await economyCategoriesService.fetch(currentHomeId);
+        if (cancelled) return;
+        const hasRemote = remoteEconomyCategories.expense.length > 0 || remoteEconomyCategories.income.length > 0;
+        if (!hasRemote) {
+          // Primer arranque de este hogar: sembrar el catálogo por defecto para
+          // que a partir de ahora se edite sobre filas reales, no constantes.
+          // seedDefaults es idempotente (ON CONFLICT DO NOTHING) — si el efecto
+          // se ejecuta dos veces (StrictMode) no duplica.
+          await economyCategoriesService.seedDefaults(currentHomeId, EXPENSE_CATEGORIES, INCOME_CATEGORIES).catch((e) => console.error("Error seeding economy categories:", e));
+          parsed = { ...parsed, economyCategories: { expense: EXPENSE_CATEGORIES, income: INCOME_CATEGORIES } };
+        } else {
+          parsed = {
+            ...parsed,
+            economyCategories: {
+              expense: remoteEconomyCategories.expense.length > 0 ? remoteEconomyCategories.expense : EXPENSE_CATEGORIES,
+              income: remoteEconomyCategories.income.length > 0 ? remoteEconomyCategories.income : INCOME_CATEGORIES,
+            },
+          };
+        }
+      } catch (e) {
+        console.error("Error loading economy categories from Supabase:", e);
+        // Falls back to the default catalog (buildEmptyState / sanitizeHomeState).
+      }
+
+      try {
         const activity = await activityService.fetchRecent(currentHomeId);
         if (cancelled) return;
         parsed = { ...parsed, activity };
@@ -935,6 +963,10 @@ function sanitizeHomeState(parsed) {
     activity: Array.isArray(parsed.activity) ? parsed.activity : base.activity,
     members: Array.isArray(parsed.members) ? parsed.members : base.members,
     categories: Array.isArray(parsed.categories) ? parsed.categories : base.categories,
+    economyCategories: {
+      expense: Array.isArray(parsed.economyCategories?.expense) ? parsed.economyCategories.expense : base.economyCategories.expense,
+      income: Array.isArray(parsed.economyCategories?.income) ? parsed.economyCategories.income : base.economyCategories.income,
+    },
   };
 }
 
@@ -1211,6 +1243,7 @@ function AddShoppingModal({ onClose, onSave, item }) {
  */
 function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
   const { t } = useTranslation();
+  const { expense: expenseCategories, income: incomeCategories } = useEconomyCategories();
   const [type, setType] = useState("expense"); // expense | income
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
@@ -1219,13 +1252,13 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
   const [addToCalendar, setAddToCalendar] = useState(true);
   const isExpense = type === "expense";
 
-  const categoryOptions = isExpense ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const categoryOptions = isExpense ? expenseCategories : incomeCategories;
   const parsedAmount = parseFloat(amount);
   const valid = parsedAmount > 0;
 
   const submit = () => {
     if (!valid) return;
-    const payload = { name: name.trim(), amount: parsedAmount, category: category || DEFAULT_CATEGORY, date: date || toLocalDateString(new Date()), addToCalendar };
+    const payload = { name: name.trim(), amount: parsedAmount, category: category || defaultCategoryFor(type), date: date || toLocalDateString(new Date()), addToCalendar };
     if (isExpense) onSaveExpense(payload);
     else onSaveIncome(payload);
   };
@@ -1234,7 +1267,7 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
     <Modal title={t("addMovement.title")} onClose={onClose}>
       <SegmentedTabs
         value={type}
-        onChange={(v) => { setType(v); setCategory(DEFAULT_CATEGORY); }}
+        onChange={(v) => { setType(v); setCategory(defaultCategoryFor(v)); }}
         options={[
           { value: "expense", label: t("addMovement.expenseToggle"), tone: "expense" },
           { value: "income", label: t("addMovement.incomeToggle"), tone: "income" },
@@ -1286,6 +1319,7 @@ function AddMovementModal({ onClose, onSaveExpense, onSaveIncome }) {
  */
 function AddBillQuickModal({ onClose, onSave }) {
   const { t } = useTranslation();
+  const { expense: expenseCategories } = useEconomyCategories();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -1319,7 +1353,7 @@ function AddBillQuickModal({ onClose, onSave }) {
         <FieldRow
           icon={Tag}
           title={categoryLabel(category, t)}
-          options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: categoryLabel(c, t) }))}
+          options={expenseCategories.map((c) => ({ value: c, label: categoryLabel(c, t) }))}
           value={category}
           onValueChange={setCategory}
         />
@@ -1358,12 +1392,13 @@ function AddBillQuickModal({ onClose, onSave }) {
  */
 function AddExpenseQuickModal({ payload, onClose, onCreate, onUpdate }) {
   const { t } = useTranslation();
+  const { expense: expenseCategories } = useEconomyCategories();
   const isEdit = Boolean(payload?.expenseId);
   const [name, setName] = useState(payload?.name || "");
   const [amount, setAmount] = useState(payload?.amount != null ? String(payload.amount) : "");
-  const [category, setCategory] = useState(
-    EXPENSE_CATEGORIES.includes(payload?.category) ? payload.category : DEFAULT_CATEGORY,
-  );
+  // En edición se respeta la categoría guardada aunque ya no esté en la lista
+  // (pudo borrarse después); en alta nueva, el default neutro de gastos.
+  const [category, setCategory] = useState(payload?.category || DEFAULT_CATEGORY);
   const [addToCalendar, setAddToCalendar] = useState(true);
   const parsedAmount = parseFloat(amount);
   const valid = parsedAmount > 0;
@@ -1380,7 +1415,7 @@ function AddExpenseQuickModal({ payload, onClose, onCreate, onUpdate }) {
         <FieldRow
           icon={Tag}
           title={categoryLabel(category, t)}
-          options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: categoryLabel(c, t) }))}
+          options={expenseCategories.map((c) => ({ value: c, label: categoryLabel(c, t) }))}
           value={category}
           onValueChange={setCategory}
         />
@@ -4001,6 +4036,19 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     });
   };
 
+  const updateEconomyCategories = (kind, nextNames) => {
+    const seen = new Set();
+    const next = (Array.isArray(nextNames) ? nextNames : [])
+      .map((n) => (n || "").trim())
+      .filter(Boolean)
+      .filter((n) => { const k = n.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+    dispatch((s) => ({ ...s, economyCategories: { ...(s.economyCategories || {}), [kind]: next } }));
+    economyCategoriesService.replace(currentHome.id, kind, next).catch((error) => {
+      console.error("Error saving economy categories:", error);
+      showNotice(t("toast.categoriesSaveError"));
+    });
+  };
+
   const setTaskRetentionDays = (value) => {
     const days = Math.max(1, Math.round(Number(value)) || DEFAULT_TASK_RETENTION_DAYS);
     dispatch((current) => ({
@@ -4327,6 +4375,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
   return (
     <CurrencyProvider code={activeHome?.currency_code}>
+     <EconomyCategoriesProvider value={state.economyCategories}>
       <div className={"hm-root" + (isDarkMode ? " dark" : "")} style={{ padding: "16px 14px 88px" }}>
         <GlobalStyle />
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", gap: 24, alignItems: "flex-start" }}>
@@ -4532,6 +4581,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onMemberClick={setViewingMember}
             categories={state.categories}
             onChangeCategories={updateCategories}
+            economyCategories={state.economyCategories}
+            onChangeEconomyCategories={updateEconomyCategories}
             taskRetentionDays={Number(state?.settings?.taskRetentionDays) || DEFAULT_TASK_RETENTION_DAYS}
             onChangeTaskRetention={setTaskRetentionDays}
             onClose={closeModal}
@@ -4673,9 +4724,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
       {/* El modal "editCategories" se quitó al sacar las categorías de las
           listas de la compra: sus dos únicos accesos estaban ahí. Las
-          categorías se siguen gestionando (y se siguen usando en el
-          inventario) desde Configuración de la casa, que monta el mismo
-          CategoriesSection. */}
+          categorías (objetos y Economía) se gestionan desde Configuración de
+          la casa → botón "Categorías" (CategoriesScreen). */}
 
       {modal?.type === "addTask" && (
         <AddTaskModal
@@ -4798,6 +4848,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         />
       )}
       </div>
+     </EconomyCategoriesProvider>
     </CurrencyProvider>
   );
 }

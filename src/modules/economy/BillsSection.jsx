@@ -5,7 +5,8 @@ import { PayBillModal } from "./PayBillModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
-import { EXPENSE_CATEGORIES, DEFAULT_CATEGORY, categoryLabel, categoryEmoji } from "./economyCategories";
+import { DEFAULT_CATEGORY, categoryLabel, categoryEmoji } from "./economyCategories";
+import { useEconomyCategories } from "./EconomyCategoriesContext";
 import { CategoryField } from "./CategoryField";
 import { SelectField } from "../../components/SelectField";
 import { toLocalDateString, intlLocale } from "../../utils/dates";
@@ -13,6 +14,7 @@ import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components
 
 export default function BillsSection({ currentHome, spaceId, spaces, state, dispatch, user, readOnly = false, onLogPaymentToCalendar }) {
   const { t, locale } = useTranslation();
+  const { expense: expenseCategories } = useEconomyCategories();
   const { format: formatCurrency } = useCurrency();
   const FREQUENCY_LABELS = {
     once: t("bills.once"),
@@ -326,7 +328,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
 
                   <label className="hm-label">{t("bills.categoryLabel")}</label>
                   <CategoryField
-                    categories={EXPENSE_CATEGORIES}
+                    categories={expenseCategories}
                     value={editValues.category || DEFAULT_CATEGORY}
                     onChange={(c) => setEditValues({ ...editValues, category: c })}
                     title={t("bills.categoryLabel")}
@@ -379,6 +381,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
 
 function AddBillModal({ spaceId, userId, onClose, onCreated }) {
   const { t } = useTranslation();
+  const { expense: expenseCategories } = useEconomyCategories();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
@@ -440,7 +443,7 @@ function AddBillModal({ spaceId, userId, onClose, onCreated }) {
 
           <FieldGroup label={t("bills.categoryLabel")}>
             <CategoryField
-              categories={EXPENSE_CATEGORIES}
+              categories={expenseCategories}
               value={category || DEFAULT_CATEGORY}
               onChange={setCategory}
               variant="row"

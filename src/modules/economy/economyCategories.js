@@ -1,67 +1,115 @@
 /**
- * Catálogo fijo de categorías de Economía (gastos e ingresos).
+ * Catálogo por defecto de categorías de Economía (gastos e ingresos).
  *
- * Antes estos campos eran de texto libre: el usuario escribía "Alimentación"
- * en un gasto y "alimentación" (u otra variante) en un objetivo, y como la
- * comparación no las trataba como iguales, el objetivo nunca sumaba. Fijar
- * el catálogo y usarlo con un <select> en vez de un <input> elimina el
- * problema de raíz — ya no hay forma de escribir una variante distinta.
+ * Desde 2026-09 las categorías se pueden editar por hogar (tabla
+ * `economy_categories`, ver Configuración de la casa → Categorías). Estas
+ * listas son solo la SEMILLA con la que arranca un hogar nuevo y el fallback
+ * cuando aún no hay filas propias.
  *
- * Los valores se guardan tal cual (en español) sin pasar por el sistema de
- * traducciones: así ya funcionaban los datos existentes (p. ej. los iconos
- * de ENTRY_ICONS en EconomyOverview.jsx buscan por el texto exacto
- * "Regalos recibidos"/"Suscripciones"), así que se mantiene esa convención.
+ * Los valores se guardan tal cual (en español) — es la clave canónica con la
+ * que comparan objetivos, iconos (ENTRY_ICONS en EconomyOverview) y
+ * estadísticas. Para pintarlos en el idioma activo se traducen con
+ * `economyCategory.<slug>` (ver categoryLabel); si el valor no está en el
+ * mapa se devuelve tal cual.
  */
 export const EXPENSE_CATEGORIES = [
-  "Alimentación",
-  "Transporte",
-  "Vivienda",
-  "Suministros",
-  "Salud",
+  "Comida",
+  "Compras",
+  "Cuidado personal",
+  "Deportes",
+  "Deudas",
   "Educación",
-  "Ocio",
-  "Ropa",
-  "Suscripciones",
+  "Casa",
+  "Inversiones",
+  "Animales",
+  "Niños y familia",
+  "Consolas",
+  "Restaurantes",
+  "Salud",
   "Regalos",
-  "Otros",
+  "Suscripciones",
+  "Vehículo",
+  "Transporte",
+  "Viajar",
+  "Otros gastos",
+];
+
+export const INCOME_CATEGORIES = [
+  "Autónomo",
+  "Ayudas y subvenciones",
+  "Bizum",
+  "Dividendos",
+  "Intereses",
+  "Negocios",
+  "Nómina",
+  "Reembolso",
+  "Regalos",
+  "Rentas",
+  "Transferencia",
+  "Ventas",
+  "Otros ingresos",
 ];
 
 /**
  * Categoría neutra por defecto cuando el usuario no elige ninguna. NO se usa
- * `EXPENSE_CATEGORIES[0]`/`INCOME_CATEGORIES[0]` para eso: el primer
- * elemento es una categoría real ("Alimentación"/"Salario"), así que todo lo
- * que se registraba rápido sin tocar el desplegable aterrizaba ahí y
- * falseaba `getExpensesByCategory`, las estadísticas y el progreso de los
- * objetivos por categoría.
+ * `EXPENSE_CATEGORIES[0]`/`INCOME_CATEGORIES[0]` para eso: el primer elemento
+ * es una categoría real, así que todo lo que se registra rápido sin tocar el
+ * desplegable aterrizaría ahí y falsearía estadísticas y objetivos por
+ * categoría.
  */
-export const DEFAULT_CATEGORY = "Otros";
+export const DEFAULT_CATEGORY = "Otros gastos";
+export const DEFAULT_INCOME_CATEGORY = "Otros ingresos";
 
-export const INCOME_CATEGORIES = [
-  "Salario",
-  "Regalos recibidos",
-  "Extraordinario",
-  "Otros",
-];
+/** Default apropiado según el tipo de movimiento. */
+export function defaultCategoryFor(kind) {
+  return kind === "income" || kind === "incomes" ? DEFAULT_INCOME_CATEGORY : DEFAULT_CATEGORY;
+}
 
 /**
- * Los valores de arriba se guardan en la BD tal cual (en español) — es la
- * clave canónica con la que comparan objetivos, iconos (ENTRY_ICONS) y
- * estadísticas. Para PINTARLOS en el idioma activo se traducen aquí con
- * `economyCategory.<slug>`. Si el valor no está en el catálogo (una categoría
- * antigua de texto libre, o el nombre de un objetivo de ahorro) se devuelve
- * sin tocar.
+ * name (valor canónico en español) -> clave i18n. Incluye las categorías del
+ * catálogo actual y también las antiguas ("Alimentación", "Ocio"...) para que
+ * los movimientos ya registrados con ellas se sigan traduciendo.
  */
 const CATEGORY_LABEL_KEYS = {
-  "Alimentación": "economyCategory.food",
+  // Catálogo actual — gastos
+  "Comida": "economyCategory.comida",
+  "Compras": "economyCategory.compras",
+  "Cuidado personal": "economyCategory.personalCare",
+  "Deportes": "economyCategory.sports",
+  "Deudas": "economyCategory.debts",
+  "Educación": "economyCategory.education",
+  "Casa": "economyCategory.home",
+  "Inversiones": "economyCategory.investments",
+  "Animales": "economyCategory.animals",
+  "Niños y familia": "economyCategory.kidsFamily",
+  "Consolas": "economyCategory.gaming",
+  "Restaurantes": "economyCategory.restaurants",
+  "Salud": "economyCategory.health",
+  "Regalos": "economyCategory.gifts",
+  "Suscripciones": "economyCategory.subscriptions",
+  "Vehículo": "economyCategory.vehicle",
   "Transporte": "economyCategory.transport",
+  "Viajar": "economyCategory.travel",
+  "Otros gastos": "economyCategory.otherExpenses",
+  // Catálogo actual — ingresos
+  "Autónomo": "economyCategory.selfEmployed",
+  "Ayudas y subvenciones": "economyCategory.grants",
+  "Bizum": "economyCategory.bizum",
+  "Dividendos": "economyCategory.dividends",
+  "Intereses": "economyCategory.interest",
+  "Negocios": "economyCategory.business",
+  "Nómina": "economyCategory.payroll",
+  "Reembolso": "economyCategory.refund",
+  "Rentas": "economyCategory.rentalIncome",
+  "Transferencia": "economyCategory.transferIncome",
+  "Ventas": "economyCategory.sales",
+  "Otros ingresos": "economyCategory.otherIncome",
+  // Catálogo antiguo (datos ya registrados)
+  "Alimentación": "economyCategory.food",
   "Vivienda": "economyCategory.housing",
   "Suministros": "economyCategory.utilities",
-  "Salud": "economyCategory.health",
-  "Educación": "economyCategory.education",
   "Ocio": "economyCategory.leisure",
   "Ropa": "economyCategory.clothing",
-  "Suscripciones": "economyCategory.subscriptions",
-  "Regalos": "economyCategory.gifts",
   "Otros": "economyCategory.other",
   "Salario": "economyCategory.salary",
   "Regalos recibidos": "economyCategory.giftsReceived",
@@ -75,22 +123,50 @@ export function categoryLabel(value, t) {
 }
 
 /**
- * Emoji por categoría. Misma convención que `CATEGORY_LABEL_KEYS`: la clave es
- * el valor canónico en español (el que se guarda en BD). Se usa para pintar el
- * selector en cuadrícula y las filas de movimientos/facturas. Si el valor no
- * está en el catálogo (una categoría antigua de texto libre) cae en 🏷️.
+ * Emoji por categoría. La clave es el valor canónico en español. Se usa para
+ * pintar el selector y las filas de movimientos/facturas. Si el valor no está
+ * en el mapa (una categoría personalizada) cae en 🏷️.
  */
 const CATEGORY_EMOJI = {
+  // Catálogo actual — gastos
+  "Comida": "🍽️",
+  "Compras": "🛍️",
+  "Cuidado personal": "💅",
+  "Deportes": "⚽",
+  "Deudas": "💳",
+  "Educación": "🎓",
+  "Casa": "🏠",
+  "Inversiones": "📈",
+  "Animales": "🐾",
+  "Niños y familia": "👨‍👩‍👧",
+  "Consolas": "🎮",
+  "Restaurantes": "🍴",
+  "Salud": "🩺",
+  "Regalos": "🎁",
+  "Suscripciones": "🔄",
+  "Vehículo": "🚗",
+  "Transporte": "🚌",
+  "Viajar": "✈️",
+  "Otros gastos": "📦",
+  // Catálogo actual — ingresos
+  "Autónomo": "💼",
+  "Ayudas y subvenciones": "🏛️",
+  "Bizum": "📲",
+  "Dividendos": "📊",
+  "Intereses": "🏦",
+  "Negocios": "🏢",
+  "Nómina": "💰",
+  "Reembolso": "↩️",
+  "Rentas": "🏘️",
+  "Transferencia": "🔁",
+  "Ventas": "💸",
+  "Otros ingresos": "📥",
+  // Catálogo antiguo (datos ya registrados)
   "Alimentación": "🍽️",
-  "Transporte": "🚗",
   "Vivienda": "🏠",
   "Suministros": "💡",
-  "Salud": "🩺",
-  "Educación": "🎓",
   "Ocio": "🎉",
   "Ropa": "👕",
-  "Suscripciones": "🔄",
-  "Regalos": "🎁",
   "Otros": "📦",
   "Salario": "💰",
   "Regalos recibidos": "🎀",

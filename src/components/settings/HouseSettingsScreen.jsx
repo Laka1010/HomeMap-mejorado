@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Home as HomeIcon, Shield, Trash2 } from "lucide-react";
+import { ArrowLeft, Home as HomeIcon, Shield, Trash2, Tag, ChevronRight } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { CurrencySection } from "./CurrencySection";
 import { HouseMembersSection } from "./HouseMembersSection";
@@ -7,7 +7,7 @@ import { SharedSpacesSection } from "./SharedSpacesSection";
 import { EconomyAccessSection } from "./EconomyAccessSection";
 import { RequestEconomyAccessModal } from "./RequestEconomyAccessModal";
 import { economyAccessService } from "../../modules/economy/services/economyAccessService";
-import { CategoriesSection } from "./CategoriesSection";
+import { CategoriesScreen } from "./CategoriesScreen";
 import { TaskRetentionSection } from "./TaskRetentionSection";
 import { CalendarFeedSection } from "./CalendarFeedSection";
 
@@ -27,6 +27,8 @@ export function HouseSettingsScreen({
   onMemberClick,
   categories,
   onChangeCategories,
+  economyCategories,
+  onChangeEconomyCategories,
   taskRetentionDays,
   onChangeTaskRetention,
   onClose,
@@ -43,6 +45,7 @@ export function HouseSettingsScreen({
   // ShareHomeModal, donde esto no aplica.
   const [economyAccessStatuses, setEconomyAccessStatuses] = useState({});
   const [requestingMember, setRequestingMember] = useState(null); // null | { id, name }
+  const [showCategories, setShowCategories] = useState(false);
 
   const loadEconomyAccessStatuses = () => {
     economyAccessService.listMySentStatuses()
@@ -106,7 +109,23 @@ export function HouseSettingsScreen({
 
           <EconomyAccessSection members={members} currentUserId={currentUserId} />
 
-          <CategoriesSection categories={categories} onChange={onChangeCategories} />
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent-soft)", display: "grid", placeItems: "center", color: "var(--accent)", fontSize: 16 }}>
+                <Tag size={16} />
+              </div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{t("houseSettings.categoriesButton")}</div>
+            </div>
+
+            <button
+              className="hm-card hm-card--p16"
+              onClick={() => setShowCategories(true)}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer", textAlign: "left", color: "var(--ink)", fontFamily: "inherit" }}
+            >
+              <div style={{ minWidth: 0, fontSize: 14, fontWeight: 500 }}>{t("houseSettings.categoriesButtonHint")}</div>
+              <ChevronRight size={18} style={{ color: "var(--ink-soft)", flexShrink: 0 }} />
+            </button>
+          </div>
 
           <TaskRetentionSection days={taskRetentionDays} onChange={onChangeTaskRetention} isAdmin={isAdmin} />
 
@@ -138,6 +157,16 @@ export function HouseSettingsScreen({
         ownerName={requestingMember.name}
         onClose={() => setRequestingMember(null)}
         onSent={loadEconomyAccessStatuses}
+      />
+    )}
+
+    {showCategories && (
+      <CategoriesScreen
+        categories={categories}
+        onChangeCategories={onChangeCategories}
+        economyCategories={economyCategories}
+        onChangeEconomyCategories={onChangeEconomyCategories}
+        onClose={() => setShowCategories(false)}
       />
     )}
     </>

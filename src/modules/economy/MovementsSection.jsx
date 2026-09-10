@@ -6,7 +6,8 @@ import { transfersService } from "./services/transfersService";
 import { TransferModal } from "./TransferModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, categoryLabel, categoryEmoji } from "./economyCategories";
+import { defaultCategoryFor, categoryLabel, categoryEmoji } from "./economyCategories";
+import { useEconomyCategories } from "./EconomyCategoriesContext";
 import { CategoryField } from "./CategoryField";
 import { SelectField } from "../../components/SelectField";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
@@ -32,6 +33,7 @@ import { AmountHero, FieldGroup, FieldRow, FieldTextRow, ToggleCard } from "../.
 export default function MovementsSection({ currentHome, spaceId, spaces = [], user, initialType = "expenses", readOnly = false, onLogPaymentToCalendar }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
+  const { expense: expenseCategories, income: incomeCategories } = useEconomyCategories();
   const [type, setType] = useState(initialType);
   const [period, setPeriod] = useState("thisMonth"); // thisMonth | lastMonth | all
   const [items, setItems] = useState([]);
@@ -410,8 +412,8 @@ export default function MovementsSection({ currentHome, spaceId, spaces = [], us
 
                   <label className="hm-label">{t("movements.categoryLabel")}</label>
                   <CategoryField
-                    categories={type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES}
-                    value={editValues.category || DEFAULT_CATEGORY}
+                    categories={type === "expenses" ? expenseCategories : incomeCategories}
+                    value={editValues.category || defaultCategoryFor(type === "expenses" ? "expense" : "income")}
                     onChange={(c) => setEditValues({ ...editValues, category: c })}
                     title={t("movements.categoryLabel")}
                   />
@@ -470,13 +472,14 @@ export default function MovementsSection({ currentHome, spaceId, spaces = [], us
 function AddMovementModal({ type, spaceId, userId, accounts, onClose, onCreated, onLogPaymentToCalendar }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
-  const categories = type === "expenses" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const { expense: expenseCategories, income: incomeCategories } = useEconomyCategories();
+  const categories = type === "expenses" ? expenseCategories : incomeCategories;
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  // "Otros" y no categories[0]: el primer elemento es una categoría real
-  // ("Alimentación"/"Salario"), así que quien no toque el desplegable acaba
-  // falseando las estadísticas por categoría. Ver DEFAULT_CATEGORY.
-  const [category, setCategory] = useState(DEFAULT_CATEGORY);
+  // Default neutro ("Otros gastos"/"Otros ingresos"), no categories[0]: el
+  // primer elemento es una categoría real, así que quien no toque el
+  // desplegable falsearía las estadísticas por categoría. Ver DEFAULT_CATEGORY.
+  const [category, setCategory] = useState(defaultCategoryFor(type === "expenses" ? "expense" : "income"));
   const [date, setDate] = useState(() => toLocalDateString(new Date()));
   const [accountId, setAccountId] = useState(accounts.find((a) => a.is_default)?.id || accounts[0]?.id || "");
   const [notes, setNotes] = useState("");

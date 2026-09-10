@@ -22,7 +22,12 @@ export const categoriesService = {
     const { error: deleteError } = await supabase.from("categories").delete().eq("house_id", houseId);
     if (deleteError) throw deleteError;
 
-    const rows = (categories || []).map((name, index) => ({ house_id: houseId, name, position: index }));
+    const seen = new Set();
+    const rows = (categories || [])
+      .map((name) => (name || "").trim())
+      .filter(Boolean)
+      .filter((name) => { const k = name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+      .map((name, index) => ({ house_id: houseId, name, position: index }));
     if (rows.length === 0) return;
 
     const { error: insertError } = await supabase.from("categories").insert(rows);
