@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { Wallet, Landmark, StickyNote } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { transfersService } from "./services/transfersService";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
-import { SelectField } from "../../components/SelectField";
+import { AmountHero, FieldGroup, FieldRow, FieldTextRow } from "../../components/MoneyEntry";
 
 /**
  * Transferir (entre 2 cuentas del Space activo) o Contribuir (desde una
@@ -45,6 +46,15 @@ export function TransferModal({ spaceId, spaces, accounts, initialToSpaceId, onC
       setToAccountId(accounts.find((a) => a.id !== fromAccountId)?.id || "");
     }
   }, [fromAccountId, accounts]);
+
+  const accountLabel = (id) => {
+    const a = (accounts || []).find((x) => x.id === id);
+    return a ? `${a.icon} ${a.name}` : "";
+  };
+  const spaceLabel = (id) => {
+    const s = otherSpaces.find((x) => x.id === id);
+    return s ? `${s.icon} ${s.name}` : "";
+  };
 
   const handleSubmit = async () => {
     const parsedAmount = parseFloat(amount);
@@ -110,59 +120,51 @@ export function TransferModal({ spaceId, spaces, accounts, initialToSpaceId, onC
             <p style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("transfers.noOtherSpaces")}</p>
           )}
 
-          {mode === "transfer" && canTransfer && (
-            <>
-              <label className="hm-label">{t("transfers.fromLabel")}</label>
-              <SelectField
-                title={t("transfers.fromLabel")}
-                value={fromAccountId}
-                onChange={setFromAccountId}
-                options={accounts.map((a) => ({ value: a.id, label: a.name, emoji: a.icon }))}
-              />
-
-              <label className="hm-label" style={{ marginTop: 14 }}>{t("transfers.toAccountLabel")}</label>
-              <SelectField
-                title={t("transfers.toAccountLabel")}
-                value={toAccountId}
-                onChange={setToAccountId}
-                options={accounts.filter((a) => a.id !== fromAccountId).map((a) => ({ value: a.id, label: a.name, emoji: a.icon }))}
-              />
-            </>
-          )}
-
-          {mode === "contribute" && canContribute && (
-            <>
-              <label className="hm-label">{t("transfers.fromLabel")}</label>
-              <SelectField
-                title={t("transfers.fromLabel")}
-                value={fromAccountId}
-                onChange={setFromAccountId}
-                options={accounts.map((a) => ({ value: a.id, label: a.name, emoji: a.icon }))}
-              />
-
-              <label className="hm-label" style={{ marginTop: 14 }}>{t("transfers.toSpaceLabel")}</label>
-              <SelectField
-                title={t("transfers.toSpaceLabel")}
-                value={toSpaceId}
-                onChange={setToSpaceId}
-                options={otherSpaces.map((s) => ({ value: s.id, label: s.name, emoji: s.icon }))}
-              />
-            </>
-          )}
-
           {((mode === "transfer" && canTransfer) || (mode === "contribute" && canContribute)) && (
             <>
-              <label className="hm-label" style={{ marginTop: 14 }}>{t("transfers.amountLabel")}</label>
-              <input className="hm-input" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <AmountHero value={amount} onChange={setAmount} />
 
-              <label className="hm-label" style={{ marginTop: 14 }}>{t("transfers.noteLabel")}</label>
-              <input className="hm-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("transfers.notePlaceholder")} />
+              <FieldGroup label={t("transfers.fromLabel")}>
+                <FieldRow
+                  icon={Wallet}
+                  title={accountLabel(fromAccountId)}
+                  options={accounts.map((a) => ({ value: a.id, label: `${a.icon} ${a.name}` }))}
+                  value={fromAccountId}
+                  onValueChange={setFromAccountId}
+                />
+              </FieldGroup>
 
-              {error && <p style={{ fontSize: 12.5, color: "var(--danger)", margin: "10px 0 0" }}>{error}</p>}
+              {mode === "transfer" ? (
+                <FieldGroup label={t("transfers.toAccountLabel")}>
+                  <FieldRow
+                    icon={Wallet}
+                    title={accountLabel(toAccountId)}
+                    options={accounts.filter((a) => a.id !== fromAccountId).map((a) => ({ value: a.id, label: `${a.icon} ${a.name}` }))}
+                    value={toAccountId}
+                    onValueChange={setToAccountId}
+                  />
+                </FieldGroup>
+              ) : (
+                <FieldGroup label={t("transfers.toSpaceLabel")}>
+                  <FieldRow
+                    icon={Landmark}
+                    title={spaceLabel(toSpaceId)}
+                    options={otherSpaces.map((s) => ({ value: s.id, label: `${s.icon} ${s.name}` }))}
+                    value={toSpaceId}
+                    onValueChange={setToSpaceId}
+                  />
+                </FieldGroup>
+              )}
 
-              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <FieldGroup label={t("transfers.noteLabel")}>
+                <FieldTextRow icon={StickyNote} value={note} onChange={setNote} placeholder={t("transfers.notePlaceholder")} />
+              </FieldGroup>
+
+              {error && <p className="hm-money-error">{error}</p>}
+
+              <div className="hm-money-actions">
                 <button className="hm-btn hm-btn-soft" onClick={onClose}>{t("transfers.cancel")}</button>
-                <button className="hm-btn hm-btn-primary" onClick={handleSubmit} disabled={saving || !amount}>
+                <button className="hm-btn hm-btn-primary hm-btn--full" onClick={handleSubmit} disabled={saving || !amount}>
                   {t(mode === "transfer" ? "transfers.submitTransfer" : "transfers.submitContribute")}
                 </button>
               </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, Gift, Sparkles, Tag, Calendar } from "lucide-react";
+import { ChevronRight, Gift, Sparkles, Tag, Calendar, ArrowLeftRight } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
@@ -8,6 +8,7 @@ import { toLocalDateString } from "../../utils/dates";
 import { GoalsSection } from "./GoalsSection";
 import { AccountsSection } from "./AccountsSection";
 import { accountsService } from "./services/accountsService";
+import { transfersService } from "./services/transfersService";
 import { categoryLabel } from "./economyCategories";
 import { computeInsights } from "./insightsEngine";
 import { InsightsBar } from "./InsightsBar";
@@ -78,8 +79,42 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
         .reduce((sum, a) => sum + parseFloat(a.balance || 0), 0);
       setAccountsBalance(totalBalance);
 
-      const totalIngresos = incomeData?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
-      const totalGastos = expensesData?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
+      // Transferencias del mes: cada movimiento entre cuentas cuenta como
+      // salida (si sale de una cuenta de este Space) y/o entrada (si llega a
+      // una). Una transferencia interna del propio Space suma en ambas y se
+      // anula; una aportación a/desde otro Space mueve el neto. Se pliega en
+      // ingresos/gastos para que el "Ahorrado este mes" y las cifras de abajo
+      // sigan cuadrando. `spaceAccountIds` incluye cuentas archivadas.
+      const spaceAccountIds = new Set(accounts.map((a) => a.id));
+      const monthStartStr = toLocalDateString(monthStart);
+      const monthEndStr = toLocalDateString(monthEnd);
+      let transfersIn = 0;
+      let transfersOut = 0;
+      const transferEntries = [];
+      try {
+        const transfers = await transfersService.listTransfersForSpace(spaceId);
+        (transfers || []).forEach((tr) => {
+          const d = (tr.created_at || "").slice(0, 10);
+          if (d < monthStartStr || d > monthEndStr) return;
+          const amt = parseFloat(tr.amount || 0);
+          const fromHere = spaceAccountIds.has(tr.from_account_id);
+          const toHere = spaceAccountIds.has(tr.to_account_id);
+          if (toHere) transfersIn += amt;
+          if (fromHere) transfersOut += amt;
+          transferEntries.push({
+            kind: "transfer",
+            direction: fromHere && toHere ? "internal" : fromHere ? "out" : "in",
+            amount: amt,
+            date: d,
+            name: tr.note || (tr.kind === "contribution" ? t("movements.transferContribution") : t("movements.transferTitle")),
+          });
+        });
+      } catch {
+        // Sin transferencias legibles el resumen sigue con ingresos/gastos.
+      }
+
+      const totalIngresos = (incomeData?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0) + transfersIn;
+      const totalGastos = (expensesData?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0) + transfersOut;
       const balance = totalIngresos - totalGastos;
 
       const proximoVencimiento = billsData?.[0] || null;
@@ -88,6 +123,7 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
       const entries = [
         ...(incomeData || []).map((i) => ({ ...i, kind: "income" })),
         ...(expensesData || []).map((e) => ({ ...e, kind: "expense" })),
+        ...transferEntries,
       ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
       setEconomics({
@@ -205,8 +241,21 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
         ) : (
           <div>
             {entries.slice(0, 4).map((entry, idx) => {
-              const Icon = ENTRY_ICONS[entry.category] || Tag;
+              const isTransfer = entry.kind === "transfer";
               const isIncome = entry.kind === "income";
+              const Icon = isTransfer ? ArrowLeftRight : (ENTRY_ICONS[entry.category] || Tag);
+              // Transferencia interna del propio Space: el dinero no entra ni
+              // sale, solo cambia de cuenta — sin signo ni color de importe.
+              const internal = isTransfer && entry.direction === "internal";
+              const amountColor = isTransfer
+                ? (internal ? "var(--ink-soft)" : entry.direction === "out" ? "var(--danger)" : "var(--success)")
+                : (isIncome ? "var(--success)" : "var(--danger)");
+              const sign = isTransfer
+                ? (internal ? "" : entry.direction === "out" ? "-" : "+")
+                : (isIncome ? "+" : "-");
+              const subtitle = isTransfer
+                ? `${internal ? t("movements.transferInternal") : entry.direction === "out" ? t("movements.transferOut") : t("movements.transferIn")} · ${entry.date}`
+                : `${categoryLabel(entry.category || "Otros", t)} · ${entry.date}`;
               return (
                 <div
                   key={idx}
@@ -220,10 +269,10 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.name}</div>
-                    <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{categoryLabel(entry.category || "Otros", t)} · {entry.date}</div>
+                    <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{subtitle}</div>
                   </div>
-                  <div style={{ fontSize: 14.5, fontWeight: 700, color: isIncome ? "var(--success)" : "var(--danger)", whiteSpace: "nowrap" }}>
-                    {isIncome ? "+" : "-"}{formatCurrency(entry.amount)}
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: amountColor, whiteSpace: "nowrap" }}>
+                    {sign}{formatCurrency(entry.amount)}
                   </div>
                 </div>
               );

@@ -3,6 +3,7 @@ import { Plus, TrendingUp, TrendingDown, ArrowLeftRight, ShoppingCart, PenSquare
 import { economyService } from "./services/economyService";
 import { accountsService } from "./services/accountsService";
 import { transfersService } from "./services/transfersService";
+import { TransferModal } from "./TransferModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, categoryLabel, categoryEmoji } from "./economyCategories";
@@ -23,11 +24,12 @@ import { AmountHero, FieldGroup, FieldRow, FieldTextRow, ToggleCard } from "../.
  * registerPurchaseExpense en App.jsx) y se marca con el distintivo "Compras"
  * — mismo dato, un único origen, sin doble registro.
  *
- * Las transferencias se listan pero no se crean aquí: nacen en Cuentas
- * (AccountsSection -> TransferModal), que es donde el usuario elige cuenta
- * origen y destino. Este listado es solo lectura para no duplicar ese alta.
+ * Las transferencias se listan y también se pueden crear aquí, con el mismo
+ * `TransferModal` que usa Cuentas (AccountsSection): el botón "Añadir" de la
+ * pestaña Transferencias abre exactamente ese formulario, así el alta está
+ * disponible desde los dos sitios donde tiene sentido buscarla.
  */
-export default function MovementsSection({ currentHome, spaceId, user, initialType = "expenses", readOnly = false, onLogPaymentToCalendar }) {
+export default function MovementsSection({ currentHome, spaceId, spaces = [], user, initialType = "expenses", readOnly = false, onLogPaymentToCalendar }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
   const [type, setType] = useState(initialType);
@@ -40,6 +42,7 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
   // o sale de este Space, y una cuenta archivada sigue teniendo histórico.
   const [spaceAccountIds, setSpaceAccountIds] = useState(() => new Set());
   const [showAdd, setShowAdd] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
   const [selected, setSelected] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -236,10 +239,9 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
             {t("movements.transfersTab")}
           </button>
         </div>
-        {/* Transferencias es solo lectura aquí: se crean en Cuentas, donde
-            existe el selector de cuenta origen/destino. Mostrar un "Añadir"
-            que abriera un formulario distinto sería un segundo sitio para la
-            misma operación. */}
+        {/* El botón "Añadir" de Transferencias abre el mismo TransferModal que
+            Cuentas — no un formulario propio — para que sea la misma alta desde
+            los dos sitios. Necesita al menos una cuenta como origen. */}
         {readOnly ? null : type !== "transfers" ? (
           <button
             className="hm-btn hm-btn-primary hm-btn--compact"
@@ -247,9 +249,14 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
           >
             <Plus size={15} /> {t("movements.add")}
           </button>
-        ) : (
-          <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{t("movements.transfersCreatedInAccounts")}</span>
-        )}
+        ) : accounts.length >= 1 ? (
+          <button
+            className="hm-btn hm-btn-primary hm-btn--compact"
+            onClick={() => setShowTransfer(true)}
+          >
+            <Plus size={15} /> {t("movements.add")}
+          </button>
+        ) : null}
       </div>
 
       {/* Period pills */}
@@ -444,6 +451,16 @@ export default function MovementsSection({ currentHome, spaceId, user, initialTy
           onClose={() => setShowAdd(false)}
           onCreated={() => { setShowAdd(false); loadItems(); }}
           onLogPaymentToCalendar={onLogPaymentToCalendar}
+        />
+      )}
+
+      {showTransfer && (
+        <TransferModal
+          spaceId={spaceId}
+          spaces={spaces}
+          accounts={accounts}
+          onClose={() => setShowTransfer(false)}
+          onDone={() => { setShowTransfer(false); loadItems(); }}
         />
       )}
     </div>

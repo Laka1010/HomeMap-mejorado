@@ -166,7 +166,7 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
           )}
 
           {currentPage === "movements" && (
-            <MovementsSection currentHome={currentHome} spaceId={currentSpaceId} user={user} initialType={movementsType} readOnly={readOnly} onLogPaymentToCalendar={onLogPaymentToCalendar} />
+            <MovementsSection currentHome={currentHome} spaceId={currentSpaceId} spaces={spaces} user={user} initialType={movementsType} readOnly={readOnly} onLogPaymentToCalendar={onLogPaymentToCalendar} />
           )}
 
           {currentPage === "statistics" && (
