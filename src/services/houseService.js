@@ -2,13 +2,16 @@ import { supabase } from "../supabaseClient";
 import { logIfPermissionDenied } from "./securityEventsService";
 
 /**
- * Máximo de casas que un usuario puede crear (no aplica a casas a las que
- * simplemente se une). El límite real vive en la función `create_house` de
- * la base de datos (ver supabase/migrations/20260731_016_max_houses_per_user.sql);
- * esta constante solo se usa en el cliente para desactivar el botón de
- * "crear casa" con antelación, en vez de esperar a que el RPC falle.
+ * Máximo de casas a las que un usuario puede pertenecer (crear + unirse). El
+ * límite real vive en `create_house` y `join_house_by_code` de la base de
+ * datos (ver supabase/migrations/20260911_094_one_house_per_user.sql); esta
+ * constante solo se usa en el cliente para ocultar los botones de "crear" y
+ * "unirse" con antelación, en vez de esperar a que el RPC falle.
+ *
+ * NO es retroactivo: quien ya está en 2+ casas las conserva; el límite solo
+ * bloquea añadir una más.
  */
-export const MAX_HOMES_PER_USER = 2;
+export const MAX_HOMES_PER_USER = 1;
 
 /**
  * Servicio de Casas — capa de acceso a houses / home_members / profiles.

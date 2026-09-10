@@ -3239,8 +3239,16 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * inline — por eso, a diferencia de otras acciones de esta función, deja
    * que el error se propague en vez de tragárselo con un toast.
    */
+  // Una sola casa por usuario (crear + unirse). El límite real lo impone la
+  // base de datos (create_house / join_house_by_code, migración
+  // 20260911_094); estos returns solo evitan la llamada y dan un mensaje
+  // claro cuando ya se ve en el cliente que se ha alcanzado.
   const createHome = async (name, template = null) => {
     if (!name?.trim()) return;
+    if (homes.length >= MAX_HOMES_PER_USER) {
+      showNotice(t("homeSelector.createLimitReached"));
+      return;
+    }
     const newHouse = await houseService.createHouse(name.trim());
     if (template) await applyTemplate(newHouse.id, template);
     await refreshHomes();
@@ -3250,6 +3258,10 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
   const joinHome = async (code) => {
     if (!code?.trim()) return;
+    if (homes.length >= MAX_HOMES_PER_USER) {
+      showNotice(t("homeSelector.createLimitReached"));
+      return;
+    }
     try {
       const house = await houseService.joinHouseByCode(code.trim());
       await refreshHomes();
@@ -4573,7 +4585,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onOpenCreate={() => openModal("createHome", null, { returnTo: "homeSelector" })}
             onJoin={joinHome}
             onClose={closeModal}
-            canCreateHome={homes.filter((h) => h.createdByMe).length < MAX_HOMES_PER_USER}
+            canAddHome={homes.length < MAX_HOMES_PER_USER}
           />
         </Modal>
       )}

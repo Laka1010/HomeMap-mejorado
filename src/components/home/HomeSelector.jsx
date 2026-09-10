@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Home, Plus, Users, ChevronRight, Hash, Check, Star, X } from "lucide-react";
 import { useTranslation } from "../../i18n";
 
-export function HomeSelector({ homes, currentHomeId, onSelect, onOpenCreate, onJoin, onClose, canCreateHome = true }) {
+export function HomeSelector({ homes, currentHomeId, onSelect, onOpenCreate, onJoin, onClose, canAddHome = true }) {
   const { t } = useTranslation();
   const [showJoin, setShowJoin] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
@@ -59,7 +59,7 @@ export function HomeSelector({ homes, currentHomeId, onSelect, onOpenCreate, onJ
       </div>
 
       <div className="home-selector-actions">
-        {!canCreateHome ? (
+        {!canAddHome ? (
           <div className="home-create-limit">{t("homeSelector.createLimitReached")}</div>
         ) : (
           <button className="hm-btn hm-btn-primary hm-btn--full" onClick={onOpenCreate}>
@@ -67,7 +67,7 @@ export function HomeSelector({ homes, currentHomeId, onSelect, onOpenCreate, onJ
           </button>
         )}
 
-        {!showJoin ? (
+        {!canAddHome ? null : !showJoin ? (
           <button className="hm-btn hm-btn-soft hm-btn--full" onClick={() => setShowJoin(true)}>
             <Hash size={18} /> {t("homeSelector.joinWithCode")}
           </button>
