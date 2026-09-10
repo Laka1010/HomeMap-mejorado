@@ -7,6 +7,29 @@ import { SpaceSwitcher } from "./SpaceSwitcher";
 import { financialSpacesService } from "./services/financialSpacesService";
 import { useTranslation } from "../../i18n";
 
+// El SpaceSwitcher es estado local y el módulo se desmonta al salir de la
+// pestaña Economía, así que sin esto siempre se volvía a abrir en Household.
+// Se guarda el último espacio elegido por usuario + casa (cada casa tiene sus
+// propios espacios) para reabrirlo al volver.
+const LAST_SPACE_KEY = "homemap-economy-last-space";
+function lastSpaceStorageKey(userId, houseId) {
+  return `${LAST_SPACE_KEY}:${userId || "anon"}:${houseId || "nohouse"}`;
+}
+function readLastSpaceId(userId, houseId) {
+  try {
+    return localStorage.getItem(lastSpaceStorageKey(userId, houseId)) || null;
+  } catch {
+    return null;
+  }
+}
+function writeLastSpaceId(userId, houseId, spaceId) {
+  try {
+    localStorage.setItem(lastSpaceStorageKey(userId, houseId), spaceId);
+  } catch {
+    // localStorage no disponible (modo privado, cuota): sin persistencia, no crítico.
+  }
+}
+
 /**
  * Un único conjunto de pantallas (Resumen/Cuentas/Movimientos/Facturas/
  * Estadísticas) para cualquier Workspace — Personal, Household o uno
@@ -39,11 +62,20 @@ export function EconomyModule({ state, dispatch, openModal, currentHome, user, r
       setSpaces(scoped);
       setCurrentSpaceId((prev) => {
         if (prev && scoped.some((s) => s.id === prev)) return prev;
+        const stored = readLastSpaceId(user?.id, currentHome?.id);
+        if (stored && scoped.some((s) => s.id === stored)) return stored;
         return scoped.find((s) => s.type === "household")?.id || scoped[0]?.id || null;
       });
     });
     return () => { cancelled = true; };
-  }, [currentHome?.id, refreshToken, childMode]);
+  }, [currentHome?.id, refreshToken, childMode, user?.id]);
+
+  // Recuerda el espacio elegido para reabrirlo la próxima vez que se entre a
+  // Economía (ver LAST_SPACE_KEY). Cubre tanto el SpaceSwitcher como el alta
+  // de un espacio nuevo, que también mueve `currentSpaceId`.
+  useEffect(() => {
+    if (currentSpaceId) writeLastSpaceId(user?.id, currentHome?.id, currentSpaceId);
+  }, [currentSpaceId, user?.id, currentHome?.id]);
 
   const activeSpace = spaces.find((s) => s.id === currentSpaceId);
   // El adulto que supervisa el espacio de un niño entra como 'viewer': ve
