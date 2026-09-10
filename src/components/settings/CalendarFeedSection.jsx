@@ -6,8 +6,8 @@ import { calendarFeedService, buildFeedUrl, buildWebcalUrl } from "../../service
 /**
  * Enlace de suscripción al calendario del hogar (.ics). Se pega en Google
  * Calendar ("Otros calendarios → Suscribirse con URL") o Apple Calendar
- * ("Ajustes → Calendario → Cuentas → Añadir → Otra → Añadir calendario
- * suscrito"). Solo lectura hacia fuera. Ver src/services/calendarFeedService.js.
+ * ("Calendarios → Añadir calendario → Añadir suscripción de Calendario →
+ * De URL"). Solo lectura hacia fuera. Ver src/services/calendarFeedService.js.
  *
  * La URL es larga por naturaleza (dominio de Supabase + token); la caja que la
  * muestra trunca con "…" y NUNCA desborda — cada contenedor de la cadena lleva
