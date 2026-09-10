@@ -18,10 +18,10 @@ export function RecentActivityWidget({ activity, canSeeEconomy = true }) {
 
   return (
     <WidgetCard icon={Users} title={t("dashboardOverview.activityTitle")}>
-      <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
         {items.map((entry) => (
-          <div key={entry.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13.5 }}>
-            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div key={entry.id} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, fontSize: 13.5, minWidth: 0 }}>
+            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {entry.titleKey ? t(entry.titleKey, entry.titleParams || {}) : entry.title}
             </span>
             <span style={{ color: "var(--ink-soft)", fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>{timeAgoShort(entry.when, t, locale)}</span>
