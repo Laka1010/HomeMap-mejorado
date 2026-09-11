@@ -4,9 +4,10 @@ import { useTranslation } from "../i18n";
 import { useDragToDismiss } from "../hooks/useDragToDismiss";
 
 /**
- * Selector de categoría en cuadrícula (bottom sheet). Cada categoría se pinta
- * como una tarjeta con el emoji arriba y el nombre debajo — el mismo lenguaje
- * visual que el paso "Categoría" del asistente de objetos.
+ * Selector de categoría en bottom sheet: lista de filas (emoji + nombre +
+ * check), mismo lenguaje visual que `OptionSheet` / `CurrencyPickerModal` —
+ * no la cuadrícula de tarjetas de antes, que con más de una decena de
+ * categorías de Economía se veía como un muro de cajas.
  *
  * Solo presentación: recibe las opciones ya resueltas (con su emoji y su
  * etiqueta traducida) y devuelve el `value` elegido por `onSelect`.
@@ -16,7 +17,7 @@ import { useDragToDismiss } from "../hooks/useDragToDismiss";
  * @param {Array<{value:string,label:string,emoji:string}>} options
  * @param {(value:string)=>void} onSelect
  * @param {()=>void} onClose
- * @param {()=>void} [onAddNew] Si se pasa, añade una tarjeta "Nueva" al final.
+ * @param {()=>void} [onAddNew] Si se pasa, añade una fila "Nueva" al final.
  */
 export function CategoryPickerModal({ title, value, options = [], onSelect, onClose, onAddNew }) {
   const { t } = useTranslation();
@@ -28,10 +29,11 @@ export function CategoryPickerModal({ title, value, options = [], onSelect, onCl
     if (next === value) { onClose(); return; }
     setPending(next);
     // Deja ver el estado seleccionado un instante antes de cerrar.
-    setTimeout(() => onSelect(next), 180);
+    setTimeout(() => onSelect(next), 160);
   };
 
-  const selected = pending || value;
+  const selected = pending ?? value;
+  const rowCount = options.length + (onAddNew ? 1 : 0);
 
   return (
     <div className="hm-modal-overlay" onClick={() => { if (isSuppressingClick()) return; onClose(); }}>
@@ -53,22 +55,39 @@ export function CategoryPickerModal({ title, value, options = [], onSelect, onCl
         </div>
 
         <div className="hm-modal-body" style={{ paddingTop: 0 }}>
-          <div className="hm-cat-grid">
-            {options.map((opt) => {
+          <div className="hm-card" style={{ overflow: "hidden" }}>
+            {options.map((opt, idx) => {
               const isSelected = opt.value === selected;
               return (
                 <button
                   key={opt.value}
                   type="button"
-                  className={`hm-cat-card${isSelected ? " is-selected" : ""}`}
                   disabled={!!pending}
                   onClick={() => pick(opt.value)}
                   aria-pressed={isSelected}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "13px 16px",
+                    background: "transparent",
+                    border: "none",
+                    borderBottom: idx < rowCount - 1 ? "1px solid var(--border)" : "none",
+                    cursor: pending ? "default" : "pointer",
+                    textAlign: "left",
+                    color: "var(--ink)",
+                    font: "inherit",
+                  }}
                 >
-                  <span className="hm-cat-emoji" aria-hidden="true">{opt.emoji}</span>
-                  <span className="hm-cat-name">{opt.label}</span>
+                  <span style={{ fontSize: 20, flexShrink: 0, width: 24, textAlign: "center" }} aria-hidden="true">{opt.emoji}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {opt.label}
+                  </span>
                   {isSelected && (
-                    <span className="hm-cat-check"><Check size={12} strokeWidth={3} /></span>
+                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--accent-soft)", display: "grid", placeItems: "center", color: "var(--accent)", flexShrink: 0 }}>
+                      <Check size={14} strokeWidth={3} />
+                    </span>
                   )}
                 </button>
               );
@@ -77,76 +96,21 @@ export function CategoryPickerModal({ title, value, options = [], onSelect, onCl
             {onAddNew && (
               <button
                 type="button"
-                className="hm-cat-card hm-cat-card--add"
                 disabled={!!pending}
                 onClick={onAddNew}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "13px 16px",
+                  background: "transparent", border: "none", cursor: pending ? "default" : "pointer",
+                  textAlign: "left", color: "var(--ink-soft)", font: "inherit",
+                }}
               >
-                <span className="hm-cat-emoji" aria-hidden="true"><Plus size={20} /></span>
-                <span className="hm-cat-name">{t("wizard.stepCategoryNew")}</span>
+                <span style={{ width: 24, height: 24, flexShrink: 0, display: "grid", placeItems: "center" }} aria-hidden="true"><Plus size={16} /></span>
+                <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 15 }}>{t("wizard.stepCategoryNew")}</span>
               </button>
             )}
           </div>
         </div>
       </div>
-
-      <style>{`
-        .hm-cat-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-        }
-        .hm-cat-card {
-          position: relative;
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 16px;
-          padding: 16px 8px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 8px;
-          cursor: pointer;
-          color: var(--ink);
-          transition: border-color .15s ease, background .15s ease, transform .15s ease;
-        }
-        .hm-cat-card:active { transform: scale(.97); }
-        .hm-cat-card:disabled { cursor: default; }
-        .hm-cat-card.is-selected {
-          border-color: var(--accent);
-          background: var(--accent-soft);
-          color: var(--accent);
-        }
-        .hm-cat-card--add {
-          border-style: dashed;
-          color: var(--ink-soft);
-        }
-        .hm-cat-emoji {
-          font-size: 24px;
-          line-height: 1;
-          display: grid;
-          place-items: center;
-          min-height: 28px;
-        }
-        .hm-cat-name {
-          font-weight: 600;
-          font-size: 12.5px;
-          text-align: center;
-          line-height: 1.25;
-          word-break: break-word;
-        }
-        .hm-cat-check {
-          position: absolute;
-          top: 6px;
-          right: 6px;
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: var(--accent);
-          color: #fff;
-          display: grid;
-          place-items: center;
-        }
-      `}</style>
     </div>
   );
 }
