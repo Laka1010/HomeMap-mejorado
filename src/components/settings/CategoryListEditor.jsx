@@ -13,8 +13,14 @@ import { objectCategoryEmoji } from "../../utils/categoryEmoji";
  * El renombrado solo llama a `onChange` al CONFIRMAR (no en cada tecla): así
  * un cambio = una escritura, no una por pulsación — importa para las de
  * Economía, que persisten en Supabase.
+ *
+ * `labelFor` traduce el nombre canónico (el que se guarda, siempre en
+ * español) para MOSTRARLO en el idioma activo — igual que `categoryLabel` /
+ * `objectCategoryLabel`. El campo de edición sigue mostrando y guardando el
+ * nombre canónico tal cual: traducir ahí renombraría la categoría de verdad
+ * en vez de solo cambiar cómo se lee.
  */
-export function CategoryListEditor({ title, items = [], onChange, emojiFor = objectCategoryEmoji, addPlaceholder }) {
+export function CategoryListEditor({ title, items = [], onChange, emojiFor = objectCategoryEmoji, labelFor = (name) => name, addPlaceholder }) {
   const { t } = useTranslation();
   const [local, setLocal] = useState(items);
   const [editingIndex, setEditingIndex] = useState(-1);
@@ -96,7 +102,7 @@ export function CategoryListEditor({ title, items = [], onChange, emojiFor = obj
                   onKeyDown={(e) => { if (e.key === "Enter") confirmEdit(); if (e.key === "Escape") { setError(""); setEditingIndex(-1); } }}
                 />
               ) : (
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{cat}</div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{labelFor(cat)}</div>
               )}
             </div>
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>

@@ -14,7 +14,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { I18nProvider, useTranslation } from "./i18n";
 import { CurrencyProvider, useCurrency } from "./currency";
 import { formatCurrencyValue } from "./utils/currencyUtils";
-import { objectCategoryEmoji } from "./utils/categoryEmoji";
+import { objectCategoryEmoji, objectCategoryLabel } from "./utils/categoryEmoji";
 // Pantallas de ajustes: solo se montan al abrir su modal, así que se cargan
 // bajo demanda (mismo componente y props, sin cambio de comportamiento).
 const HouseSettingsScreen = lazy(() => import("./components/settings/HouseSettingsScreen").then((m) => ({ default: m.HouseSettingsScreen })));
@@ -1777,7 +1777,7 @@ function ObjectDetail({ state, objectId, onBack, onDelete, dispatch, onMove, onU
               style={{ fontSize: 24, fontWeight: 600, width: "100%", marginBottom: 6 }}
             />
             <span className="hm-card-flat" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", fontSize: 12.5, fontWeight: 600, color: "var(--accent)" }}>
-              <CategoryIcon category={obj.category} size={12} />{obj.category}
+              <CategoryIcon category={obj.category} size={12} />{objectCategoryLabel(obj.category, t)}
             </span>
           </div>
           <button className="hm-btn hm-btn-ghost hm-text-danger" onClick={() => onDelete(obj.id)}>
@@ -1891,7 +1891,8 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
   if (!room || peeking) {
     // ROOM LIST (+ hoja inferior si `peeking`)
     const categoriesInUse = showCategoryFilter
-      ? [...new Set([...(state.categories || []), ...state.objects.map((o) => o.category).filter(Boolean)])].sort((a, b) => a.localeCompare(b))
+      ? [...new Set([...(state.categories || []), ...state.objects.map((o) => o.category).filter(Boolean)])]
+          .sort((a, b) => objectCategoryLabel(a, t).localeCompare(objectCategoryLabel(b, t)))
       : [];
     const categoryObjects = selectedCategory ? state.objects.filter((o) => o.category === selectedCategory) : [];
     return (
@@ -1942,7 +1943,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
               {categoriesInUse.map((cat) => (
                 <div key={cat} className="hm-card hm-tap hm-card--p14" onClick={() => setSelectedCategory(cat)}>
                   <span style={{ fontSize: 26, lineHeight: 1 }} aria-hidden="true">{objectCategoryEmoji(cat)}</span>
-                  <div className="hm-display" style={{ fontWeight: 600, fontSize: 15, marginTop: 10 }}>{cat}</div>
+                  <div className="hm-display" style={{ fontWeight: 600, fontSize: 15, marginTop: 10 }}>{objectCategoryLabel(cat, t)}</div>
                   <div style={{ fontSize: 12, color: "var(--ink-soft)", margin: "3px 0 10px" }}>
                     {t("common.objectsCount", { count: state.objects.filter((o) => o.category === cat).length })}
                   </div>
@@ -2334,6 +2335,7 @@ function RoomSheet({ room, state, goTo, onRename, onDelete, onMoveObject, onExpa
 }
 
 function ObjectRow({ o, onClick, path, dragHandleProps, dragging }) {
+  const { t } = useTranslation();
   return (
     <div
       className={`hm-card hm-tap hm-card--p12${dragging ? " hm-dnd-dragging" : ""}`}
@@ -2344,7 +2346,7 @@ function ObjectRow({ o, onClick, path, dragHandleProps, dragging }) {
       <CategoryIcon category={o.category} size={18} style={{ color: "var(--ink-soft)", flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 14 }}>{o.name}</div>
-        <div style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>{path && path.length > 0 ? path.join(" · ") : o.category}</div>
+        <div style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>{path && path.length > 0 ? path.join(" · ") : objectCategoryLabel(o.category, t)}</div>
       </div>
       <ChevronRight size={16} style={{ color: "var(--ink-soft)" }} />
     </div>

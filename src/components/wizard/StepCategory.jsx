@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import { useTranslation } from "../../i18n";
-import { objectCategoryEmoji } from "../../utils/categoryEmoji";
+import { objectCategoryEmoji, objectCategoryLabel } from "../../utils/categoryEmoji";
 
 export function StepCategory({ data, onChange, categories, onNext }) {
   const { t } = useTranslation();
@@ -25,7 +25,7 @@ export function StepCategory({ data, onChange, categories, onNext }) {
             aria-pressed={data.category === cat}
           >
             <span className="category-emoji">{objectCategoryEmoji(cat)}</span>
-            <span className="category-name">{cat}</span>
+            <span className="category-name">{objectCategoryLabel(cat, t)}</span>
           </button>
         ))}
 

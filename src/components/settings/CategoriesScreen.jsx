@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "../../i18n";
-import { objectCategoryEmoji } from "../../utils/categoryEmoji";
-import { categoryEmoji } from "../../modules/economy/economyCategories";
+import { objectCategoryEmoji, objectCategoryLabel } from "../../utils/categoryEmoji";
+import { categoryEmoji, categoryLabel } from "../../modules/economy/economyCategories";
 import { CategoryListEditor } from "./CategoryListEditor";
 
 /**
@@ -45,18 +45,21 @@ export function CategoriesScreen({
             items={categories}
             onChange={onChangeCategories}
             emojiFor={objectCategoryEmoji}
+            labelFor={(name) => objectCategoryLabel(name, t)}
           />
           <CategoryListEditor
             title={t("houseSettings.categoriesExpenseTab")}
             items={economyCategories.expense}
             onChange={(next) => onChangeEconomyCategories?.("expense", next)}
             emojiFor={categoryEmoji}
+            labelFor={(name) => categoryLabel(name, t)}
           />
           <CategoryListEditor
             title={t("houseSettings.categoriesIncomeTab")}
             items={economyCategories.income}
             onChange={(next) => onChangeEconomyCategories?.("income", next)}
             emojiFor={categoryEmoji}
+            labelFor={(name) => categoryLabel(name, t)}
           />
         </div>
       </div>
