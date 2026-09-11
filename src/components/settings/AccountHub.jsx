@@ -251,6 +251,7 @@ function buildSections({ t, setView, openModal, version, theme, onChangeTheme })
       rows: [
         { id: "privacyPolicy", icon: Shield, label: t("ajustes.privacyPolicy"), kind: "external", href: "/privacy-policy.html" },
         { id: "terms", icon: Shield, label: t("ajustes.terms"), kind: "external", href: "/terms.html" },
+        { id: "deleteAccountInfo", icon: Trash2, label: t("ajustes.deleteAccountInfo"), kind: "external", href: "/eliminar-cuenta.html" },
       ],
     },
     {
