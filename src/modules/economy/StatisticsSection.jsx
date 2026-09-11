@@ -5,8 +5,9 @@ import { accountsService } from "./services/accountsService";
 import { transfersService } from "./services/transfersService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
-import { intlLocale } from "../../utils/dates";
+import { intlLocale, formatShortDate } from "../../utils/dates";
 import { categoryLabel } from "./economyCategories";
+import { NET_WORTH_RANGES, sampleDatesForRange, computeNetWorthSeries, earliestLedgerDate } from "./netWorthEngine";
 
 function monthKeyOf(dateStr) {
   return dateStr ? String(dateStr).slice(0, 7) : null;
@@ -32,7 +33,10 @@ export default function StatisticsSection({ spaceId }) {
   const [expenses, setExpenses] = useState([]);
   const [income, setIncome] = useState([]);
   const [bills, setBills] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [transfers, setTransfers] = useState([]);
   const [contributions, setContributions] = useState({ received: 0, sent: 0 });
+  const [netWorthRange, setNetWorthRange] = useState("month");
 
   // Siempre filtrado por el Space activo (nunca por house_id directamente)
   // — así Personal/Shared/Household nunca mezclan cifras entre sí. Las
@@ -49,18 +53,22 @@ export default function StatisticsSection({ spaceId }) {
       accountsService.listAccounts(spaceId),
       transfersService.listTransfersForSpace(spaceId),
     ])
-      .then(([exp, inc, bl, accounts, transfers]) => {
+      .then(([exp, inc, bl, accountsData, transfersData]) => {
         if (cancelled) return;
         setExpenses(exp || []);
         setIncome(inc || []);
         setBills(bl || []);
+        // Solo cuentas activas: el patrimonio neto es "lo que tienes ahora
+        // repartido en el tiempo", una cuenta archivada ya no cuenta.
+        setAccounts((accountsData || []).filter((a) => a.status === "active"));
+        setTransfers(transfersData || []);
 
         // Las contribuciones nunca se suman a ingresos/gastos (evita
         // contarlas dos veces: ya viven en su propio ledger) — se muestran
         // como una cifra aparte, separando lo que este Space ha recibido de
         // otros Spaces de lo que ha aportado a otros.
-        const ownAccountIds = new Set((accounts || []).map((a) => a.id));
-        const contributionRows = (transfers || []).filter((tr) => tr.kind === "contribution");
+        const ownAccountIds = new Set((accountsData || []).map((a) => a.id));
+        const contributionRows = (transfersData || []).filter((tr) => tr.kind === "contribution");
         setContributions({
           received: contributionRows.filter((tr) => ownAccountIds.has(tr.to_account_id)).reduce((sum, tr) => sum + parseFloat(tr.amount || 0), 0),
           sent: contributionRows.filter((tr) => ownAccountIds.has(tr.from_account_id)).reduce((sum, tr) => sum + parseFloat(tr.amount || 0), 0),
@@ -81,6 +89,21 @@ export default function StatisticsSection({ spaceId }) {
   }), [months, income, expenses]);
 
   const maxMonthly = Math.max(1, ...monthly.flatMap((m) => [m.income, m.expenses]));
+
+  // Patrimonio neto: reconstruido del ledger, no de una tabla de snapshots
+  // (no existe) — ver netWorthEngine.js.
+  const netWorthEarliest = useMemo(
+    () => earliestLedgerDate(accounts, income, expenses, transfers),
+    [accounts, income, expenses, transfers],
+  );
+  const netWorthDates = useMemo(
+    () => sampleDatesForRange(netWorthRange, { earliestDate: netWorthEarliest }),
+    [netWorthRange, netWorthEarliest],
+  );
+  const netWorthSeries = useMemo(
+    () => computeNetWorthSeries(accounts, income, expenses, transfers, netWorthDates),
+    [accounts, income, expenses, transfers, netWorthDates],
+  );
 
   const topCategories = useMemo(() => {
     const map = {};
@@ -126,7 +149,7 @@ export default function StatisticsSection({ spaceId }) {
     return <div style={{ textAlign: "center", padding: 32, color: "var(--ink-soft)" }}>{t("statistics.loading")}</div>;
   }
 
-  const hasAnyData = expenses.length > 0 || income.length > 0 || bills.length > 0 || contributions.received > 0 || contributions.sent > 0;
+  const hasAnyData = expenses.length > 0 || income.length > 0 || bills.length > 0 || contributions.received > 0 || contributions.sent > 0 || accounts.length > 0;
   if (!hasAnyData) {
     return (
       <div style={{ textAlign: "center", padding: 32, color: "var(--ink-soft)" }}>
@@ -144,6 +167,18 @@ export default function StatisticsSection({ spaceId }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Patrimonio neto */}
+      {accounts.length > 0 && (
+        <NetWorthCard
+          series={netWorthSeries}
+          range={netWorthRange}
+          onChangeRange={setNetWorthRange}
+          formatCurrency={formatCurrency}
+          locale={locale}
+          t={t}
+        />
+      )}
+
       {/* Hero stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
         <div className="hm-card" style={{ padding: 14 }}>
@@ -269,6 +304,105 @@ export default function StatisticsSection({ spaceId }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+const RANGE_LABEL_KEYS = {
+  week: "statistics.rangeWeek",
+  month: "statistics.rangeMonth",
+  quarter: "statistics.rangeQuarter",
+  half: "statistics.rangeHalf",
+  year: "statistics.rangeYear",
+  all: "statistics.rangeAll",
+};
+
+/**
+ * Patrimonio neto: importe actual + variación en el rango elegido, y un
+ * gráfico de línea (SVG a mano, sin librería — mismo criterio que el resto
+ * de gráficos de esta pantalla) con la reconstrucción de netWorthEngine.js.
+ */
+function NetWorthCard({ series, range, onChangeRange, formatCurrency, locale, t }) {
+  const rangePill = (active) => ({
+    padding: "6px 10px",
+    borderRadius: 999,
+    border: "none",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 12,
+    flexShrink: 0,
+    background: active ? "var(--accent)" : "transparent",
+    color: active ? "var(--accent-ink)" : "var(--ink-soft)",
+  });
+
+  const last = series[series.length - 1];
+  const first = series[0];
+  const delta = last && first ? last.value - first.value : 0;
+  const deltaPositive = delta >= 0;
+
+  return (
+    <div className="hm-card" style={{ padding: 16 }}>
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{t("statistics.netWorthTitle")}</div>
+
+      {last && (
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 26, fontWeight: 800 }}>{formatCurrency(last.value)}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: deltaPositive ? "var(--success)" : "var(--danger)" }}>
+            {deltaPositive ? "+" : ""}{formatCurrency(delta)}
+          </div>
+        </div>
+      )}
+
+      <div className="hm-scroll" style={{ display: "flex", gap: 4, background: "var(--surface-alt)", borderRadius: 999, padding: 4, margin: "12px 0 14px", maxWidth: "100%", overflowX: "auto" }}>
+        {NET_WORTH_RANGES.map((key) => (
+          <button key={key} style={rangePill(range === key)} onClick={() => onChangeRange(key)}>
+            {t(RANGE_LABEL_KEYS[key])}
+          </button>
+        ))}
+      </div>
+
+      <NetWorthChart series={series} locale={locale} />
+    </div>
+  );
+}
+
+function NetWorthChart({ series, locale }) {
+  const width = 320;
+  const height = 110;
+  const pad = 6;
+
+  if (series.length < 2) return null;
+
+  const values = series.map((p) => p.value);
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const margin = (rawMax - rawMin) * 0.15 || Math.max(1, Math.abs(rawMax) * 0.1) || 1;
+  const min = rawMin - margin;
+  const max = rawMax + margin;
+  const span = max - min || 1;
+  const stepX = (width - pad * 2) / (series.length - 1);
+
+  const points = series.map((p, i) => ({
+    x: pad + i * stepX,
+    y: height - pad - ((p.value - min) / span) * (height - pad * 2),
+  }));
+
+  const linePath = points.map((pt, i) => `${i === 0 ? "M" : "L"}${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L${points[points.length - 1].x.toFixed(1)},${height - pad} L${points[0].x.toFixed(1)},${height - pad} Z`;
+
+  const midIndex = Math.floor((series.length - 1) / 2);
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ width: "100%", height, display: "block" }}>
+        <path d={areaPath} fill="var(--accent-soft)" stroke="none" />
+        <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11, color: "var(--ink-soft)" }}>
+        {series.map((p, i) => (
+          <span key={i}>{i === 0 || i === midIndex || i === series.length - 1 ? formatShortDate(p.date, locale) : ""}</span>
+        ))}
+      </div>
     </div>
   );
 }
