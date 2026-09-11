@@ -518,7 +518,13 @@ const ROOM_ICON_OPTIONS = [
   { key: "trastero", label: "Trastero" }, { key: "garaje", label: "Garaje" },
   { key: "oficina", label: "Oficina" },
 ];
-const DEFAULT_CATEGORIES = ["Comida", "Viajes", "Muebles", "Electrónica", "Regalos"];
+const DEFAULT_CATEGORIES = [
+  "Electrónica", "Electrodomésticos", "Muebles", "Cocina", "Ropa", "Calzado",
+  "Accesorios", "Herramientas y bricolaje", "Deporte y ocio", "Juguetes",
+  "Libros y música", "Decoración", "Documentos y objetos importantes",
+  "Salud y cuidado personal", "Mascotas", "Vehículos",
+  "Colecciones y objetos de valor", "Otros",
+];
 const BOX_COLORS = ["#3D5A80", "#C98A3E", "#6B7A5E", "#8E5B72", "#4C7A8B", "#8B6B4C"];
 const APP_VERSION = "1.1.0";
 const APP_BUILD = "001";
