@@ -82,6 +82,7 @@ import { buildNotificationActionHandlers } from "./notifications/notificationAct
 import { PRIORITY_LEVELS } from "./modules/shopping/shoppingMeta";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, DEFAULT_CATEGORY, defaultCategoryFor, categoryLabel } from "./modules/economy/economyCategories";
 import { EconomyCategoriesProvider, useEconomyCategories } from "./modules/economy/EconomyCategoriesContext";
+import { CategoryField } from "./modules/economy/CategoryField";
 import { normalizeText, fuzzyMatch, fuzzyMatchAny } from "./utils/textMatch";
 import { toLocalDateString } from "./utils/dates";
 import { safeRandomUUID } from "./utils/uuid";
@@ -2482,7 +2483,7 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateContainer, onDel
 /* -------------------------------------------------------------------- */
 /* COMPRAS                                                               */
 /* -------------------------------------------------------------------- */
-function Compras({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase }) {
+function Compras({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase, onUpdateListCategory }) {
   return (
     <ShoppingModule
       state={state}
@@ -2493,6 +2494,7 @@ function Compras({ state, dispatch, openModal, deleteShoppingList, addShopping, 
       onCompletePurchase={onCompletePurchase}
       onRepeatPurchase={onRepeatPurchase}
       onSaveReceiptPurchase={onSaveReceiptPurchase}
+      onUpdateListCategory={onUpdateListCategory}
     />
   );
 }
@@ -2681,7 +2683,9 @@ function TermsModal({ onClose }) {
  */
 function AddShoppingListModal({ purchases, onCreate, onClose }) {
   const { t } = useTranslation();
+  const { expense: expenseCategories } = useEconomyCategories();
   const [name, setName] = useState("");
+  const [category, setCategory] = useState(DEFAULT_CATEGORY);
   const [selected, setSelected] = useState(() => new Set());
 
   const suggestions = useMemo(() => computeFrequentProducts(purchases), [purchases]);
@@ -2697,13 +2701,17 @@ function AddShoppingListModal({ purchases, onCreate, onClose }) {
 
   const handleCreate = () => {
     if (!name.trim()) return;
-    onCreate(name.trim(), suggestions.filter((s) => selected.has(s.name)));
+    onCreate(name.trim(), suggestions.filter((s) => selected.has(s.name)), category);
   };
 
   return (
     <Modal title={t("quickAdd.newListTitle")} onClose={onClose}>
       <FieldGroup label={t("quickAdd.nameLabel")}>
         <FieldTextRow icon={ShoppingCart} value={name} autoFocus onChange={setName} onEnter={handleCreate} />
+      </FieldGroup>
+
+      <FieldGroup label={t("quickAdd.listCategoryLabel")}>
+        <CategoryField categories={expenseCategories} value={category} onChange={setCategory} variant="row" title={t("quickAdd.listCategoryLabel")} />
       </FieldGroup>
 
       {suggestions.length > 0 && (
@@ -3678,11 +3686,11 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       showNotice(t("toast.shoppingItemSaveError"));
     });
   };
-  const addShoppingList = async (name, suggestedItems = []) => {
+  const addShoppingList = async (name, suggestedItems = [], category = null) => {
     const trimmed = (name || "").trim();
     if (!trimmed) return;
     try {
-      const list = await shoppingListsService.createList(currentHome.id, trimmed, (state.shoppingLists || []).length);
+      const list = await shoppingListsService.createList(currentHome.id, trimmed, (state.shoppingLists || []).length, category);
       const newItems = suggestedItems.map((item) => ({
         id: "s-" + uid(),
         listId: list.id,
@@ -3726,6 +3734,22 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       console.error("Error deleting shopping list:", error);
       showNotice(t("toast.listDeleteError"));
     }
+  };
+
+  /**
+   * Categoría de gasto asignada a una lista (p.ej. "Supermercado" -> Comida):
+   * la usa registerPurchaseExpense al cerrar una compra de esa lista, en vez
+   * de caer siempre en DEFAULT_CATEGORY.
+   */
+  const updateShoppingListCategory = (listId, category) => {
+    dispatch((s) => ({
+      ...s,
+      shoppingLists: (s.shoppingLists || []).map((l) => (l.id === listId ? { ...l, category } : l)),
+    }));
+    shoppingListsService.updateCategory(listId, category).catch((error) => {
+      console.error("Error updating shopping list category:", error);
+      showNotice(t("toast.listUpdateError"));
+    });
   };
 
   /**
@@ -3784,25 +3808,27 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * una funcionalidad nueva (añadir financial_space_id a shopping_lists o
    * shopping_purchases) que debe decidirse explícitamente, no inferirse.
    */
-  const registerPurchaseExpense = async ({ store, amount, purchaseId }) => {
+  const registerPurchaseExpense = async ({ store, amount, purchaseId, category }) => {
+    // "Otros gastos" (DEFAULT_CATEGORY), no EXPENSE_CATEGORIES[0]: una compra
+    // puede ser de cualquier cosa (ferretería, ropa...) y, salvo que la lista
+    // de la compra tenga asignada su propia categoría de gasto (ver
+    // updateShoppingListCategory), aquí no hay forma de saberla sin
+    // inventarse un dato. El toast ofrece "Editar" para afinarla.
+    const resolvedCategory = category || DEFAULT_CATEGORY;
     try {
       const expense = await economyService.createExpense({
         house_id: currentHome.id,
         created_by: user.id,
         name: store || t("actionCenter.shopping"),
         amount,
-        // "Otros", no EXPENSE_CATEGORIES[0]: una compra puede ser de
-        // cualquier cosa (ferretería, ropa...) y aquí el usuario no llega a
-        // elegir categoría, así que asignar "Alimentación" sería inventarse
-        // un dato. El toast ofrece "Editar" para afinarla.
-        category: DEFAULT_CATEGORY,
+        category: resolvedCategory,
         shopping_purchase_id: purchaseId,
       });
       setEconomyVersion((v) => v + 1);
       // El gasto de una compra no tiene formulario propio (nace solo al
       // cerrar la compra), así que no hay casilla que marcar: se anota
       // siempre en el calendario, en la fecha de hoy.
-      logPaymentToCalendar({ title: store || t("actionCenter.shopping"), amount, date: toLocalDateString(new Date()), category: DEFAULT_CATEGORY, kind: "expense" });
+      logPaymentToCalendar({ title: store || t("actionCenter.shopping"), amount, date: toLocalDateString(new Date()), category: resolvedCategory, kind: "expense" });
       showNotice(t("toast.purchaseExpenseAdded", { amount: formatAmount(amount) }), {
         label: t("common.edit"),
         onClick: () => openModal("addExpense", {
@@ -3854,6 +3880,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const completeShoppingPurchase = async ({ listId, items, store, manualAmount }) => {
     const itemsAmount = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
     const amount = Number(manualAmount) > 0 ? Number(manualAmount) : itemsAmount;
+    const listCategory = (state.shoppingLists || []).find((l) => l.id === listId)?.category;
     const snapshot = items.map((item) => ({ name: item.name, quantity: item.quantity, category: item.category, price: item.price }));
     try {
       const purchase = await shoppingPurchasesService.createPurchase(currentHome.id, {
@@ -3871,7 +3898,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         console.error("Error clearing purchased shopping items:", error);
       });
       if (amount > 0) {
-        await registerPurchaseExpense({ store, amount, purchaseId: purchase.id });
+        await registerPurchaseExpense({ store, amount, purchaseId: purchase.id, category: listCategory });
       } else {
         showNotice(t("toast.purchaseCompleted"));
       }
@@ -3889,6 +3916,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * campos extra detectados.
    */
   const saveScannedPurchase = async ({ store, date, items, taxAmount, discountAmount, total, imageFile, listId, purchasedItemIds }) => {
+    const listCategory = (state.shoppingLists || []).find((l) => l.id === listId)?.category;
     const snapshot = items.map((item) => ({ name: item.name, quantity: item.quantity, category: item.category, price: item.unitPrice }));
     try {
       let purchase = await shoppingPurchasesService.createPurchase(currentHome.id, {
@@ -3926,7 +3954,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       celebratePurchase({ listId, store, itemCount: items.length, amount: Number(total) || 0 });
 
       if (total > 0) {
-        await registerPurchaseExpense({ store, amount: Number(total), purchaseId: purchase.id });
+        await registerPurchaseExpense({ store, amount: Number(total), purchaseId: purchase.id, category: listCategory });
       } else {
         showNotice(t("toast.receiptSaved"));
       }
@@ -4513,7 +4541,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               // vez de truncarse.
               <div key={organizationTab} className="hm-fade-in" style={{ minWidth: 0 }}>
                 <Suspense fallback={null}>
-                  {organizationTab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} />}
+                  {organizationTab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} onUpdateListCategory={updateShoppingListCategory} />}
                   {organizationTab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onTaskCompleted={logTaskCompleted} />}
                   {organizationTab === "notas" && <Notas state={state} dispatch={dispatch} openModal={openModal} />}
                   {organizationTab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} openModal={openModal} onDeleteEvent={deleteCalendarEvent} />}
@@ -4770,7 +4798,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       {modal?.type === "addShoppingList" && (
         <AddShoppingListModal
           purchases={state.shoppingPurchases}
-          onCreate={(name, suggestedItems) => addShoppingList(name, suggestedItems)}
+          onCreate={(name, suggestedItems, category) => addShoppingList(name, suggestedItems, category)}
           onClose={closeModal}
         />
       )}

@@ -8,6 +8,9 @@ import { computeFrequentProducts } from "./frequentProducts";
 import { ShoppingCheckoutMode } from "./ShoppingCheckoutMode";
 import { getPortalTarget } from "../../utils/portalTarget";
 import { EmptyState } from "../../components/EmptyState";
+import { CategoryPickerModal } from "../../components/CategoryPickerModal";
+import { useEconomyCategories } from "../economy/EconomyCategoriesContext";
+import { DEFAULT_CATEGORY, categoryLabel, categoryEmoji } from "../economy/economyCategories";
 import { useTranslation } from "../../i18n";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -140,8 +143,47 @@ function FrequentSuggestions({ suggestions, onAdd }) {
   );
 }
 
-export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase }) {
+/**
+ * Categoría de gasto de una lista (p.ej. "Supermercado" -> Comida): se usa al
+ * cerrar una compra de esa lista para categorizar el gasto automático en
+ * Movimientos en vez de caer siempre en "Otros gastos". Reutiliza el mismo
+ * catálogo y sheet (CategoryPickerModal) que Economía, no uno propio de
+ * Compras, porque es literalmente la misma categoría que verá el gasto.
+ */
+function ListCategoryChip({ category, categories, onChange }) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const current = category || DEFAULT_CATEGORY;
+  const options = useMemo(
+    () => categories.map((c) => ({ value: c, label: categoryLabel(c, t), emoji: categoryEmoji(c) })),
+    [categories, t]
+  );
+  return (
+    <>
+      <button
+        type="button"
+        className="hm-btn hm-btn-soft hm-btn--compact"
+        style={{ fontSize: 11.5 }}
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+      >
+        {categoryEmoji(current)} {categoryLabel(current, t)}
+      </button>
+      {open && (
+        <CategoryPickerModal
+          title={t("quickAdd.listCategoryLabel")}
+          value={current}
+          options={options}
+          onSelect={(next) => { onChange(next); setOpen(false); }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase, onUpdateListCategory }) {
+  const { t } = useTranslation();
+  const { expense: expenseCategories } = useEconomyCategories();
   const shoppingItems = Array.isArray(state.shoppingItems) ? state.shoppingItems : [];
   const shoppingLists = Array.isArray(state.shoppingLists) ? state.shoppingLists : [];
   const [activeListId, setActiveListId] = useState(null);
@@ -311,6 +353,15 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
                   <div style={{ fontSize: 12.5, color: confirming ? "var(--danger)" : "var(--ink-soft)", marginTop: 6 }}>
                     {confirming ? t("shoppingModule.confirmDeleteList") : items.length === 0 ? t("shoppingModule.noProducts") : t("shoppingModule.pendingOfTotal", { pending, total: items.length })}
                   </div>
+                  {!confirming && (
+                    <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
+                      <ListCategoryChip
+                        category={list.category}
+                        categories={expenseCategories}
+                        onChange={(next) => onUpdateListCategory?.(list.id, next)}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -323,9 +374,14 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
   return (
     <div className="hm-fade-in" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <button className="hm-btn hm-btn-soft hm-btn--compact" onClick={() => setActiveListId(null)}><ArrowLeft size={16} /></button>
           <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{activeList.name}</h1>
+          <ListCategoryChip
+            category={activeList.category}
+            categories={expenseCategories}
+            onChange={(next) => onUpdateListCategory?.(activeList.id, next)}
+          />
         </div>
         <div className="hm-scroll" style={{ display: "flex", gap: 6, flexWrap: "nowrap", overflowX: "auto", maxWidth: "100%" }}>
           <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => openModal("shoppingHistory", { listId: activeList.id })}><History size={13} /> {t("shoppingModule.history")}</button>

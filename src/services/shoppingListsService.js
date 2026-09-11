@@ -6,7 +6,7 @@ import { supabase } from "../supabaseClient";
  */
 
 function listFromRow(row) {
-  return { id: row.id, name: row.name };
+  return { id: row.id, name: row.name, category: row.category || null };
 }
 
 export const shoppingListsService = {
@@ -20,10 +20,10 @@ export const shoppingListsService = {
     return (data || []).map(listFromRow);
   },
 
-  async createList(houseId, name, position = 0) {
+  async createList(houseId, name, position = 0, category = null) {
     const { data, error } = await supabase
       .from("shopping_lists")
-      .insert({ house_id: houseId, name, position })
+      .insert({ house_id: houseId, name, position, category })
       .select()
       .single();
     if (error) throw error;
@@ -32,6 +32,11 @@ export const shoppingListsService = {
 
   async renameList(listId, name) {
     const { error } = await supabase.from("shopping_lists").update({ name }).eq("id", listId);
+    if (error) throw error;
+  },
+
+  async updateCategory(listId, category) {
+    const { error } = await supabase.from("shopping_lists").update({ category }).eq("id", listId);
     if (error) throw error;
   },
 
