@@ -167,6 +167,13 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
   const maxScale = Math.max(ingresos, gastos, 1);
   const incomeBarPct = Math.min(100, (ingresos / maxScale) * 100);
   const expenseDotPct = Math.min(100, (gastos / maxScale) * 100);
+  // El fondo del hero se difumina de verde a rojo de izquierda a derecha
+  // según ese mismo % de gasto (expenseDotPct), para que avance en sincronía
+  // con el punto de la barra de abajo. Sin gasto, verde sólido; a partir de
+  // ahí, la zona de transición se desplaza hacia la derecha según se gasta.
+  const heroBackground = gastos <= 0
+    ? "var(--success-soft)"
+    : `linear-gradient(to right, var(--danger-soft) ${Math.max(0, expenseDotPct - 10)}%, var(--success-soft) ${Math.min(100, expenseDotPct + 10)}%)`;
 
   const insights = computeInsights({ pendingBills, balance: accountsBalance, t });
 
@@ -175,7 +182,7 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
       <InsightsBar insights={insights} />
 
       {/* HERO: balance del mes */}
-      <div className="hm-card" style={{ padding: 22, background: isSaving ? "var(--success-soft)" : "var(--danger-soft)", textAlign: "center" }}>
+      <div className="hm-card" style={{ padding: 22, background: heroBackground, textAlign: "center" }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", color: "var(--ink-soft)", textTransform: "uppercase" }}>
           {t("economy.savedThisMonth")}
         </div>
@@ -206,8 +213,11 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
           </div>
         </div>
 
-        <div style={{ position: "relative", height: 8, borderRadius: 999, background: "rgba(var(--border-rgb), 0.35)", marginTop: 18 }}>
-          <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${incomeBarPct}%`, borderRadius: 999, background: isSaving ? "var(--success)" : "var(--danger)" }} />
+        <div style={{ position: "relative", height: 8, borderRadius: 999, background: "rgba(var(--border-rgb), 0.35)", marginTop: 18, overflow: "hidden" }}>
+          {/* A la izquierda del punto: ya gastado (rojo). A su derecha, hasta
+              donde llega el ingreso: lo que queda ahorrado (verde). */}
+          <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${Math.min(expenseDotPct, incomeBarPct)}%`, background: "var(--danger)" }} />
+          <div style={{ position: "absolute", top: 0, left: `${Math.min(expenseDotPct, incomeBarPct)}%`, height: "100%", width: `${Math.max(0, incomeBarPct - expenseDotPct)}%`, background: "var(--success)" }} />
           <div style={{ position: "absolute", top: "50%", left: `${expenseDotPct}%`, width: 12, height: 12, borderRadius: "50%", background: "var(--danger)", transform: "translate(-50%, -50%)", border: "2px solid var(--surface)" }} />
         </div>
         <div style={{ display: "flex", justifyContent: "center", gap: 18, marginTop: 10, fontSize: 12.5, color: "var(--ink-soft)" }}>
