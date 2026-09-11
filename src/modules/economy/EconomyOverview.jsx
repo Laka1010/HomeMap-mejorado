@@ -189,27 +189,17 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
         <div style={{ fontSize: 40, fontWeight: 800, marginTop: 8, color: isSaving ? "var(--success)" : "var(--danger)", fontFamily: "'Fraunces', serif" }}>
           {isSaving ? "+" : "-"}{formatCurrency(Math.abs(balance))}
         </div>
-        <div style={{ marginTop: 12 }}>
-          <span style={{
-            display: "inline-block", padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 700,
-            background: isSaving ? "rgba(var(--surface-rgb), 0.6)" : "rgba(var(--surface-rgb), 0.6)",
-            color: isSaving ? "var(--success)" : "var(--danger)",
-          }}>
-            {isSaving ? t("economy.savingStatus") : t("economy.overspendingStatus")}
-          </span>
-        </div>
-
         <div style={{ height: 1, background: "rgba(var(--border-rgb), 0.5)", margin: "18px 0" }} />
 
         <div style={{ display: "flex", justifyContent: "center", gap: 40 }}>
           <div>
-            <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{t("economy.income")}</div>
-            <div style={{ fontSize: 19, fontWeight: 700, color: "var(--success)", marginTop: 2 }}>{formatCurrency(ingresos)}</div>
+            <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{t("economy.expenses")}</div>
+            <div style={{ fontSize: 19, fontWeight: 700, color: "var(--danger)", marginTop: 2 }}>{formatCurrency(gastos)}</div>
           </div>
           <div style={{ width: 1, background: "rgba(var(--border-rgb), 0.5)" }} />
           <div>
-            <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{t("economy.expenses")}</div>
-            <div style={{ fontSize: 19, fontWeight: 700, color: "var(--danger)", marginTop: 2 }}>{formatCurrency(gastos)}</div>
+            <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{t("economy.income")}</div>
+            <div style={{ fontSize: 19, fontWeight: 700, color: "var(--success)", marginTop: 2 }}>{formatCurrency(ingresos)}</div>
           </div>
         </div>
 
@@ -219,10 +209,6 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
           <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${Math.min(expenseDotPct, incomeBarPct)}%`, background: "var(--danger)" }} />
           <div style={{ position: "absolute", top: 0, left: `${Math.min(expenseDotPct, incomeBarPct)}%`, height: "100%", width: `${Math.max(0, incomeBarPct - expenseDotPct)}%`, background: "var(--success)" }} />
           <div style={{ position: "absolute", top: "50%", left: `${expenseDotPct}%`, width: 12, height: 12, borderRadius: "50%", background: "var(--danger)", transform: "translate(-50%, -50%)", border: "2px solid var(--surface)" }} />
-        </div>
-        <div style={{ display: "flex", justifyContent: "center", gap: 18, marginTop: 10, fontSize: 12.5, color: "var(--ink-soft)" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--success)", display: "inline-block" }} /> {t("economy.income")}</span>
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--danger)", display: "inline-block" }} /> {t("economy.expenses")}</span>
         </div>
       </div>
 
