@@ -5,7 +5,7 @@ import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { normalizeText } from "../../utils/textMatch";
 import { toLocalDateString } from "../../utils/dates";
-import { GoalsSection } from "./GoalsSection";
+import { BudgetSection } from "./BudgetSection";
 import { AccountsSection } from "./AccountsSection";
 import { accountsService } from "./services/accountsService";
 import { transfersService } from "./services/transfersService";
@@ -219,11 +219,10 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
       <AccountsSection spaceId={spaceId} spaces={spaces} userId={user?.id} />
 
       {isHousehold && (
-        <GoalsSection
+        <BudgetSection
           houseId={currentHome?.id}
           userId={user?.id}
           expenseCategoryTotals={expenseCategoryTotals}
-          balance={balance}
         />
       )}
 

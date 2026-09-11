@@ -8,7 +8,7 @@ import { TransferModal } from "./TransferModal";
 
 /**
  * Tarjetas horizontales de cuentas del Space activo, mismo patrón
- * "header + botón ghost" que GoalsSection. El saldo se formatea con la
+ * "header + botón ghost" que BudgetSection. El saldo se formatea con la
  * moneda propia de CADA cuenta (`formatCurrencyValue`, sin pasar por
  * useCurrency — ese hook está atado a la moneda de la casa, no vale aquí
  * porque una cuenta puede tener una moneda distinta a la del hogar).
