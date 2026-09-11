@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Pencil, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { economyGoalsService } from "./services/economyGoalsService";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
 import { normalizeText } from "../../utils/textMatch";
 import { categoryLabel, categoryEmoji } from "./economyCategories";
 import { useEconomyCategories } from "./EconomyCategoriesContext";
+import { CategoryField } from "./CategoryField";
 import { useDragToDismiss } from "../../hooks/useDragToDismiss";
+import { AmountHero, FieldGroup } from "../../components/MoneyEntry";
 
 /**
  * Presupuesto del mes: cuánto quieres gastar como máximo, por categoría de
@@ -22,7 +24,7 @@ export function BudgetSection({ houseId, userId, expenseCategoryTotals }) {
   const { expense: expenseCategories } = useEconomyCategories();
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showEditor, setShowEditor] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
 
   const load = async () => {
     if (!houseId) return;
@@ -54,15 +56,15 @@ export function BudgetSection({ houseId, userId, expenseCategoryTotals }) {
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", color: "var(--ink-soft)", textTransform: "uppercase" }}>
           {t("budget.title")}
         </div>
-        <button className="hm-btn hm-btn-ghost" style={{ padding: "4px 6px", fontSize: 13, color: "var(--accent)", fontWeight: 700 }} onClick={() => setShowEditor(true)}>
-          <Pencil size={13} /> {t("budget.edit")}
+        <button className="hm-btn hm-btn-ghost" style={{ padding: "4px 6px", fontSize: 13, color: "var(--accent)", fontWeight: 700 }} onClick={() => setShowAdd(true)}>
+          <Plus size={14} /> {t("budget.add")}
         </button>
       </div>
 
       {!loading && budgets.length === 0 ? (
         <div style={{ padding: "16px 0", display: "grid", gap: 10, justifyItems: "center", textAlign: "center", color: "var(--ink-soft)", fontSize: 13.5 }}>
           {t("budget.empty")}
-          <button className="hm-btn hm-btn-soft hm-btn--compact" onClick={() => setShowEditor(true)}>{t("budget.setBudget")}</button>
+          <button className="hm-btn hm-btn-soft hm-btn--compact" onClick={() => setShowAdd(true)}>{t("budget.setBudget")}</button>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -79,14 +81,14 @@ export function BudgetSection({ houseId, userId, expenseCategoryTotals }) {
         </div>
       )}
 
-      {showEditor && (
-        <BudgetEditorModal
+      {showAdd && (
+        <AddBudgetModal
           houseId={houseId}
           userId={userId}
           categories={expenseCategories}
           budgets={budgets}
-          onClose={() => setShowEditor(false)}
-          onSaved={() => { setShowEditor(false); load(); }}
+          onClose={() => setShowAdd(false)}
+          onSaved={() => { setShowAdd(false); load(); }}
         />
       )}
     </div>
@@ -120,46 +122,34 @@ function BudgetRow({ budget, spent, onDelete, formatCurrency, t }) {
 }
 
 /**
- * Editor de presupuesto: una fila por categoría de gasto con su importe.
- * Vacío/0 = sin presupuesto para esa categoría. Al guardar, compara contra
- * `budgets` (lo que ya había) y solo crea/actualiza/borra lo que cambió.
+ * Alta de un presupuesto: importe primero (protagonista, como en
+ * Movimientos/Facturas) y luego la categoría a la que se aplica. Si la
+ * categoría elegida ya tiene presupuesto, esto lo ACTUALIZA (upsert) en vez
+ * de crear un duplicado — así también sirve para corregir un importe sin
+ * un flujo de edición aparte.
  */
-function BudgetEditorModal({ houseId, userId, categories, budgets, onClose, onSaved }) {
+function AddBudgetModal({ houseId, userId, categories, budgets, onClose, onSaved }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
-  const [amounts, setAmounts] = useState(() => {
-    const map = {};
-    for (const c of categories) {
-      const existing = budgets.find((b) => b.name === c);
-      map[c] = existing ? String(existing.target_amount) : "";
-    }
-    return map;
-  });
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState(categories[0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSave = async () => {
+  const parsedAmount = parseFloat(amount);
+  const valid = parsedAmount > 0;
+
+  const handleSubmit = async () => {
+    if (!valid) return;
     setSaving(true);
     setError("");
     try {
-      const ops = [];
-      for (const c of categories) {
-        const raw = (amounts[c] || "").trim();
-        const value = raw ? parseFloat(raw) : 0;
-        const existing = budgets.find((b) => b.name === c);
-        if (value > 0) {
-          if (existing) {
-            if (parseFloat(existing.target_amount) !== value) {
-              ops.push(economyGoalsService.updateGoal(existing.id, value));
-            }
-          } else {
-            ops.push(economyGoalsService.createGoal(houseId, userId, { type: "spending_limit", name: c, targetAmount: value }));
-          }
-        } else if (existing) {
-          ops.push(economyGoalsService.deleteGoal(existing.id));
-        }
+      const existing = budgets.find((b) => b.name === category);
+      if (existing) {
+        await economyGoalsService.updateGoal(existing.id, parsedAmount);
+      } else {
+        await economyGoalsService.createGoal(houseId, userId, { type: "spending_limit", name: category, targetAmount: parsedAmount });
       }
-      await Promise.all(ops);
       onSaved();
     } catch (err) {
       console.error("Error saving budget:", err);
@@ -170,46 +160,32 @@ function BudgetEditorModal({ houseId, userId, categories, budgets, onClose, onSa
 
   return (
     <div className="hm-modal-overlay" onClick={(e) => { if (isSuppressingClick()) return; onClose(e); }}>
-      <div className="hm-modal hm-scroll" style={{ maxWidth: 460, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
+      <div className="hm-modal hm-scroll" style={{ maxWidth: 440, ...sheetStyle }} onClick={(e) => e.stopPropagation()}>
         <div ref={handleRef} className="hm-modal-handle-wrap" onMouseDown={handleMouseDown}>
           <div className="hm-modal-handle" />
         </div>
         <div className="hm-modal-header">
           <button className="hm-modal-close" onClick={onClose} aria-label={t("budget.cancel")}>✕</button>
-          <h3 className="hm-display hm-modal-title">{t("budget.editTitle")}</h3>
+          <h3 className="hm-display hm-modal-title">{t("budget.addTitle")}</h3>
         </div>
         <div className="hm-modal-body">
-          <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "0 0 14px" }}>{t("budget.editHint")}</p>
+          <AmountHero value={amount} onChange={setAmount} />
 
-          <div style={{ display: "grid", gap: 8 }}>
-            {categories.map((c) => (
-              <div key={c} className="hm-card hm-card--p16" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--surface-alt)", display: "grid", placeItems: "center", fontSize: 19, flexShrink: 0 }} aria-hidden="true">
-                  {categoryEmoji(c)}
-                </div>
-                <div style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {categoryLabel(c, t)}
-                </div>
-                <input
-                  className="hm-input"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputMode="decimal"
-                  placeholder="0"
-                  style={{ width: 96, textAlign: "right", flexShrink: 0 }}
-                  value={amounts[c]}
-                  onChange={(e) => setAmounts((prev) => ({ ...prev, [c]: e.target.value }))}
-                />
-              </div>
-            ))}
-          </div>
+          <FieldGroup label={t("budget.categoryLabel")}>
+            <CategoryField
+              categories={categories}
+              value={category}
+              onChange={setCategory}
+              variant="row"
+              title={t("budget.categoryLabel")}
+            />
+          </FieldGroup>
 
           {error && <p className="hm-money-error">{error}</p>}
 
           <div className="hm-money-actions">
             <button className="hm-btn hm-btn-soft" onClick={onClose} disabled={saving}>{t("budget.cancel")}</button>
-            <button className="hm-btn hm-btn-primary hm-btn--full" onClick={handleSave} disabled={saving}>{t("budget.save")}</button>
+            <button className="hm-btn hm-btn-primary hm-btn--full" onClick={handleSubmit} disabled={saving || !valid}>{t("budget.save")}</button>
           </div>
         </div>
       </div>
