@@ -34,12 +34,13 @@ Asegúrate de actualizar `versionCode` y `versionName` en `android/app/build.gra
 
 ## 4. Política de privacidad y términos
 
-La app incluye `public/privacy-policy.html` y `public/terms.html`, y **ya están
-publicados** en GitHub Pages (rama `gh-pages`, generada por
-`scripts/publish-legal.ps1`):
+La app incluye `public/privacy-policy.html`, `public/terms.html` y
+`public/eliminar-cuenta.html`, y **ya están publicados** en GitHub Pages
+(rama `gh-pages`, generada por `scripts/publish-legal.ps1`):
 
 - Política de privacidad: <https://laka1010.github.io/HomeMap-mejorado/privacy-policy.html>
 - Términos: <https://laka1010.github.io/HomeMap-mejorado/terms.html>
+- Eliminar cuenta (vía web externa a la app, exigida por Google Play): <https://laka1010.github.io/HomeMap-mejorado/eliminar-cuenta.html>
 
 > Si editas los `.html` de `public/`, vuelve a ejecutar
 > `powershell -ExecutionPolicy Bypass -File scripts/publish-legal.ps1` para
@@ -72,7 +73,9 @@ publicados** en GitHub Pages (rama `gh-pages`, generada por
 - **URL de política de privacidad:** `https://laka1010.github.io/HomeMap-mejorado/privacy-policy.html`
 - **Data safety:** los datos (hogar, economía, compras) se almacenan en Supabase
   (proveedor de backend); no se comparten con terceros para publicidad; el
-  usuario puede borrar su cuenta desde la propia app.
+  usuario puede borrar su cuenta desde la propia app (Ajustes → Cuenta →
+  Eliminar cuenta) o desde la web sin necesidad de acceder a la app
+  (`eliminar-cuenta.html`, ver arriba).
 
 ## 5. Permisos y justificación
 
@@ -90,7 +93,7 @@ Hecho:
 
 - [x] Keystore creado y configurado (`android/release-keystore.jks`, en `.gitignore`)
 - [x] `android/keystore.properties` con valores reales (fuera de git)
-- [x] Página de privacidad y términos públicos (GitHub Pages, ver §4)
+- [x] Página de privacidad, términos y eliminación de cuenta públicos (GitHub Pages, ver §4)
 - [x] Datos de contacto y correo de soporte (`havenhome.app1@gmail.com`)
 - [x] Descripción corta y larga definidas (ver §4)
 - [x] Versión sincronizada Android/iOS/`package.json` (`1.1.0`, `versionCode`/`build` 2)

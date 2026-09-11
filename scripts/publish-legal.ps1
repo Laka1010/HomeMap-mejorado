@@ -21,6 +21,7 @@ New-Item -ItemType Directory -Path $work | Out-Null
 
 Copy-Item (Join-Path $repo 'public\privacy-policy.html') $work
 Copy-Item (Join-Path $repo 'public\terms.html') $work
+Copy-Item (Join-Path $repo 'public\eliminar-cuenta.html') $work
 
 @'
 <!doctype html>
@@ -33,7 +34,8 @@ h1{margin-top:0}ul{padding-left:20px}li{font-size:15px;margin:8px 0}a{color:#2f6
 </head><body><div class="wrap"><h1>Haven</h1>
 <p>Aplicación de organización del hogar. Documentos legales:</p>
 <ul><li><a href="./privacy-policy.html">Política de privacidad</a></li>
-<li><a href="./terms.html">Términos de servicio</a></li></ul>
+<li><a href="./terms.html">Términos de servicio</a></li>
+<li><a href="./eliminar-cuenta.html">Eliminar cuenta</a></li></ul>
 <p class="muted">Contacto: <a href="mailto:havenhome.app1@gmail.com">havenhome.app1@gmail.com</a></p>
 </div></body></html>
 '@ | Set-Content -Encoding utf8 (Join-Path $work 'index.html')
@@ -43,7 +45,7 @@ New-Item -ItemType File -Path (Join-Path $work '.nojekyll') | Out-Null
 Push-Location $repo
 try {
   $current = git rev-parse --abbrev-ref HEAD
-  git worktree add --force -B gh-pages (Join-Path $work '_wt') 2>&1 | Out-Null
+  git worktree add --force -B gh-pages (Join-Path $work '_wt') | Out-Null
   Get-ChildItem (Join-Path $work '_wt') -Force | Where-Object { $_.Name -ne '.git' } | Remove-Item -Recurse -Force
   Copy-Item (Join-Path $work '*.html') (Join-Path $work '_wt')
   Copy-Item (Join-Path $work '.nojekyll') (Join-Path $work '_wt')
@@ -58,6 +60,7 @@ try {
   Write-Host "URLs (tras activar Pages una vez):" -ForegroundColor Green
   Write-Host "  https://laka1010.github.io/HomeMap-mejorado/privacy-policy.html"
   Write-Host "  https://laka1010.github.io/HomeMap-mejorado/terms.html"
+  Write-Host "  https://laka1010.github.io/HomeMap-mejorado/eliminar-cuenta.html"
 } finally {
   Pop-Location
   Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
