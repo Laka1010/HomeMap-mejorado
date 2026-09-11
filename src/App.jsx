@@ -40,6 +40,7 @@ import { ObjectDndProvider, useObjectDnd, useDraggableObject, useObjectDropTarge
 import { supabase } from "./supabaseClient";
 import { securityEventsService } from "./services/securityEventsService";
 import { houseService, MAX_HOMES_PER_USER } from "./services/houseService";
+import { profileService } from "./services/profileService";
 import { homeContentService } from "./services/homeContentService";
 import { taskService, DEFAULT_TASK_RETENTION_DAYS } from "./services/taskService";
 import { REPEAT_OPTIONS, repeatLabelKey } from "./modules/tasks/taskRepeat";
@@ -1089,26 +1090,35 @@ function Modal({ title, onClose, children, wide, elevated }) {
 
 /** Selector de personas asignadas — controlado: `selected` es un array de
  *  nombres y `onChange` recibe el array nuevo al pulsar un chip. */
+/**
+ * Selecciona/deselecciona por el id estable del miembro (user_id, o id en el
+ * listado demo), no por su nombre: dos miembros pueden compartir el mismo
+ * display_name (nombres repetidos, o "Miembro" si a alguno no le llegó
+ * ninguno todavía — ver profileService.updateDisplayName), y comparar por
+ * nombre hacía que marcar a uno marcara como seleccionados a la vez a todos
+ * los que compartieran esa cadena.
+ */
 function MemberPicker({ members = [], selected = [], onChange }) {
   const { t } = useTranslation();
   if (!members.length) {
     return <div style={{ fontSize: 12.5, color: "var(--ink-soft)", padding: "12px 14px" }}>{t("membersModule.noOtherMembers")}</div>;
   }
-  const toggle = (name) => {
-    onChange(selected.includes(name) ? selected.filter((n) => n !== name) : [...selected, name]);
+  const toggle = (id) => {
+    onChange(selected.includes(id) ? selected.filter((v) => v !== id) : [...selected, id]);
   };
   return (
     <div className="hm-field-chips">
       {members.map((m) => {
-        const name = m.name || m.email || m.id;
-        const on = selected.includes(name);
+        const id = m.user_id || m.id;
+        const name = m.name || m.email || id;
+        const on = selected.includes(id);
         return (
           <button
-            key={m.user_id || m.id || name}
+            key={id}
             type="button"
             className="hm-field-chip"
             data-active={on}
-            onClick={() => toggle(name)}
+            onClick={() => toggle(id)}
           >
             {on ? <Check size={13} /> : null} {name}
           </button>
@@ -1509,9 +1519,19 @@ function AddTaskModal({ payload, members, onClose, onCreate, onEdit }) {
   const [description, setDescription] = useState(payload?.description || "");
   const [date, setDate] = useState(payload?.date || "");
   const [priority, setPriority] = useState(payload?.priority || "normal");
-  const [assignee, setAssignee] = useState(
-    (payload?.assignee || "").split(",").map((n) => n.trim()).filter(Boolean),
-  );
+  // `assignee` se guarda como texto (nombres separados por comas, ver
+  // taskService), pero mientras se edita en este formulario se trabaja por id
+  // de miembro (ver MemberPicker) para que cada persona se seleccione de
+  // forma independiente. Al abrir una tarea existente hay que mapear los
+  // nombres ya guardados de vuelta a sus ids conocidos.
+  const [assignee, setAssignee] = useState(() => {
+    const savedNames = (payload?.assignee || "").split(",").map((n) => n.trim()).filter(Boolean);
+    if (!savedNames.length) return [];
+    return savedNames
+      .map((name) => (members || []).find((m) => (m.name || m.email) === name))
+      .filter(Boolean)
+      .map((m) => m.user_id || m.id);
+  });
   const [repeat, setRepeat] = useState(REPEAT_OPTIONS.includes(payload?.repeat) ? payload.repeat : "none");
 
   const PRIORITIES = [
@@ -1521,11 +1541,15 @@ function AddTaskModal({ payload, members, onClose, onCreate, onEdit }) {
   ];
 
   const submit = () => {
+    const assigneeNames = assignee
+      .map((id) => (members || []).find((m) => (m.user_id || m.id) === id))
+      .filter(Boolean)
+      .map((m) => m.name || m.email);
     const base = {
       title: title.trim() || t("quickAdd.defaultTaskTitle"),
       description: description.trim(),
       date,
-      assignee: assignee.join(", "),
+      assignee: assigneeNames.join(", "),
       repeat: repeat === "none" ? null : repeat,
     };
     if (isEdit) onEdit(payload.id, { ...base, priority });
@@ -3213,6 +3237,27 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       },
     }));
   }, [user, state, setState]);
+
+  /**
+   * Guarda en el servidor (profiles.display_name, vía la RPC set_display_name)
+   * el nombre que se edita en Ajustes > Editar perfil. Antes ese formulario
+   * solo tocaba `state.profile` local: el propio usuario veía su nombre
+   * "cambiado", pero sus convivientes seguían viendo el de siempre en
+   * cualquier sitio que liste miembros de la casa (p.ej. el selector de
+   * "Asignar a" de una tarea). Debounced porque el input llama a
+   * onUpdateProfile en cada pulsación, no solo al terminar de escribir.
+   */
+  useEffect(() => {
+    if (!user || !state?.profile) return;
+    const fullName = `${state.profile.userName || ""} ${state.profile.lastName || ""}`.trim();
+    if (!fullName) return;
+    const timer = setTimeout(() => {
+      profileService.updateDisplayName(fullName)
+        .then(() => refreshHouseMembers())
+        .catch((error) => console.error("Error saving display name:", error));
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [user, state?.profile?.userName, state?.profile?.lastName]);
 
     const dispatch = (updater) => setState((s) => updater(s));
     useTaskRetention(state, dispatch, activeHome?.id, loaded);
