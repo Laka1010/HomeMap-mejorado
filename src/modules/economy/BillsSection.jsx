@@ -24,7 +24,7 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
     every9months: t("bills.every9months"),
     yearly: t("bills.yearly"),
   };
-  const [filter, setFilter] = useState("pending"); // pending | upcoming | paid
+  const [filter, setFilter] = useState("pending"); // pending | paid
   const [bills, setBills] = useState([]);
   const [visibleCount, setVisibleCount] = useState(8);
   const [loading, setLoading] = useState(false);
@@ -49,23 +49,10 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
       let data = [];
       if (filter === "pending") {
         data = await economyService.getPendingBillsBySpace(spaceId);
-      } else {
-        // load all and filter locally for upcoming/paid
-        data = await economyService.getAllBillsBySpace(spaceId);
-      }
-
-      if (filter === "upcoming") {
-        const today = new Date();
-        data = (data || []).filter((b) => b.status === "pending" && new Date(b.due_date) >= new Date(today.getFullYear(), today.getMonth(), today.getDate()));
-      }
-
-      if (filter === "paid") {
-        data = (data || []).filter((b) => b.status === "paid").sort((a,b)=> new Date(b.paid_date) - new Date(a.paid_date));
-      }
-
-      // Sort pending / upcoming by due_date asc
-      if (filter === "pending" || filter === "upcoming") {
         data = (data || []).sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+      } else {
+        data = await economyService.getAllBillsBySpace(spaceId);
+        data = (data || []).filter((b) => b.status === "paid").sort((a, b) => new Date(b.paid_date) - new Date(a.paid_date));
       }
 
       setBills(data || []);
@@ -174,7 +161,6 @@ export default function BillsSection({ currentHome, spaceId, spaces, state, disp
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 4, background: "var(--surface-alt)", borderRadius: 999, padding: 4, flexWrap: "wrap" }}>
           <button style={filterPill(filter === "pending")} onClick={() => setFilter("pending")}>{t("bills.filterPending")}</button>
-          <button style={filterPill(filter === "upcoming")} onClick={() => setFilter("upcoming")}>{t("bills.filterUpcoming")}</button>
           <button style={filterPill(filter === "paid")} onClick={() => setFilter("paid")}>{t("bills.filterPaid")}</button>
         </div>
         {!readOnly && (
