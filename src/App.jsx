@@ -3842,9 +3842,18 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * retira de la lista activa; si la compra tiene importe, registra el
    * gasto financiero automáticamente (ver registerPurchaseExpense) sin
    * pedirle nada más al usuario.
+   *
+   * manualAmount es el precio total que el usuario puede introducir al
+   * finalizar la compra (pantalla "Modo compra"). Los productos de la lista
+   * casi nunca llevan precio unitario, así que sin este campo la suma por
+   * artículo suele dar 0 y el gasto automático nunca se crea. Si el usuario
+   * lo rellena, manda sobre la suma por artículo porque es el dato real que
+   * ha pagado (recibo/ticket), no una estimación derivada de precios que
+   * puede que ni existan.
    */
-  const completeShoppingPurchase = async ({ listId, items, store }) => {
-    const amount = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+  const completeShoppingPurchase = async ({ listId, items, store, manualAmount }) => {
+    const itemsAmount = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+    const amount = Number(manualAmount) > 0 ? Number(manualAmount) : itemsAmount;
     const snapshot = items.map((item) => ({ name: item.name, quantity: item.quantity, category: item.category, price: item.price }));
     try {
       const purchase = await shoppingPurchasesService.createPurchase(currentHome.id, {

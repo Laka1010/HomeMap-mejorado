@@ -227,9 +227,9 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
     });
   };
 
-  const handleFinishCheckout = async (completedForPurchase, store) => {
+  const handleFinishCheckout = async (completedForPurchase, store, manualAmount) => {
     if (completedForPurchase.length > 0 && onCompletePurchase) {
-      await onCompletePurchase({ listId: activeList.id, items: completedForPurchase, store });
+      await onCompletePurchase({ listId: activeList.id, items: completedForPurchase, store, manualAmount });
     }
     setCheckoutMode(false);
   };

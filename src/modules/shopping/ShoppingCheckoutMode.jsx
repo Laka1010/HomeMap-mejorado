@@ -14,6 +14,7 @@ import { useTranslation } from "../../i18n";
 export function ShoppingCheckoutMode({ items, onToggle, onFinish, onClose, onScanReceipt }) {
   const { t } = useTranslation();
   const [store, setStore] = useState("");
+  const [amount, setAmount] = useState("");
   const [celebrate, setCelebrate] = useState(false);
 
   const pending = useMemo(() => items.filter((i) => !i.completed), [items]);
@@ -21,7 +22,8 @@ export function ShoppingCheckoutMode({ items, onToggle, onFinish, onClose, onSca
   const total = items.length;
 
   const finish = () => {
-    onFinish(completed, store.trim());
+    const parsedAmount = Number(amount.replace(",", "."));
+    onFinish(completed, store.trim(), parsedAmount > 0 ? parsedAmount : null);
   };
 
   return createPortal(
@@ -68,6 +70,15 @@ export function ShoppingCheckoutMode({ items, onToggle, onFinish, onClose, onSca
             placeholder={t("shoppingCheckout.storePlaceholder")}
             value={store}
             onChange={(e) => setStore(e.target.value)}
+          />
+          <input
+            className="hm-input"
+            style={{ maxWidth: 280 }}
+            type="text"
+            inputMode="decimal"
+            placeholder={t("shoppingCheckout.amountPlaceholder")}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
           />
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
             <button className="hm-btn hm-btn-soft" onClick={() => setCelebrate(false)}>
