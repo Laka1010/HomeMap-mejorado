@@ -18,7 +18,7 @@ export function SearchWidget({ openModal }) {
       onClick={() => openModal("globalSearch")}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal("globalSearch"); } }}
       className="hm-card hm-fade-in hm-tap"
-      style={{ padding: 20, display: "grid", gap: 14, cursor: "pointer" }}
+      style={{ padding: 20, display: "grid", gap: 14, alignContent: "start", cursor: "pointer" }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
         <Search size={16} style={{ color: "var(--ink-soft)", flexShrink: 0 }} />
