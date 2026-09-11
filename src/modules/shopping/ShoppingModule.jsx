@@ -144,15 +144,22 @@ function FrequentSuggestions({ suggestions, onAdd }) {
 }
 
 /**
- * Categoría de gasto de una lista (p.ej. "Supermercado" -> Comida): se usa al
- * cerrar una compra de esa lista para categorizar el gasto automático en
- * Movimientos en vez de caer siempre en "Otros gastos". Reutiliza el mismo
- * catálogo y sheet (CategoryPickerModal) que Economía, no uno propio de
- * Compras, porque es literalmente la misma categoría que verá el gasto.
+ * Icono de la categoría de gasto de una lista (p.ej. "Supermercado" ->
+ * Comida): se usa al cerrar una compra de esa lista para categorizar el
+ * gasto automático en Movimientos en vez de caer siempre en "Otros gastos".
+ * Reutiliza el mismo catálogo y sheet (CategoryPickerModal) que Economía, no
+ * uno propio de Compras, porque es literalmente la misma categoría que verá
+ * el gasto.
+ *
+ * Solo se puede elegir mientras la lista no tiene categoría: en cuanto se
+ * asigna una, queda fija (el icono pasa a ser solo visual, sin sheet). Evita
+ * que una lista cambie de categoría después de que ya se hayan generado
+ * gastos con la anterior.
  */
 function ListCategoryChip({ category, categories, onChange }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const locked = Boolean(category);
   const current = category || DEFAULT_CATEGORY;
   const options = useMemo(
     () => categories.map((c) => ({ value: c, label: categoryLabel(c, t), emoji: categoryEmoji(c) })),
@@ -160,14 +167,26 @@ function ListCategoryChip({ category, categories, onChange }) {
   );
   return (
     <>
-      <button
-        type="button"
-        className="hm-btn hm-btn-soft hm-btn--compact"
-        style={{ fontSize: 11.5 }}
-        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
-      >
-        {categoryEmoji(current)} {categoryLabel(current, t)}
-      </button>
+      {locked ? (
+        <span
+          title={categoryLabel(current, t)}
+          aria-label={categoryLabel(current, t)}
+          style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}
+        >
+          {categoryEmoji(current)}
+        </span>
+      ) : (
+        <button
+          type="button"
+          className="hm-tap"
+          title={categoryLabel(current, t)}
+          aria-label={categoryLabel(current, t)}
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 18, lineHeight: 1, flexShrink: 0 }}
+          onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        >
+          {categoryEmoji(current)}
+        </button>
+      )}
       {open && (
         <CategoryPickerModal
           title={t("quickAdd.listCategoryLabel")}
@@ -335,7 +354,16 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
               return (
                 <div key={list.id} className="hm-card hm-tap" style={{ padding: 16, cursor: confirming ? "default" : "pointer" }} onClick={() => !confirming && setActiveListId(list.id)}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>{list.name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      {!confirming && (
+                        <ListCategoryChip
+                          category={list.category}
+                          categories={expenseCategories}
+                          onChange={(next) => onUpdateListCategory?.(list.id, next)}
+                        />
+                      )}
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>{list.name}</div>
+                    </div>
                     {!confirming ? (
                       <button
                         className="hm-btn hm-btn-ghost hm-btn--compact hm-text-danger"
@@ -353,15 +381,6 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
                   <div style={{ fontSize: 12.5, color: confirming ? "var(--danger)" : "var(--ink-soft)", marginTop: 6 }}>
                     {confirming ? t("shoppingModule.confirmDeleteList") : items.length === 0 ? t("shoppingModule.noProducts") : t("shoppingModule.pendingOfTotal", { pending, total: items.length })}
                   </div>
-                  {!confirming && (
-                    <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
-                      <ListCategoryChip
-                        category={list.category}
-                        categories={expenseCategories}
-                        onChange={(next) => onUpdateListCategory?.(list.id, next)}
-                      />
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -376,12 +395,12 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <button className="hm-btn hm-btn-soft hm-btn--compact" onClick={() => setActiveListId(null)}><ArrowLeft size={16} /></button>
-          <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{activeList.name}</h1>
           <ListCategoryChip
             category={activeList.category}
             categories={expenseCategories}
             onChange={(next) => onUpdateListCategory?.(activeList.id, next)}
           />
+          <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{activeList.name}</h1>
         </div>
         <div className="hm-scroll" style={{ display: "flex", gap: 6, flexWrap: "nowrap", overflowX: "auto", maxWidth: "100%" }}>
           <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => openModal("shoppingHistory", { listId: activeList.id })}><History size={13} /> {t("shoppingModule.history")}</button>
