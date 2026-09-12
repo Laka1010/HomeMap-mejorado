@@ -36,7 +36,7 @@ h1{margin-top:0}ul{padding-left:20px}li{font-size:15px;margin:8px 0}a{color:#2f6
 <ul><li><a href="./privacy-policy.html">Política de privacidad</a></li>
 <li><a href="./terms.html">Términos de servicio</a></li>
 <li><a href="./eliminar-cuenta.html">Eliminar cuenta</a></li></ul>
-<p class="muted">Contacto: <a href="mailto:havenhome.app1@gmail.com">havenhome.app1@gmail.com</a></p>
+<p class="muted">Contacto: <a href="mailto:support@havenapp.es">support@havenapp.es</a></p>
 </div></body></html>
 '@ | Set-Content -Encoding utf8 (Join-Path $work 'index.html')
 

@@ -434,7 +434,7 @@ En Haven nos tomamos en serio la privacidad de nuestros usuarios. Esta Política
 
 1. Responsable y contacto
 Aplicación: Haven
-Contacto de privacidad: havenhome.app1@gmail.com
+Contacto de privacidad: support@havenapp.es
 Si tienes cualquier pregunta sobre el tratamiento de tus datos, puedes utilizar esta dirección para contactar con nosotros.
 
 2. Información que podemos recopilar
@@ -567,7 +567,7 @@ Dependiendo de la legislación aplicable, puedes tener derecho a:
 • Retirar un consentimiento cuando el tratamiento se base en él.
 • Presentar una reclamación ante la autoridad de protección de datos correspondiente.
 Para ejercer estos derechos puedes contactar con:
-havenhome.app1@gmail.com
+support@havenapp.es
 
 11. Menores
 Haven no está diseñada específicamente como un servicio dirigido a menores.
@@ -592,7 +592,7 @@ La fecha de la última actualización aparece al principio de esta Política.
 
 16. Contacto
 Si tienes cualquier pregunta relacionada con esta Política de Privacidad o con el tratamiento de tus datos, puedes contactar con:
-Correo electrónico: havenhome.app1@gmail.com
+Correo electrónico: support@havenapp.es
 También puedes unirte a nuestro servidor de soporte en Discord: https://discord.gg/KfA9fp4M5h`,
       termsText: `Última actualización: septiembre de 2026
 
@@ -682,7 +682,7 @@ Estos términos se interpretarán de acuerdo con la legislación aplicable. Cuan
 
 15. Contacto
 Si tienes preguntas, sugerencias o necesitas asistencia relacionada con Haven, puedes contactar con:
-Correo electrónico: havenhome.app1@gmail.com
+Correo electrónico: support@havenapp.es
 Soporte en Discord: https://discord.gg/KfA9fp4M5h`,
       appName: "Haven",
       versionLabel: "Versión",
@@ -2349,7 +2349,7 @@ A Haven ens prenem seriosament la privadesa dels nostres usuaris. Aquesta Polít
 
 1. Responsable i contacte
 Aplicació: Haven
-Contacte de privadesa: havenhome.app1@gmail.com
+Contacte de privadesa: support@havenapp.es
 Si tens qualsevol pregunta sobre el tractament de les teves dades, pots utilitzar aquesta adreça per contactar amb nosaltres.
 
 2. Informació que podem recopilar
@@ -2482,7 +2482,7 @@ Depenent de la legislació aplicable, pots tenir dret a:
 • Retirar un consentiment quan el tractament es basi en ell.
 • Presentar una reclamació davant l'autoritat de protecció de dades corresponent.
 Per exercir aquests drets pots contactar amb:
-havenhome.app1@gmail.com
+support@havenapp.es
 
 11. Menors
 Haven no està dissenyada específicament com un servei dirigit a menors.
@@ -2507,7 +2507,7 @@ La data de l'última actualització apareix al principi d'aquesta Política.
 
 16. Contacte
 Si tens qualsevol pregunta relacionada amb aquesta Política de Privadesa o amb el tractament de les teves dades, pots contactar amb:
-Correu electrònic: havenhome.app1@gmail.com
+Correu electrònic: support@havenapp.es
 També pots unir-te al nostre servidor de suport a Discord: https://discord.gg/KfA9fp4M5h`,
       termsText: `Última actualització: setembre de 2026
 
@@ -2597,7 +2597,7 @@ Aquests termes s'interpretaran d'acord amb la legislació aplicable. Quan siguis
 
 15. Contacte
 Si tens preguntes, suggeriments o necessites assistència relacionada amb Haven, pots contactar amb:
-Correu electrònic: havenhome.app1@gmail.com
+Correu electrònic: support@havenapp.es
 Suport a Discord: https://discord.gg/KfA9fp4M5h`,
       appName: "Haven",
       versionLabel: "Versió",
@@ -4260,7 +4260,7 @@ At Haven we take our users' privacy seriously. This Privacy Policy explains what
 
 1. Controller and Contact
 Application: Haven
-Privacy contact: havenhome.app1@gmail.com
+Privacy contact: support@havenapp.es
 If you have any questions about how your data is processed, you can use this address to contact us.
 
 2. Information We May Collect
@@ -4393,7 +4393,7 @@ Depending on applicable law, you may have the right to:
 • Withdraw consent where processing is based on it.
 • Lodge a complaint with the relevant data protection authority.
 To exercise these rights you can contact:
-havenhome.app1@gmail.com
+support@havenapp.es
 
 11. Minors
 Haven is not specifically designed as a service directed at minors.
@@ -4418,7 +4418,7 @@ The date of the last update appears at the top of this Policy.
 
 16. Contact
 If you have any questions related to this Privacy Policy or the processing of your data, you can contact:
-Email: havenhome.app1@gmail.com
+Email: support@havenapp.es
 You can also join our Discord support server: https://discord.gg/KfA9fp4M5h`,
       termsText: `Last updated: September 2026
 
@@ -4508,7 +4508,7 @@ These terms shall be interpreted in accordance with applicable law. Where you ar
 
 15. Contact
 If you have questions, suggestions, or need assistance related to Haven, you can contact:
-Email: havenhome.app1@gmail.com
+Email: support@havenapp.es
 Discord support: https://discord.gg/KfA9fp4M5h`,
       appName: "Haven",
       versionLabel: "Version",

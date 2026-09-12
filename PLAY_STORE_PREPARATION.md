@@ -69,7 +69,7 @@ La app incluye `public/privacy-policy.html`, `public/terms.html` y
 
 - **Categoría:** `Estilo de vida` (alternativa: `Productividad`)
 - **Clasificación de contenido:** `Todos`
-- **Correo de soporte:** `havenhome.app1@gmail.com`
+- **Correo de soporte:** `support@havenapp.es`
 - **URL de política de privacidad:** `https://laka1010.github.io/HomeMap-mejorado/privacy-policy.html`
 - **Data safety:** los datos (hogar, economía, compras) se almacenan en Supabase
   (proveedor de backend); no se comparten con terceros para publicidad; el
@@ -94,7 +94,7 @@ Hecho:
 - [x] Keystore creado y configurado (`android/release-keystore.jks`, en `.gitignore`)
 - [x] `android/keystore.properties` con valores reales (fuera de git)
 - [x] Página de privacidad, términos y eliminación de cuenta públicos (GitHub Pages, ver §4)
-- [x] Datos de contacto y correo de soporte (`havenhome.app1@gmail.com`)
+- [x] Datos de contacto y correo de soporte (`support@havenapp.es`)
 - [x] Descripción corta y larga definidas (ver §4)
 - [x] Versión sincronizada Android/iOS/`package.json` (`1.1.0`, `versionCode`/`build` 2)
 - [x] Permisos revisados (solo `INTERNET`, ver §5)
