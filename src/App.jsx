@@ -120,6 +120,7 @@ const GlobalStyle = () => (
       --surface: #FFFFFF;
       --surface-alt: #EEF0EC;
       --surface-rgb: 255, 255, 255;
+      --surface-alt-rgb: 238, 240, 236;
       --ink: #1B1D1F;
       --ink-soft: #676D67;
       --border: #E3E5E0;
@@ -172,6 +173,7 @@ const GlobalStyle = () => (
       --surface: #1D2024;
       --surface-alt: #24282D;
       --surface-rgb: 29, 32, 36;
+      --surface-alt-rgb: 36, 40, 45;
       --ink: #EDEEEC;
       --ink-soft: #9BA1A6;
       --border: #2C3036;
@@ -304,8 +306,11 @@ const GlobalStyle = () => (
     .hm-sidebar-item:hover { background: var(--surface-alt); color: var(--ink); }
     .hm-sidebar-item.active { color: var(--accent); font-weight: 700; }
 
-    .hm-bottomnav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ink-soft); font-size: 11px; font-weight: 600; flex: 1; padding: 8px 0; cursor: pointer; transition: color .12s ease, background .12s ease; -webkit-tap-highlight-color: transparent; border-radius: 16px; }
-    .hm-bottomnav-item:hover { background: rgba(var(--surface-rgb), 0.95); }
+    .hm-bottomnav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ink-soft); font-size: 11px; font-weight: 600; flex: 1; padding: 8px 0; cursor: pointer; transition: filter .12s ease, color .12s ease; -webkit-tap-highlight-color: transparent; border-radius: 16px; }
+    /* filter en vez de background: un color sólido de "hover" tenía que
+       acertar a la vez en claro y oscuro; brightness() siempre aclara un
+       poco el tono que ya tenga la barra, sin más colores que mantener. */
+    .hm-bottomnav-item:hover { filter: brightness(1.35); }
     .hm-bottomnav-item.active { color: var(--accent); }
 
     /* Route breadcrumb */
@@ -2602,14 +2607,17 @@ const BottomNav = memo(function BottomNav({ active, onSelect, nav = NAV }) {
   const { t } = useTranslation();
   return (
     <nav role="navigation" aria-label="Main" style={{ display: "flex", justifyContent: "center" }}>
+      {/* Pill flotante con margen y esquinas redondeadas, como el diseño
+          original. background: var(--bg), el mismo tono que el fondo de la
+          página (no uno inventado) pero 100% opaco y sin backdrop-filter,
+          para que no dependa de qué haya detrás ni de que el navegador
+          soporte blur. */}
       <div role="tablist" aria-label="Main tabs" style={{
         position: "fixed", bottom: "calc(12px + env(safe-area-inset-bottom))", left: 12, right: 12, display: "flex", padding: "4px 8px",
         zIndex: 50, borderRadius: 24,
-        background: "rgba(var(--surface-rgb), 0.55)",
-        backdropFilter: "blur(24px) saturate(180%)",
-        WebkitBackdropFilter: "blur(24px) saturate(180%)",
-        border: "1px solid rgba(var(--border-rgb), 0.25)",
-        boxShadow: "0 10px 36px rgba(10,10,10,0.12), inset 0 1px 0 rgba(255,255,255,0.08)",
+        background: "var(--bg)",
+        border: "1px solid rgba(var(--border-rgb), 0.4)",
+        boxShadow: "0 4px 16px rgba(10,10,10,0.18)",
       }}>        {nav.map((n) => (
           <div
             key={n.key}
@@ -4496,7 +4504,14 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
           />
         )}
 
-        <div className="hm-scroll" style={{ flex: 1, minWidth: 0, height: "calc(100svh - 104px)", overflowY: "auto", paddingRight: 4, WebkitOverflowScrolling: "touch" }}>
+        {/* height: el hueco nativo entre el contenido y la barra flotante de
+            abajo (sin restar nada extra aquí) es de ~29px — técnicamente
+            suficiente para no solaparse nunca (comprobado barriendo todo el
+            scroll), pero visualmente queda pegado, sobre todo con el botón
+            "+" flotando ahí encima. +20px da aire real sin dejar un hueco
+            enorme como el intento anterior (ese restaba 76/64px de más
+            porque asumía que la cabecera vivía fuera del scroll). */}
+        <div className="hm-scroll" style={{ flex: 1, minWidth: 0, height: "calc(100svh - 104px - 20px)", overflowY: "auto", paddingRight: 4, WebkitOverflowScrolling: "touch" }}>
           <AppHeader
             user={user}
             profile={state.profile}
