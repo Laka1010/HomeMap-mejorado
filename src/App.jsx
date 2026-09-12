@@ -2147,10 +2147,10 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
               <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{t("room.objects", { count: roomObjectCount(state, room.id) })}</span>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button id="create-zone-cta" className="hm-btn hm-btn-soft" onClick={() => openModal("addZone", { roomId: room.id })}><Plus size={15} />{t("room.addZone")}</button>
-            <button className="hm-btn hm-btn-soft" onClick={() => openModal("addContainer", { roomId: room.id })}><Plus size={15} />{t("room.addContainer")}</button>
-            <button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: room.id })}><Plus size={15} />{t("room.addObject")}</button>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button id="create-zone-cta" className="hm-btn hm-btn-soft" style={{ height: 36, padding: "0 12px", fontSize: 13 }} onClick={() => openModal("addZone", { roomId: room.id })}><Plus size={14} />{t("room.addZone")}</button>
+            <button className="hm-btn hm-btn-soft" style={{ height: 36, padding: "0 12px", fontSize: 13 }} onClick={() => openModal("addContainer", { roomId: room.id })}><Plus size={14} />{t("room.addContainer")}</button>
+            <button className="hm-btn hm-btn-primary" style={{ height: 36, padding: "0 12px", fontSize: 13 }} onClick={() => openModal("addObject", { roomId: room.id })}><Plus size={14} />{t("room.addObject")}</button>
           </div>
         </div>
 
@@ -2250,17 +2250,20 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
               style={{ fontSize: 24, fontWeight: 600, flex: 1 }}
             />
           </div>
-          <Route path={locationPath(state, { roomId: room.id, zoneId: zone.id })} size="sm" />
+          <div style={{ marginTop: 10 }}>
+            <Route path={locationPath(state, { roomId: room.id, zoneId: zone.id })} size="sm" />
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="hm-btn hm-btn-soft" onClick={() => openModal("addContainer", { roomId: room.id, zoneId: zone.id })}><Plus size={15} />{t("room.addContainer")}</button>
-          <button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: room.id, zoneId: zone.id })}><Plus size={15} />{t("room.addObject")}</button>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button className="hm-btn hm-btn-soft" style={{ height: 36, padding: "0 12px", fontSize: 13 }} onClick={() => openModal("addContainer", { roomId: room.id, zoneId: zone.id })}><Plus size={14} />{t("room.addContainer")}</button>
+          <button className="hm-btn hm-btn-primary" style={{ height: 36, padding: "0 12px", fontSize: 13 }} onClick={() => openModal("addObject", { roomId: room.id, zoneId: zone.id })}><Plus size={14} />{t("room.addObject")}</button>
           <button
-            className="hm-btn hm-btn-ghost hm-text-danger hm-btn--compact"
+            className="hm-btn hm-btn-ghost hm-text-danger"
+            style={{ height: 36, width: 36, padding: 0, justifyContent: "center" }}
             onClick={() => onDeleteZone?.(zone.id)}
             aria-label={t("room.deleteZone")}
           >
-            <Trash2 size={16} />
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
@@ -2618,18 +2621,21 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateContainer, onDel
                 style={{ fontSize: 24, fontWeight: 600, flex: 1 }}
               />
             </div>
-            <Route path={locationPath(state, activeContainer)} size="sm" />
+            <div style={{ marginTop: 10 }}>
+              <Route path={locationPath(state, activeContainer)} size="sm" />
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="hm-btn hm-btn-primary" onClick={() => openModal("addObject", { roomId: activeContainer.roomId, zoneId: activeContainer.zoneId, containerId: activeContainer.id })}>
-              <Plus size={16} /> {t("room.addObjectToBox")}
+          <div style={{ display: "flex", gap: 6 }}>
+            <button className="hm-btn hm-btn-primary" style={{ height: 36, padding: "0 12px", fontSize: 13 }} onClick={() => openModal("addObject", { roomId: activeContainer.roomId, zoneId: activeContainer.zoneId, containerId: activeContainer.id })}>
+              <Plus size={14} /> {t("room.addObjectToBox")}
             </button>
             <button
-              className="hm-btn hm-btn-ghost hm-text-danger hm-btn--compact"
+              className="hm-btn hm-btn-ghost hm-text-danger"
+              style={{ height: 36, width: 36, padding: 0, justifyContent: "center" }}
               onClick={() => onDeleteContainer?.(activeContainer.id)}
               aria-label={t("room.deleteContainer")}
             >
-              <Trash2 size={16} />
+              <Trash2 size={14} />
             </button>
           </div>
         </div>
