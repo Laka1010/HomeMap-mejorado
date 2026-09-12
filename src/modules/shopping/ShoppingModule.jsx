@@ -200,7 +200,7 @@ function ListCategoryChip({ category, categories, onChange }) {
   );
 }
 
-export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase, onUpdateListCategory }) {
+export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase, onUpdateListCategory, onItemsRemoved }) {
   const { t } = useTranslation();
   const { expense: expenseCategories } = useEconomyCategories();
   const shoppingItems = Array.isArray(state.shoppingItems) ? state.shoppingItems : [];
@@ -258,6 +258,7 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
       ...current,
       shoppingItems: (current.shoppingItems || []).filter((i) => !idSet.has(i.id)),
     }));
+    onItemsRemoved?.(ids);
     Promise.all(ids.map((id) => shoppingService.deleteItem(id))).catch((error) => {
       console.error("Error deleting purchased shopping items:", error);
     });
@@ -268,6 +269,7 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
       ...current,
       shoppingItems: (current.shoppingItems || []).filter((i) => i.id !== itemId),
     }));
+    onItemsRemoved?.([itemId]);
     shoppingService.deleteItem(itemId).catch((error) => {
       console.error("Error deleting shopping item:", error);
     });

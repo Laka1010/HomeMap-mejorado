@@ -48,6 +48,7 @@ import { notesService } from "./services/notesService";
 import { calendarEventService } from "./services/calendarEventService";
 import { AddCalendarEventModal } from "./modules/calendar/AddCalendarEventModal";
 import { shoppingService } from "./services/shoppingService";
+import { consumablesService } from "./services/consumablesService";
 import { shoppingListsService } from "./services/shoppingListsService";
 import { shoppingPurchasesService } from "./services/shoppingPurchasesService";
 import { categoriesService } from "./services/categoriesService";
@@ -589,6 +590,7 @@ function buildEmptyState(t) {
     zones: [],
     containers: [],
     objects: [],
+    consumables: [],
     shoppingItems: [],
     shoppingLists: [],
     shoppingPurchases: [],
@@ -766,6 +768,15 @@ function useHomeMapState(currentHomeId, userId) {
       } catch (e) {
         console.error("Error loading shopping items from Supabase:", e);
         // Falls back to whatever was cached locally for shoppingItems.
+      }
+
+      try {
+        const consumables = await consumablesService.fetchConsumables(currentHomeId);
+        if (cancelled) return;
+        parsed = { ...parsed, consumables };
+      } catch (e) {
+        console.error("Error loading consumables from Supabase:", e);
+        // Falls back to whatever was cached locally for consumables.
       }
 
       try {
@@ -966,6 +977,9 @@ function sanitizeHomeState(parsed) {
     zones,
     containers: validContainers,
     objects,
+    consumables: Array.isArray(parsed.consumables)
+      ? parsed.consumables.filter((c) => c && typeof c.id === "string" && c.id.trim())
+      : base.consumables,
     shoppingItems: Array.isArray(parsed.shoppingItems) ? parsed.shoppingItems : base.shoppingItems,
     shoppingLists: Array.isArray(parsed.shoppingLists) ? parsed.shoppingLists : base.shoppingLists,
     shoppingPurchases: Array.isArray(parsed.shoppingPurchases) ? parsed.shoppingPurchases : base.shoppingPurchases,
@@ -1253,6 +1267,87 @@ function AddShoppingModal({ onClose, onSave, item }) {
 
       <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" disabled={!form.name.trim()} onClick={submit}>
         {isEdit ? <><Check size={16} /> {t("common.save")}</> : <><Plus size={16} /> {t("addShopping.addButton")}</>}
+      </button>
+    </Modal>
+  );
+}
+
+/**
+ * Alta/edición de un consumible (producto que se gasta y se repone: leche,
+ * detergente...). `defaults` trae roomId/zoneId/containerId cuando se abre
+ * desde una zona/caja concreta (mismo mecanismo que openModal("addObject", ...)).
+ * `onSave` siempre recibe el objeto completo, igual que AddShoppingModal.
+ */
+function AddConsumableModal({ onClose, onSave, consumable, defaults = {}, shoppingLists = [] }) {
+  const { t } = useTranslation();
+  const isEdit = !!consumable;
+  const [form, setForm] = useState({
+    name: consumable?.name ?? "",
+    currentQuantity: consumable?.currentQuantity != null ? String(consumable.currentQuantity) : "1",
+    minQuantity: consumable?.minQuantity != null ? String(consumable.minQuantity) : "",
+    autoAddToShopping: consumable?.autoAddToShopping ?? false,
+    shoppingListId: consumable?.shoppingListId ?? "",
+  });
+  const patch = (fields) => setForm((f) => ({ ...f, ...fields }));
+
+  const submit = () => {
+    if (!form.name.trim()) return;
+    const currentQuantity = form.currentQuantity === "" ? 0 : parseFloat(form.currentQuantity.toString().replace(/,/g, "."));
+    const minQuantity = form.minQuantity === "" ? null : parseFloat(form.minQuantity.toString().replace(/,/g, "."));
+    const base = isEdit
+      ? { ...consumable }
+      : { id: "cs-" + uid(), roomId: defaults.roomId ?? null, zoneId: defaults.zoneId ?? null, containerId: defaults.containerId ?? null };
+    onSave({
+      ...base,
+      name: form.name.trim(),
+      currentQuantity: Number.isFinite(currentQuantity) ? currentQuantity : 0,
+      minQuantity: Number.isFinite(minQuantity) ? minQuantity : null,
+      autoAddToShopping: form.autoAddToShopping,
+      shoppingListId: form.autoAddToShopping ? (form.shoppingListId || null) : null,
+    });
+    onClose();
+  };
+
+  return (
+    <Modal title={isEdit ? t("modal.editConsumableTitle") : t("modal.addConsumableTitle")} onClose={onClose}>
+      <FieldGroup label={t("consumable.nameLabel")}>
+        <FieldTextRow icon={Package} value={form.name} autoFocus onChange={(v) => patch({ name: v })} onEnter={submit} />
+      </FieldGroup>
+
+      <FieldGroup label={t("consumable.currentQuantityLabel")}>
+        <FieldTextRow icon={Layers} inputMode="decimal" value={form.currentQuantity} onChange={(v) => patch({ currentQuantity: v.replace(/[^0-9.,]/g, "") })} onEnter={submit} />
+      </FieldGroup>
+
+      <FieldGroup label={t("consumable.minQuantityLabel")}>
+        <FieldTextRow icon={AlertTriangle} inputMode="decimal" value={form.minQuantity} onChange={(v) => patch({ minQuantity: v.replace(/[^0-9.,]/g, "") })} onEnter={submit} />
+      </FieldGroup>
+
+      <div style={{ marginTop: 4 }}>
+        <ToggleCard
+          icon={ShoppingCart}
+          title={t("consumable.autoAddLabel")}
+          subtitle={t("consumable.autoAddSubtitle")}
+          checked={form.autoAddToShopping}
+          onChange={(checked) => patch({ autoAddToShopping: checked })}
+        />
+      </div>
+
+      {form.autoAddToShopping && (
+        <FieldGroup label={t("consumable.shoppingListLabel")}>
+          <SelectField
+            title={t("consumable.shoppingListLabel")}
+            value={form.shoppingListId}
+            onChange={(v) => patch({ shoppingListId: v })}
+            options={[
+              { value: "", label: t("consumable.shoppingListUnassigned") },
+              ...shoppingLists.map((list) => ({ value: list.id, label: list.name })),
+            ]}
+          />
+        </FieldGroup>
+      )}
+
+      <button className="hm-btn hm-btn-primary hm-btn--full hm-mt-20" disabled={!form.name.trim()} onClick={submit}>
+        {isEdit ? <><Check size={16} /> {t("common.save")}</> : <><Plus size={16} /> {t("consumable.createButton")}</>}
       </button>
     </Modal>
   );
@@ -1893,7 +1988,7 @@ function Dashboard({ state, goTo, openModal, canSeeEconomy, currentHome, houseMe
 /* -------------------------------------------------------------------- */
 /* MI CASA                                                               */
 /* -------------------------------------------------------------------- */
-function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCategories, onUpdateRoom, onUpdateZone, onDeleteRoom, onDeleteZone, onMoveObject }) {
+function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCategories, onUpdateRoom, onUpdateZone, onDeleteRoom, onDeleteZone, onMoveObject, onAdjustConsumable, onDeleteConsumable }) {
   const { t } = useTranslation();
   const room = view.roomId ? getRoom(state, view.roomId) : null;
   const zone = view.zoneId ? getZone(state, view.zoneId) : null;
@@ -2138,6 +2233,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
   // ZONE VIEW
   const containersInZone = state.containers.filter((c) => c.zoneId === zone.id && !c.parentId);
   const objectsInZone = state.objects.filter((o) => o.zoneId === zone.id && !o.containerId);
+  const consumablesInZone = (state.consumables || []).filter((c) => c.zoneId === zone.id && !c.containerId);
   return (
     <ObjectDndProvider>
     <div className="hm-fade-in">
@@ -2216,6 +2312,14 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
           {objectsInZone.map((o) => <DraggableObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} />)}
         </ObjectDropZone>
       )}
+
+      <ConsumablesSection
+        consumables={consumablesInZone}
+        onAdd={() => openModal("addConsumable", { roomId: room.id, zoneId: zone.id })}
+        onEdit={(c) => openModal("editConsumable", { consumable: c })}
+        onAdjust={onAdjustConsumable}
+        onDelete={onDeleteConsumable}
+      />
     </div>
     </ObjectDndProvider>
   );
@@ -2391,6 +2495,77 @@ function DraggableObjectRow({ o, onClick, path }) {
   );
 }
 
+/**
+ * Fila de un consumible dentro de una zona/caja: cantidad actual, botones
+ * +/- para ajustarla sin abrir el modal, y un aviso visual cuando llega al
+ * mínimo (ver maybeAutoAddConsumableToShopping). Click en la fila (fuera de
+ * los botones) abre la edición.
+ */
+function ConsumableRow({ c, onEdit, onAdjust, onDelete }) {
+  const { t } = useTranslation();
+  const isLow = c.minQuantity != null && Number(c.currentQuantity) <= Number(c.minQuantity);
+  return (
+    <div
+      className="hm-card hm-tap hm-card--p12"
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        borderColor: isLow ? "var(--danger)" : undefined,
+        background: isLow ? "var(--danger-soft)" : undefined,
+      }}
+      onClick={onEdit}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: 14, color: isLow ? "var(--danger)" : undefined }}>{c.name}</div>
+        <div style={{ fontSize: 11.5, color: isLow ? "var(--danger)" : "var(--ink-soft)" }}>
+          {c.minQuantity != null
+            ? t("consumable.quantityWithMin", { qty: c.currentQuantity, min: c.minQuantity })
+            : t("consumable.quantityOnly", { qty: c.currentQuantity })}
+          {isLow ? ` · ${t("consumable.lowStockBadge")}` : ""}
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }} onClick={(e) => e.stopPropagation()}>
+        <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ padding: "4px 9px" }} onClick={() => onAdjust(-1)} aria-label={t("consumable.decreaseLabel")}>−</button>
+        <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ padding: "4px 9px" }} onClick={() => onAdjust(1)} aria-label={t("consumable.increaseLabel")}>+</button>
+        <button className="hm-btn hm-btn-ghost hm-btn--compact hm-text-danger" style={{ padding: "4px 7px" }} onClick={onDelete} aria-label={t("consumable.deleteLabel")}>
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Sección "Consumibles" reutilizada en la vista de zona (MiCasa) y de caja
+ * activa (Cajas): lista de productos que se gastan y se reponen, con alta
+ * rápida. Ver la petición original — no aplica a nivel de habitación suelta.
+ */
+function ConsumablesSection({ consumables, onAdd, onEdit, onAdjust, onDelete }) {
+  const { t } = useTranslation();
+  return (
+    <div style={{ marginTop: 18, marginBottom: 18 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <label className="hm-label" style={{ margin: 0 }}>{t("room.consumablesHeader")}</label>
+        <button className="hm-btn hm-btn-ghost hm-btn--compact" onClick={onAdd}>
+          <Plus size={14} /> {t("consumable.addButton")}
+        </button>
+      </div>
+      {consumables.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {consumables.map((c) => (
+            <ConsumableRow
+              key={c.id}
+              c={c}
+              onEdit={() => onEdit(c)}
+              onAdjust={(delta) => onAdjust(c.id, delta)}
+              onDelete={() => onDelete(c.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Contenedor que resalta cuando se arrastra un objeto encima y lo mueve al soltar. */
 function ObjectDropZone({ id, onDropObject, canDrop, className = "", style, children, onClick, ...rest }) {
   const dnd = useObjectDnd();
@@ -2414,12 +2589,13 @@ function ObjectDropZone({ id, onDropObject, canDrop, className = "", style, chil
 /* -------------------------------------------------------------------- */
 /* CAJAS                                                                 */
 /* -------------------------------------------------------------------- */
-function Cajas({ state, view, setView, openModal, goTo, onUpdateContainer, onDeleteContainer }) {
+function Cajas({ state, view, setView, openModal, goTo, onUpdateContainer, onDeleteContainer, onAdjustConsumable, onDeleteConsumable }) {
   const { t } = useTranslation();
   const activeContainer = view.containerId ? getContainer(state, view.containerId) : null;
 
   if (activeContainer) {
     const childObjects = state.objects.filter((o) => o.containerId === activeContainer.id);
+    const childConsumables = (state.consumables || []).filter((c) => c.containerId === activeContainer.id);
     const childContainers = state.containers.filter((c) => c.parentId === activeContainer.id);
     const parentContainer = activeContainer.parentId ? getContainer(state, activeContainer.parentId) : null;
     // Al salir de una caja de primer nivel se vuelve a la habitación de la que
@@ -2477,6 +2653,14 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateContainer, onDel
             {childObjects.map((o) => <ObjectRow key={o.id} o={o} onClick={() => goTo({ tab: "objectDetail", objectId: o.id })} />)}
           </div>
         )}
+
+        <ConsumablesSection
+          consumables={childConsumables}
+          onAdd={() => openModal("addConsumable", { roomId: activeContainer.roomId, zoneId: activeContainer.zoneId, containerId: activeContainer.id })}
+          onEdit={(c) => openModal("editConsumable", { consumable: c })}
+          onAdjust={onAdjustConsumable}
+          onDelete={onDeleteConsumable}
+        />
       </div>
     );
   }
@@ -2512,7 +2696,7 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateContainer, onDel
 /* -------------------------------------------------------------------- */
 /* COMPRAS                                                               */
 /* -------------------------------------------------------------------- */
-function Compras({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase, onUpdateListCategory }) {
+function Compras({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase, onUpdateListCategory, onItemsRemoved }) {
   return (
     <ShoppingModule
       state={state}
@@ -2524,6 +2708,7 @@ function Compras({ state, dispatch, openModal, deleteShoppingList, addShopping, 
       onRepeatPurchase={onRepeatPurchase}
       onSaveReceiptPurchase={onSaveReceiptPurchase}
       onUpdateListCategory={onUpdateListCategory}
+      onItemsRemoved={onItemsRemoved}
     />
   );
 }
@@ -3583,18 +3768,25 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     if (!room) return;
     // zones/containers cuelgan de la habitación (borrado en cascada en la BD y
     // aquí); los objetos de esa habitación se borran también — no se conservan
-    // "sueltos" sin ubicación.
+    // "sueltos" sin ubicación. Los consumibles igual: no tienen vista suelta a
+    // nivel de habitación (solo viven en zona/caja), así que se borran con ella
+    // en vez de quedar huérfanos con roomId a null y sin ningún sitio donde verlos.
+    const removedConsumables = (state.consumables || []).filter((c) => c.roomId === roomId);
     dispatch((s) => ({
       ...s,
       rooms: s.rooms.filter((r) => r.id !== roomId),
       zones: s.zones.filter((z) => z.roomId !== roomId),
       containers: s.containers.filter((c) => c.roomId !== roomId),
       objects: s.objects.filter((o) => o.roomId !== roomId),
+      consumables: (s.consumables || []).filter((c) => c.roomId !== roomId),
     }));
     showNotice(t("toast.roomDeleted", { name: room.name }));
     homeContentService.deleteRoom(roomId).catch((error) => {
       console.error("Error deleting room:", error);
       showNotice(t("toast.roomDeleteError"));
+    });
+    Promise.all(removedConsumables.map((c) => consumablesService.deleteConsumable(c.id))).catch((error) => {
+      console.error("Error deleting room consumables:", error);
     });
   };
   /** Pide confirmación antes de borrar la habitación (acción irreversible). */
@@ -3619,16 +3811,24 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const deleteZone = (zoneId) => {
     const zone = getZone(state, zoneId);
     if (!zone) return;
+    // Los consumibles, a diferencia de objetos, no tienen vista "suelta en la
+    // habitación" — solo se muestran dentro de una zona o caja concreta — así
+    // que los de esta zona se borran con ella en vez de quedar huérfanos.
+    const removedConsumables = (state.consumables || []).filter((c) => c.zoneId === zoneId && !c.containerId);
     dispatch((s) => ({
       ...s,
       zones: s.zones.filter((z) => z.id !== zoneId),
       containers: s.containers.map((c) => (c.zoneId === zoneId ? { ...c, zoneId: null } : c)),
       objects: s.objects.map((o) => (o.zoneId === zoneId ? { ...o, zoneId: null } : o)),
+      consumables: (s.consumables || []).filter((c) => !(c.zoneId === zoneId && !c.containerId)),
     }));
     showNotice(t("toast.zoneDeleted", { name: zone.name }));
     homeContentService.deleteZone(zoneId).catch((error) => {
       console.error("Error deleting zone:", error);
       showNotice(t("toast.zoneDeleteError"));
+    });
+    Promise.all(removedConsumables.map((c) => consumablesService.deleteConsumable(c.id))).catch((error) => {
+      console.error("Error deleting zone consumables:", error);
     });
   };
   const requestDeleteZone = (zoneId) => {
@@ -3651,17 +3851,24 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
   const deleteContainer = (containerId) => {
     const container = getContainer(state, containerId);
     if (!container) return;
+    // Igual que deleteZone: los consumibles de esta caja no tienen dónde
+    // "quedarse sueltos" en la UI, así que se borran con ella.
+    const removedConsumables = (state.consumables || []).filter((c) => c.containerId === containerId);
     dispatch((s) => ({
       ...s,
       containers: s.containers
         .filter((c) => c.id !== containerId)
         .map((c) => (c.parentId === containerId ? { ...c, parentId: null } : c)),
       objects: s.objects.map((o) => (o.containerId === containerId ? { ...o, containerId: null } : o)),
+      consumables: (s.consumables || []).filter((c) => c.containerId !== containerId),
     }));
     showNotice(t("toast.containerDeleted", { name: container.name }));
     homeContentService.deleteContainer(containerId).catch((error) => {
       console.error("Error deleting container:", error);
       showNotice(t("toast.containerDeleteError"));
+    });
+    Promise.all(removedConsumables.map((c) => consumablesService.deleteConsumable(c.id))).catch((error) => {
+      console.error("Error deleting container consumables:", error);
     });
   };
   const requestDeleteContainer = (containerId) => {
@@ -3708,6 +3915,101 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     homeContentService.createObject(currentHome.id, nextObject).catch((error) => {
       console.error("Error saving object:", error);
       showNotice(t("toast.objectSaveError"));
+    });
+  };
+  /**
+   * Si el consumible tiene mínimo definido, auto-add activado, ya está en
+   * mínimos y no tiene ya un producto de compra pendiente (linkedShoppingItemId),
+   * genera ese producto en la lista sin asignar. Cierra el ciclo inventario ->
+   * reposición -> lista de compra descrito en la petición del usuario.
+   */
+  const maybeAutoAddConsumableToShopping = (consumable) => {
+    const min = consumable.minQuantity;
+    const qty = Number(consumable.currentQuantity ?? 0);
+    const belowMin = min !== null && min !== undefined && min !== "" && qty <= Number(min);
+    if (!consumable.autoAddToShopping || !belowMin || consumable.linkedShoppingItemId) return;
+    const newItem = { id: "s-" + uid(), listId: consumable.shoppingListId || null, name: consumable.name, quantity: 1, completed: false };
+    dispatch((s) => ({ ...s, shoppingItems: [...s.shoppingItems, newItem] }));
+    dispatch((s) => ({
+      ...s,
+      consumables: (s.consumables || []).map((c) => (c.id === consumable.id ? { ...c, linkedShoppingItemId: newItem.id } : c)),
+    }));
+    showNotice(t("toast.consumableAutoAdded", { name: consumable.name }));
+    logActivity("activity.shoppingItemAdded", { name: user?.name, item: consumable.name });
+    shoppingService.createItem(currentHome.id, newItem).catch((error) => {
+      console.error("Error auto-adding consumable to shopping list:", error);
+    });
+    consumablesService.updateConsumable(consumable.id, { linkedShoppingItemId: newItem.id }).catch((error) => {
+      console.error("Error linking consumable to shopping item:", error);
+    });
+  };
+  const addConsumable = (c) => {
+    const normalized = normalizeLocation(state, c);
+    const nextConsumable = { ...c, ...normalized, linkedShoppingItemId: null };
+    dispatch((s) => ({ ...s, consumables: [...(s.consumables || []), nextConsumable] }));
+    showNotice(t("toast.consumableCreated", { name: c.name }));
+    closeModal();
+    consumablesService.createConsumable(currentHome.id, nextConsumable).catch((error) => {
+      console.error("Error saving consumable:", error);
+      showNotice(t("toast.consumableSaveError"));
+    });
+    maybeAutoAddConsumableToShopping(nextConsumable);
+  };
+  /** onSave del modal de edición: recibe el consumible completo, igual que updateShoppingItem. */
+  const updateConsumableItem = (patchedConsumable) => {
+    const { id, ...patch } = patchedConsumable;
+    dispatch((s) => ({
+      ...s,
+      consumables: (s.consumables || []).map((c) => (c.id === id ? { ...c, ...patch } : c)),
+    }));
+    closeModal();
+    consumablesService.updateConsumable(id, patch).catch((error) => {
+      console.error("Error updating consumable:", error);
+      showNotice(t("toast.consumableSaveError"));
+    });
+    maybeAutoAddConsumableToShopping({ ...patch, id });
+  };
+  const adjustConsumableQuantity = (id, delta) => {
+    const current = state.consumables.find((c) => c.id === id);
+    if (!current) return;
+    const currentQuantity = Math.max(0, Number(current.currentQuantity || 0) + delta);
+    dispatch((s) => ({
+      ...s,
+      consumables: (s.consumables || []).map((c) => (c.id === id ? { ...c, currentQuantity } : c)),
+    }));
+    consumablesService.updateConsumable(id, { currentQuantity }).catch((error) => {
+      console.error("Error updating consumable quantity:", error);
+    });
+    maybeAutoAddConsumableToShopping({ ...current, currentQuantity });
+  };
+  const deleteConsumable = (id) => {
+    const c = state.consumables.find((x) => x.id === id);
+    if (!c) return;
+    dispatch((s) => ({ ...s, consumables: (s.consumables || []).filter((x) => x.id !== id) }));
+    showNotice(t("toast.consumableDeleted", { name: c.name }));
+    consumablesService.deleteConsumable(id).catch((error) => {
+      console.error("Error deleting consumable:", error);
+      showNotice(t("toast.consumableDeleteError"));
+    });
+  };
+  /**
+   * Evita que un consumible quede bloqueado (linkedShoppingItemId apuntando a
+   * un producto de compra ya borrado) cuando ese producto se compra o se
+   * elimina a mano — así puede volver a auto-añadirse si baja de mínimo otra vez.
+   */
+  const unlinkConsumablesForShoppingItems = (itemIds) => {
+    if (!itemIds || itemIds.length === 0) return;
+    const idSet = new Set(itemIds);
+    const affected = (state.consumables || []).filter((c) => c.linkedShoppingItemId && idSet.has(c.linkedShoppingItemId));
+    if (affected.length === 0) return;
+    dispatch((s) => ({
+      ...s,
+      consumables: (s.consumables || []).map((c) => (idSet.has(c.linkedShoppingItemId) ? { ...c, linkedShoppingItemId: null } : c)),
+    }));
+    affected.forEach((c) => {
+      consumablesService.updateConsumable(c.id, { linkedShoppingItemId: null }).catch((error) => {
+        console.error("Error unlinking consumable:", error);
+      });
     });
   };
   const addShopping = (s2) => {
@@ -3947,6 +4249,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       }));
       logActivity("activity.purchaseCompleted", { name: user?.name, count: items.length }, { entityType: "shoppingList", entityId: listId });
       celebratePurchase({ listId, store, itemCount: items.length, amount });
+      unlinkConsumablesForShoppingItems(Array.from(purchasedIds));
       Promise.all(items.map((item) => shoppingService.deleteItem(item.id))).catch((error) => {
         console.error("Error clearing purchased shopping items:", error);
       });
@@ -4000,6 +4303,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
         shoppingPurchases: [purchase, ...(s.shoppingPurchases || [])],
       }));
       if (purchasedIds.size > 0) {
+        unlinkConsumablesForShoppingItems(Array.from(purchasedIds));
         Promise.all(Array.from(purchasedIds).map((id) => shoppingService.deleteItem(id))).catch((error) => {
           console.error("Error clearing purchased shopping items:", error);
         });
@@ -4549,8 +4853,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
                 vino, que sigue intacta en `micasaView`. */}
             {route.tab === "hogar" && (
               cajasView?.containerId
-                ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateContainer={updateContainer} onDeleteContainer={requestDeleteContainer} />
-                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateCategories={updateCategories} onUpdateRoom={updateRoom} onUpdateZone={updateZone} onDeleteRoom={requestDeleteRoom} onDeleteZone={requestDeleteZone} onMoveObject={moveObject} />
+                ? <Cajas state={state} view={cajasView} setView={setCajasView} openModal={openModal} goTo={goTo} onUpdateContainer={updateContainer} onDeleteContainer={requestDeleteContainer} onAdjustConsumable={adjustConsumableQuantity} onDeleteConsumable={deleteConsumable} />
+                : <MiCasa state={state} dispatch={dispatch} view={micasaView} setView={setMicasaView} openModal={openModal} goTo={goTo} onUpdateCategories={updateCategories} onUpdateRoom={updateRoom} onUpdateZone={updateZone} onDeleteRoom={requestDeleteRoom} onDeleteZone={requestDeleteZone} onMoveObject={moveObject} onAdjustConsumable={adjustConsumableQuantity} onDeleteConsumable={deleteConsumable} />
             )}
 
             {/* ✅ ORGANIZACIÓN - Shopping, Tasks, Calendar */}
@@ -4601,7 +4905,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               // vez de truncarse.
               <div key={organizationTab} className="hm-fade-in" style={{ minWidth: 0 }}>
                 <Suspense fallback={null}>
-                  {organizationTab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} onUpdateListCategory={updateShoppingListCategory} />}
+                  {organizationTab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} onUpdateListCategory={updateShoppingListCategory} onItemsRemoved={unlinkConsumablesForShoppingItems} />}
                   {organizationTab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onTaskCompleted={logTaskCompleted} />}
                   {organizationTab === "notas" && <Notas state={state} dispatch={dispatch} openModal={openModal} />}
                   {organizationTab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} openModal={openModal} onDeleteEvent={deleteCalendarEvent} />}
@@ -4809,6 +5113,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       {modal?.type === "addObject" && <AddObjectWizard state={state} defaults={modal.payload} onClose={closeModal} onSave={addObject} />}
       {modal?.type === "addShopping" && <AddShoppingModal onClose={closeModal} onSave={(item) => addShopping({ ...item, listId: modal.payload?.listId || null })} /> }
       {modal?.type === "editShopping" && <AddShoppingModal item={modal.payload?.item} onClose={closeModal} onSave={updateShoppingItem} /> }
+      {modal?.type === "addConsumable" && <AddConsumableModal defaults={modal.payload} shoppingLists={state.shoppingLists} onClose={closeModal} onSave={addConsumable} />}
+      {modal?.type === "editConsumable" && <AddConsumableModal consumable={modal.payload?.consumable} shoppingLists={state.shoppingLists} onClose={closeModal} onSave={updateConsumableItem} />}
 
       {modal?.type === "addCalendarEvent" && (
         <AddCalendarEventModal
