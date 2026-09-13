@@ -47,7 +47,6 @@ export function AccountHub({
   onClose,
   version,
   subscriptionStatus,
-  goTo,
 }) {
   const { t } = useTranslation();
   // null | "editProfile" | "homeInfo" | "language" | "appearance"
@@ -135,7 +134,7 @@ export function AccountHub({
 
                 <PremiumBanner
                   subscriptionStatus={subscriptionStatus}
-                  onOpen={() => { onClose(); goTo({ tab: "havenia" }); }}
+                  onOpen={() => { onClose(); openModal("premiumPaywall"); }}
                   t={t}
                 />
 

@@ -40,8 +40,9 @@ import { ObjectDndProvider, useObjectDnd, useDraggableObject, useObjectDropTarge
 import { supabase } from "./supabaseClient";
 import { securityEventsService } from "./services/securityEventsService";
 import { premiumService } from "./services/premiumService";
+import { revenuecatService } from "./services/revenuecatService";
 import { looksLikeConsumable, buildConsumableCandidatesFromReceiptItems } from "./services/ai/consumablesAiService";
-import { houseService, MAX_HOMES_PER_USER } from "./services/houseService";
+import { houseService, MAX_HOMES_PER_USER, MAX_HOMES_PER_PREMIUM_USER } from "./services/houseService";
 import { profileService } from "./services/profileService";
 import { homeContentService } from "./services/homeContentService";
 import { taskService, DEFAULT_TASK_RETENTION_DAYS } from "./services/taskService";
@@ -75,6 +76,7 @@ const HavenIAHub = lazy(() => import("./modules/havenia/HavenIAHub").then((m) =>
 const ConsumableScanModal = lazy(() => import("./modules/havenia/consumables/ConsumableScanModal").then((m) => ({ default: m.ConsumableScanModal })));
 const TicketScanModal = lazy(() => import("./modules/havenia/tickets/TicketScanModal").then((m) => ({ default: m.TicketScanModal })));
 const HavenIAssistant = lazy(() => import("./modules/havenia/assistant/HavenIAssistant").then((m) => ({ default: m.HavenIAssistant })));
+const PremiumPaywall = lazy(() => import("./modules/havenia/PremiumPaywall").then((m) => ({ default: m.PremiumPaywall })));
 import { computeFrequentProducts } from "./modules/shopping/frequentProducts";
 import { uploadReceiptImage } from "./services/receiptService";
 import { useDragToDismiss } from "./hooks/useDragToDismiss";
@@ -3107,6 +3109,18 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     setSubscriptionStatus(await premiumService.getMySubscriptionStatus());
   };
 
+  // Configura el SDK de RevenueCat con el id de Supabase del usuario como
+  // appUserID (así el webhook de RevenueCat puede escribir directamente en
+  // profiles sin tabla de mapeo intermedia). No-op en web/sin clave -- ver
+  // revenuecatService.js. El estado Premium real lo sigue decidiendo siempre
+  // subscription_status (arriba), nunca el SDK.
+  useEffect(() => {
+    if (!user?.id) return;
+    revenuecatService.configure(user.id).catch((error) => {
+      console.error("Error configurando RevenueCat:", error);
+    });
+  }, [user?.id]);
+
   /**
    * Recibo animado de "compra completada" (ver PurchaseCompleteAnimation).
    * Una sola ranura de estado a propósito: aunque se cierren dos compras
@@ -3573,14 +3587,17 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
    * inline — por eso, a diferencia de otras acciones de esta función, deja
    * que el error se propague en vez de tragárselo con un toast.
    */
-  // Una sola casa por usuario (crear + unirse). El límite real lo impone la
-  // base de datos (create_house / join_house_by_code, migración
-  // 20260911_094); estos returns solo evitan la llamada y dan un mensaje
-  // claro cuando ya se ve en el cliente que se ha alcanzado.
+  // Una sola casa por usuario FREE (crear + unirse); Premium sube el tope a
+  // MAX_HOMES_PER_PREMIUM_USER (3), nunca ilimitado. El límite real lo
+  // impone la base de datos (create_house / join_house_by_code, migración
+  // 20260913_104_multiple_homes_premium_cap); estos returns solo evitan la
+  // llamada y dan un mensaje claro cuando ya se ve en el cliente que se ha
+  // alcanzado.
   const createHome = async (name, template = null) => {
     if (!name?.trim()) return;
-    if (homes.length >= MAX_HOMES_PER_USER) {
-      showNotice(t("homeSelector.createLimitReached"));
+    const homeLimit = isPremiumUser ? MAX_HOMES_PER_PREMIUM_USER : MAX_HOMES_PER_USER;
+    if (homes.length >= homeLimit) {
+      showNotice(t(isPremiumUser ? "homeSelector.premiumLimitReached" : "homeSelector.createLimitReached"));
       return;
     }
     const newHouse = await houseService.createHouse(name.trim());
@@ -3592,8 +3609,9 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
 
   const joinHome = async (code) => {
     if (!code?.trim()) return;
-    if (homes.length >= MAX_HOMES_PER_USER) {
-      showNotice(t("homeSelector.createLimitReached"));
+    const homeLimit = isPremiumUser ? MAX_HOMES_PER_PREMIUM_USER : MAX_HOMES_PER_USER;
+    if (homes.length >= homeLimit) {
+      showNotice(t(isPremiumUser ? "homeSelector.premiumLimitReached" : "homeSelector.createLimitReached"));
       return;
     }
     try {
@@ -5144,7 +5162,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               <Suspense fallback={null}>
                 <HavenIAHub
                   subscriptionStatus={subscriptionStatus}
-                  onActivateTrial={activatePremiumTrial}
+                  onOpenPaywall={() => openModal("premiumPaywall")}
                   showNotice={showNotice}
                   actions={{
                     consumables: () => openModal("aiConsumableScan"),
@@ -5203,7 +5221,6 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onClose={closeModal}
             version={APP_VERSION}
             subscriptionStatus={subscriptionStatus}
-            goTo={goTo}
           />
         </Suspense>
       )}
@@ -5279,7 +5296,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onOpenCreate={() => openModal("createHome", null, { returnTo: "homeSelector" })}
             onJoin={joinHome}
             onClose={closeModal}
-            canAddHome={isPremiumUser || homes.length < MAX_HOMES_PER_USER}
+            canAddHome={homes.length < (isPremiumUser ? MAX_HOMES_PER_PREMIUM_USER : MAX_HOMES_PER_USER)}
           />
         </Modal>
       )}
@@ -5388,6 +5405,26 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             isPremium={isPremiumUser}
             onRequirePremium={() => { closeModal(); showNotice(t("havenIA.premiumRequired")); }}
             onOpenObject={(objectId) => { closeModal(); goTo({ tab: "objectDetail", objectId }); }}
+          />
+        </Suspense>
+      )}
+      {modal?.type === "premiumPaywall" && (
+        <Suspense fallback={null}>
+          <PremiumPaywall
+            onClose={closeModal}
+            showNotice={showNotice}
+            onSubscriptionUpdated={setSubscriptionStatus}
+            onActivateInternalTrial={async () => {
+              try {
+                await activatePremiumTrial();
+                showNotice(t("havenIA.activateTrialSuccess"));
+              } catch (error) {
+                console.error("Error activating premium trial:", error);
+                showNotice(t("havenIA.activateTrialError"));
+              } finally {
+                closeModal();
+              }
+            }}
           />
         </Suspense>
       )}

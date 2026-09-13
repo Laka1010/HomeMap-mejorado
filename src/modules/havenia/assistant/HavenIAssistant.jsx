@@ -6,6 +6,7 @@ import { useTranslation } from "../../../i18n";
 import { sendAssistantMessage } from "./assistantService";
 import { ASSISTANT_TOOL_DISPLAY } from "./assistantTools";
 import { isLikelyOnTopic } from "./topicFilter";
+import { premiumService } from "../../../services/premiumService";
 
 /** Objetos navegables (con id) que trajeron las tools de búsqueda de este mensaje, sin duplicados. */
 function objectsFromToolCalls(toolCalls) {
@@ -34,6 +35,7 @@ export function HavenIAssistant({ onClose, houseId, isPremium, onRequirePremium,
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [usage, setUsage] = useState(null);
   const scrollRef = useRef(null);
 
   // Defensa en profundidad, mismo motivo que ConsumableScanModal/TicketScanModal.
@@ -41,15 +43,27 @@ export function HavenIAssistant({ onClose, houseId, isPremium, onRequirePremium,
     if (!isPremium) onRequirePremium();
   }, [isPremium, onRequirePremium]);
 
+  // Solo para pintar el aviso de límite alcanzado con antelación -- el
+  // bloqueo real (que no sea saltable cambiando el cliente) lo hace siempre
+  // ai-assistant en el servidor antes de llamar al proveedor de IA.
+  useEffect(() => {
+    if (!isPremium) return;
+    let cancelled = false;
+    premiumService.getPremiumUsage("ai_chat").then((data) => { if (!cancelled) setUsage(data); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isPremium]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
 
   if (!isPremium) return null;
 
+  const limitReached = usage != null && !usage.allowed;
+
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text || sending || limitReached) return;
     const nextMessages = [...messages, { role: "user", content: text }];
     setMessages(nextMessages);
     setInput("");
@@ -62,8 +76,9 @@ export function HavenIAssistant({ onClose, houseId, isPremium, onRequirePremium,
 
     setSending(true);
     try {
-      const result = await sendAssistantMessage(nextMessages, houseId);
+      const result = await sendAssistantMessage(nextMessages, houseId, crypto.randomUUID());
       setMessages((prev) => [...prev, { role: "assistant", content: result.reply, toolCalls: result.toolCalls || [] }]);
+      premiumService.getPremiumUsage("ai_chat").then(setUsage).catch(() => {});
     } catch (err) {
       console.error("Error hablando con el asistente de Haven IA:", err);
       setError(err?.message || t("assistant.sendError"));
@@ -143,6 +158,11 @@ export function HavenIAssistant({ onClose, houseId, isPremium, onRequirePremium,
         {error ? <div style={{ color: "var(--danger)", fontSize: 13 }}>{error}</div> : null}
       </div>
 
+      {limitReached && (
+        <div style={{ padding: "0 20px 12px", fontSize: 13, color: "var(--danger)", textAlign: "center" }}>
+          {t("havenIA.usage.limitReached")}
+        </div>
+      )}
       <div style={{ padding: 16, borderTop: "1px solid var(--border)", display: "flex", gap: 10 }}>
         <input
           className="hm-input"
@@ -151,9 +171,9 @@ export function HavenIAssistant({ onClose, houseId, isPremium, onRequirePremium,
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t("assistant.inputPlaceholder")}
-          disabled={sending}
+          disabled={sending || limitReached}
         />
-        <button className="hm-btn hm-btn-primary hm-btn--icon" onClick={handleSend} disabled={sending || !input.trim()} aria-label={t("assistant.sendAria")}>
+        <button className="hm-btn hm-btn-primary hm-btn--icon" onClick={handleSend} disabled={sending || limitReached || !input.trim()} aria-label={t("assistant.sendAria")}>
           <Send size={16} />
         </button>
       </div>

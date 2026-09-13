@@ -13,6 +13,7 @@ import { DEFAULT_CATEGORY } from "../../economy/economyCategories";
 import { useTranslation } from "../../../i18n";
 import { useCurrency } from "../../../currency";
 import { toLocalDateString } from "../../../utils/dates";
+import { premiumService } from "../../../services/premiumService";
 
 function round2(n) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -55,6 +56,7 @@ export function TicketScanModal({ onClose, onSave, knownProductNames = [], isPre
   const [completedSteps, setCompletedSteps] = useState([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [usage, setUsage] = useState(null);
   const cancelledRef = useRef(false);
 
   const [store, setStore] = useState("");
@@ -76,7 +78,19 @@ export function TicketScanModal({ onClose, onSave, knownProductNames = [], isPre
     if (!isPremium) onRequirePremium();
   }, [isPremium, onRequirePremium]);
 
+  // Solo para avisar con antelación del límite mensual -- el bloqueo real lo
+  // hace siempre vision-proxy en el servidor antes de llamar al proveedor.
+  useEffect(() => {
+    if (!isPremium) return;
+    let cancelled = false;
+    premiumService.getPremiumUsage("receipt_scanner").then((data) => { if (!cancelled) setUsage(data); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isPremium]);
+
+  const limitReached = usage != null && !usage.allowed;
+
   const startAnalysis = async (file) => {
+    if (limitReached) return;
     const photoError = getPhotoError(file);
     if (photoError) {
       setError(t(photoError));
@@ -103,6 +117,7 @@ export function TicketScanModal({ onClose, onSave, knownProductNames = [], isPre
       setDiscountAmount(result.discountAmount ?? "");
       setTotalOverride(null);
       setStage("review");
+      premiumService.getPremiumUsage("receipt_scanner").then(setUsage).catch(() => {});
     } catch (err) {
       if (cancelledRef.current) return;
       console.error("Error analizando el ticket:", err);
@@ -177,6 +192,9 @@ export function TicketScanModal({ onClose, onSave, knownProductNames = [], isPre
               <div style={{ color: "var(--ink-soft)", fontSize: 13, maxWidth: 320 }}>{t("receiptScan.captureSubtitle")}</div>
             </div>
             {error ? <div style={{ color: "var(--danger)", fontSize: 13 }}>{error}</div> : null}
+            {limitReached ? (
+              <div style={{ color: "var(--danger)", fontSize: 13 }}>{t("havenIA.usage.limitReached")}</div>
+            ) : (
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
               <button className="hm-btn hm-btn-primary" onClick={() => cameraInputRef.current?.click()}>
                 <Camera size={16} /> {t("receiptScan.takePhoto")}
@@ -185,6 +203,7 @@ export function TicketScanModal({ onClose, onSave, knownProductNames = [], isPre
                 <ImageIcon size={16} /> {t("receiptScan.chooseFromGallery")}
               </button>
             </div>
+            )}
             <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFileChosen} />
             <input ref={galleryInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFileChosen} />
           </div>

@@ -3,18 +3,23 @@ import { logIfPermissionDenied } from "./securityEventsService";
 
 /**
  * Máximo de casas a las que un usuario FREE puede pertenecer (crear +
- * unirse). Los usuarios Premium/prueba no tienen este tope (ver
- * `can_use_premium_feature('multiple_homes')` en
- * supabase/migrations/20260913_102_multiple_homes_premium.sql). El límite
- * real vive siempre en `create_house`/`join_house_by_code` en la base de
- * datos; esta constante solo se usa en el cliente para ocultar los botones
- * de "crear" y "unirse" con antelación cuando el usuario no es premium, en
- * vez de esperar a que el RPC falle.
+ * unirse). El límite real vive siempre en `create_house`/
+ * `join_house_by_code` en la base de datos (supabase/migrations/
+ * 20260913_104_multiple_homes_premium_cap.sql); esta constante solo se usa
+ * en el cliente para ocultar los botones de "crear" y "unirse" con
+ * antelación, en vez de esperar a que el RPC falle.
  *
  * NO es retroactivo: quien ya está en 2+ casas las conserva; el límite solo
  * bloquea añadir una más.
  */
 export const MAX_HOMES_PER_USER = 1;
+
+/**
+ * Máximo de casas para un usuario Premium/prueba (feature "varias casas",
+ * `can_use_premium_feature('multiple_homes')`): la casa "gratis" de todo el
+ * mundo más 2 extra que da Premium, nunca ilimitadas.
+ */
+export const MAX_HOMES_PER_PREMIUM_USER = 3;
 
 /**
  * Servicio de Casas — capa de acceso a houses / home_members / profiles.

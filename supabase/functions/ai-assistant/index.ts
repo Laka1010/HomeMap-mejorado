@@ -38,6 +38,18 @@ function preflightResponse() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
+// Fecha de renovación del ciclo en el mensaje de límite alcanzado -- en
+// español fijo porque el resto del system prompt también lo está (el
+// asistente responde en el idioma del usuario, pero este mensaje de error
+// se genera fuera de ese flujo, antes de llamar al modelo).
+function formatDateEs(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
 // A-3: mismo orden de confianza que vision-proxy/index.ts (ver
 // public._security_event_client_ip()).
 function clientIp(req: Request): string | null {
@@ -418,7 +430,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { messages, houseId } = await req.json();
+    const { messages, houseId, requestId } = await req.json();
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return jsonResponse({ error: "Falta el campo messages" }, 400);
@@ -475,6 +487,21 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
+    // Límite mensual de Haven IA Chat (sistema de límites Premium): una sola
+    // RPC decide a la vez si el usuario es Premium Y si sigue bajo su cupo
+    // del ciclo -- nunca se llama al proveedor de IA si "allowed" es false.
+    const { data: usageRows, error: usageCheckError } = await userClient.rpc("get_premium_usage", { p_feature_key: "ai_chat" });
+    const usage = Array.isArray(usageRows) ? usageRows[0] : usageRows;
+    if (usageCheckError) {
+      return jsonResponse({ error: usageCheckError.message }, 500);
+    }
+    if (!usage?.allowed) {
+      const renewsOn = usage?.cycle_end ? formatDateEs(usage.cycle_end) : null;
+      return jsonResponse({
+        error: `Has alcanzado tu límite mensual de Haven IA.${renewsOn ? ` Tu límite se renovará el ${renewsOn}.` : ""}`,
+      }, 429);
+    }
+
     const ctx: ToolContext = { userClient, houseId };
     const { reply, toolCalls } = providerName === "openai"
       ? await callOpenAIWithTools(messages as ChatMessage[], ctx, apiKey)
@@ -482,7 +509,11 @@ Deno.serve(async (req) => {
 
     // El registro de uso nunca debe bloquear una respuesta ya obtenida.
     try {
-      await userClient.rpc("record_ai_usage_event", { p_feature_key: "ai_assistant" });
+      await userClient.rpc("record_ai_usage_event", {
+        p_feature_key: "ai_chat",
+        p_request_id: typeof requestId === "string" ? requestId : null,
+        p_success: true,
+      });
     } catch {
       // Ignorado a propósito, igual que el resto de Haven IA.
     }

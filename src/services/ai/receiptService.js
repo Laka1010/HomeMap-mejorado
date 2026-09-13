@@ -3,23 +3,19 @@ import {
   normalizeStoreName, matchKnownProduct, uploadReceiptImage, getReceiptSignedUrl,
   RECEIPT_SCAN_STEPS, KNOWN_STORES, MOCK_MODE,
 } from "../receiptService";
-import { premiumService } from "../premiumService";
 
 /**
- * Orquestación del escáner de tickets STANDALONE de Haven IA (sección 4/5
- * del pedido). Reutiliza por import toda la lógica de extracción/normalización
- * ya existente en ../receiptService.js -- ese archivo no se toca, sigue
- * siendo el que usa el flujo de Compras (ReceiptScanModal/saveScannedPurchase).
- * Esta capa solo añade lo que es específico de Haven IA: registrar el uso de
- * IA (sección 11) cada vez que se hace un análisis real (no en MOCK_MODE,
- * que no cuesta nada).
+ * Orquestación del escáner de tickets de Haven IA. Reutiliza por import toda
+ * la lógica de extracción/normalización ya existente en ../receiptService.js
+ * -- ese archivo no se toca, es el que de verdad habla con vision-proxy y
+ * sube la imagen. Esta capa solo añade el requestId (para deduplicar un
+ * futuro reintento automático; hoy cada llamada es un intento nuevo del
+ * usuario). El registro de uso (sistema de límites Premium) lo hace la
+ * propia Edge Function tras una respuesta correcta -- no aquí, para que no
+ * sea saltable simplemente no llamando a esta función.
  */
-export { normalizeStoreName, matchKnownProduct, uploadReceiptImage, getReceiptSignedUrl, RECEIPT_SCAN_STEPS, KNOWN_STORES };
+export { normalizeStoreName, matchKnownProduct, uploadReceiptImage, getReceiptSignedUrl, RECEIPT_SCAN_STEPS, KNOWN_STORES, MOCK_MODE };
 
 export async function extractReceipt(imageFile, options) {
-  const result = await extractReceiptRaw(imageFile, options);
-  if (result && !MOCK_MODE) {
-    premiumService.recordAiUsage("receipt_scanner").catch(() => {});
-  }
-  return result;
+  return extractReceiptRaw(imageFile, options);
 }

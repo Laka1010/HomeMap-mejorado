@@ -6,6 +6,7 @@ import { getPhotoError } from "../../../services/photoUtils.jsx";
 import { analyzeConsumablePhoto } from "../../../services/ai/visionService";
 import { buildConsumableCandidatesFromVisionResult, validateConsumableCandidate } from "../../../services/ai/consumablesAiService";
 import { useTranslation } from "../../../i18n";
+import { premiumService } from "../../../services/premiumService";
 
 /**
  * Escaneo de consumibles con IA: capturar (una o varias fotos) -> analizar
@@ -27,6 +28,7 @@ export function ConsumableScanModal({ onClose, onSave, isPremium, onRequirePremi
   const [candidates, setCandidates] = useState(initialCandidates || []);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [usage, setUsage] = useState(null);
 
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
@@ -39,9 +41,22 @@ export function ConsumableScanModal({ onClose, onSave, isPremium, onRequirePremi
   useEffect(() => {
     if (!isPremium) onRequirePremium();
   }, [isPremium, onRequirePremium]);
+
+  // Solo para avisar con antelación del límite mensual -- el bloqueo real lo
+  // hace siempre vision-proxy en el servidor antes de llamar al proveedor.
+  useEffect(() => {
+    if (!isPremium) return;
+    let cancelled = false;
+    premiumService.getPremiumUsage("ai_consumables").then((data) => { if (!cancelled) setUsage(data); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isPremium]);
+
   if (!isPremium) return null;
 
+  const limitReached = usage != null && !usage.allowed;
+
   const startAnalysis = async (file) => {
+    if (limitReached) return;
     const photoError = getPhotoError(file);
     if (photoError) {
       setError(t(photoError));
@@ -56,6 +71,7 @@ export function ConsumableScanModal({ onClose, onSave, isPremium, onRequirePremi
       const newCandidates = buildConsumableCandidatesFromVisionResult(rawResult);
       setCandidates((prev) => [...prev, ...newCandidates]);
       setStage("review");
+      premiumService.getPremiumUsage("ai_consumables").then(setUsage).catch(() => {});
     } catch (err) {
       console.error("Error analizando la foto de consumibles:", err);
       // err.message ya viene desglosado por aiService.callVisionProxy (clave
@@ -117,14 +133,18 @@ export function ConsumableScanModal({ onClose, onSave, isPremium, onRequirePremi
               <div style={{ color: "var(--ink-soft)", fontSize: 13, maxWidth: 320 }}>{t("consumableScan.captureSubtitle")}</div>
             </div>
             {error ? <div style={{ color: "var(--danger)", fontSize: 13 }}>{error}</div> : null}
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-              <button className="hm-btn hm-btn-primary" onClick={() => cameraInputRef.current?.click()}>
-                <Camera size={16} /> {t("consumableScan.takePhoto")}
-              </button>
-              <button className="hm-btn hm-btn-soft" onClick={() => galleryInputRef.current?.click()}>
-                <ImageIcon size={16} /> {t("consumableScan.chooseFromGallery")}
-              </button>
-            </div>
+            {limitReached ? (
+              <div style={{ color: "var(--danger)", fontSize: 13 }}>{t("havenIA.usage.limitReached")}</div>
+            ) : (
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                <button className="hm-btn hm-btn-primary" onClick={() => cameraInputRef.current?.click()}>
+                  <Camera size={16} /> {t("consumableScan.takePhoto")}
+                </button>
+                <button className="hm-btn hm-btn-soft" onClick={() => galleryInputRef.current?.click()}>
+                  <ImageIcon size={16} /> {t("consumableScan.chooseFromGallery")}
+                </button>
+              </div>
+            )}
             <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFileChosen} />
             <input ref={galleryInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFileChosen} />
           </div>

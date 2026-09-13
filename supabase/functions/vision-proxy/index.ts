@@ -127,6 +127,18 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+// Fecha de renovación del ciclo en el mensaje de límite alcanzado -- mismo
+// helper que ai-assistant/index.ts; se duplica en vez de compartir módulo
+// porque cada Edge Function es un programa Deno aislado (igual que el resto
+// de utilidades ya duplicadas entre las dos, p.ej. clientIp/isIpBlocked).
+function formatDateEs(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
 // El preflight se responde SIN cuerpo: 204 es un "null body status", así que
 // `new Response(json, { status: 204 })` lanza TypeError por especificación.
 // Como el preflight se atendía antes del try/catch, ese throw salía como un
@@ -323,7 +335,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { provider, image, mode } = await req.json();
+    const { provider, image, mode, requestId } = await req.json();
     const requestedProvider = provider ? String(provider).toLowerCase() : null;
     const scanMode = String(mode || "object_detection");
 
@@ -393,6 +405,35 @@ Deno.serve(async (req) => {
 
     const isReceiptMode = scanMode === "receipt";
     const isConsumablesMode = scanMode === "consumables";
+
+    // Límite mensual Premium (sistema de límites): consumables/receipt son
+    // features medidas (ai_consumables/receipt_scanner); "object_detection"
+    // no lo usa hoy ningún cliente y queda sin gate. A diferencia del resto
+    // de esta función (service_role para todo), get_premium_usage/
+    // record_ai_usage_event son auth.uid()-based -- se reenvía el JWT del
+    // usuario en un cliente aparte SOLO para estas dos llamadas, igual que
+    // ai-assistant/index.ts.
+    const meteredFeatureKey = isConsumablesMode ? "ai_consumables" : isReceiptMode ? "receipt_scanner" : null;
+    let userClient: ReturnType<typeof createClient> | null = null;
+    if (meteredFeatureKey && supabaseUrl) {
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+      const authHeader = req.headers.get("Authorization");
+      if (anonKey && authHeader) {
+        userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+        const { data: usageRows, error: usageCheckError } = await userClient.rpc("get_premium_usage", { p_feature_key: meteredFeatureKey });
+        const usage = Array.isArray(usageRows) ? usageRows[0] : usageRows;
+        if (usageCheckError) {
+          return jsonResponse({ error: usageCheckError.message }, 500);
+        }
+        if (!usage?.allowed) {
+          const renewsOn = usage?.cycle_end ? formatDateEs(usage.cycle_end) : null;
+          return jsonResponse({
+            error: `Has alcanzado tu límite mensual de esta función Premium.${renewsOn ? ` Se renovará el ${renewsOn}.` : ""}`,
+          }, 429);
+        }
+      }
+    }
+
     const prompt = isReceiptMode
       ? RECEIPT_SCAN_PROMPT
       : isConsumablesMode
@@ -409,6 +450,21 @@ Deno.serve(async (req) => {
       : providerName === "claude"
       ? await callClaude(prompt, systemMessage, image, apiKey)
       : await callGemini(prompt, systemMessage, image, apiKey);
+
+    // El registro de uso nunca debe bloquear una respuesta ya obtenida --
+    // solo se llega aquí tras una respuesta correcta del proveedor, nunca
+    // desde el catch de abajo.
+    if (meteredFeatureKey && userClient) {
+      try {
+        await userClient.rpc("record_ai_usage_event", {
+          p_feature_key: meteredFeatureKey,
+          p_request_id: typeof requestId === "string" ? requestId : null,
+          p_success: true,
+        });
+      } catch {
+        // Ignorado a propósito, igual que en ai-assistant/index.ts.
+      }
+    }
 
     if (isReceiptMode) {
       const parsed = parseJsonLoosely(rawText, {});

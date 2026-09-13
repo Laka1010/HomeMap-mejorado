@@ -10,8 +10,9 @@ import { invokeEdgeFunction } from "../../../services/ai/aiService";
  *
  * @param {{role: "user"|"assistant", content: string}[]} messages
  * @param {string} houseId
+ * @param {string} [requestId] Id del intento (uno por mensaje enviado), para deduplicar en el servidor si algún día hay reintento automático.
  * @returns {Promise<{ reply: string, toolCalls: {name: string, argsSummary?: string}[] }>}
  */
-export async function sendAssistantMessage(messages, houseId) {
-  return invokeEdgeFunction("ai-assistant", { messages, houseId });
+export async function sendAssistantMessage(messages, houseId, requestId) {
+  return invokeEdgeFunction("ai-assistant", { messages, houseId, requestId });
 }

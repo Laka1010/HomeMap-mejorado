@@ -36,6 +36,6 @@ export async function invokeEdgeFunction(functionName, body) {
   return data;
 }
 
-export async function callVisionProxy(mode, imageBase64) {
-  return invokeEdgeFunction("vision-proxy", { mode, image: imageBase64 });
+export async function callVisionProxy(mode, imageBase64, requestId) {
+  return invokeEdgeFunction("vision-proxy", { mode, image: imageBase64, requestId });
 }

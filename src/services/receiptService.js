@@ -129,7 +129,7 @@ export async function extractReceipt(imageFile, { onProgress, isCancelled } = {}
   // legibilidad para OCR.
   const compressed = await compressImage(imageFile);
   const image = await fileToBase64(compressed);
-  const data = await callVisionProxy("receipt", image);
+  const data = await callVisionProxy("receipt", image, crypto.randomUUID());
   if (isCancelled?.()) return null;
   onProgress && onProgress(RECEIPT_SCAN_STEPS[RECEIPT_SCAN_STEPS.length - 1]);
 

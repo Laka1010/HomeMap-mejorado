@@ -1,28 +1,53 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Package, Receipt, Home as HomeIcon, Palette, Sparkles, Lock, Bot } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { WidgetCard } from "../dashboard/widgets/WidgetCard";
+import { premiumService, METERED_PREMIUM_FEATURES } from "../../services/premiumService";
 
 /**
- * Hub de Haven IA: presenta las 4 funciones Premium (sección 1 del pedido)
- * y el interruptor de "Premium — Prueba" (sección 9). Ninguna función real
- * se implementa aquí todavía -- cada tarjeta se activa fase a fase (ver
- * plan) y hasta entonces muestra "Próximamente". Reutiliza WidgetCard (la
- * misma cáscara que los widgets de Inicio) y las clases hm-* existentes: no
- * se introduce ningún sistema de diseño nuevo.
+ * Hub de Haven IA: presenta las 5 funciones Premium y el interruptor de
+ * "Premium — Prueba". Reutiliza WidgetCard (la misma cáscara que los widgets
+ * de Inicio) y las clases hm-* existentes: no se introduce ningún sistema de
+ * diseño nuevo.
  */
 const FEATURES = [
   { key: "consumables", icon: Package, featureFlag: "ai_consumables" },
   { key: "receipts", icon: Receipt, featureFlag: "receipt_scanner" },
   { key: "multipleHomes", icon: HomeIcon, featureFlag: "multiple_homes" },
   { key: "icons", icon: Palette, featureFlag: "premium_icons" },
-  { key: "assistant", icon: Bot, featureFlag: "ai_assistant" },
+  { key: "assistant", icon: Bot, featureFlag: "ai_chat" },
 ];
 
-export function HavenIAHub({ subscriptionStatus, onActivateTrial, showNotice, actions = {} }) {
+/** Etiqueta corta por feature medida, para la línea "147 / 200 mensajes". */
+const USAGE_UNIT_KEY = {
+  ai_chat: "havenIA.usage.unitChat",
+  ai_consumables: "havenIA.usage.unitConsumables",
+  receipt_scanner: "havenIA.usage.unitReceipts",
+};
+
+export function HavenIAHub({ subscriptionStatus, onOpenPaywall, showNotice, actions = {} }) {
   const { t } = useTranslation();
-  const [activating, setActivating] = useState(false);
+  const [usageByFeature, setUsageByFeature] = useState({});
   const isPremium = subscriptionStatus === "trial" || subscriptionStatus === "premium";
+
+  // Uso del ciclo actual para las 3 features medidas -- una sola vez al
+  // hacerse Premium (o al reabrir el hub), no en cada render. Solo pinta
+  // información, el bloqueo real de verdad lo hace siempre el servidor.
+  useEffect(() => {
+    if (!isPremium) {
+      setUsageByFeature({});
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      METERED_PREMIUM_FEATURES.map((featureKey) =>
+        premiumService.getPremiumUsage(featureKey).then((usage) => [featureKey, usage]).catch(() => [featureKey, null])
+      )
+    ).then((entries) => {
+      if (!cancelled) setUsageByFeature(Object.fromEntries(entries));
+    });
+    return () => { cancelled = true; };
+  }, [isPremium]);
 
   const statusLabel = {
     free: t("havenIA.statusFree"),
@@ -31,22 +56,9 @@ export function HavenIAHub({ subscriptionStatus, onActivateTrial, showNotice, ac
     expired: t("havenIA.statusExpired"),
   }[subscriptionStatus] || t("havenIA.statusFree");
 
-  const handleActivateTrial = async () => {
-    setActivating(true);
-    try {
-      await onActivateTrial();
-      showNotice(t("havenIA.activateTrialSuccess"));
-    } catch (error) {
-      console.error("Error activating premium trial:", error);
-      showNotice(t("havenIA.activateTrialError"));
-    } finally {
-      setActivating(false);
-    }
-  };
-
   const handleFeatureClick = (key) => {
     if (!isPremium) {
-      showNotice(t("havenIA.premiumRequired"));
+      onOpenPaywall();
       return;
     }
     const action = actions[key];
@@ -69,8 +81,7 @@ export function HavenIAHub({ subscriptionStatus, onActivateTrial, showNotice, ac
             <button
               className="hm-btn hm-btn-primary hm-btn--compact"
               style={{ fontSize: 12.5 }}
-              onClick={handleActivateTrial}
-              disabled={activating}
+              onClick={onOpenPaywall}
             >
               <Sparkles size={13} /> {t("havenIA.activateTrialButton")}
             </button>
@@ -79,23 +90,43 @@ export function HavenIAHub({ subscriptionStatus, onActivateTrial, showNotice, ac
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
-        {FEATURES.map(({ key, icon: Icon }) => (
-          <WidgetCard key={key} icon={Icon} title={t(`havenIA.features.${key}.title`)}>
-            <p style={{ margin: 0, fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.5 }}>
-              {t(`havenIA.features.${key}.description`)}
-            </p>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
-              <span className="hm-badge hm-badge--accent" style={{ fontSize: 10.5 }}>{t("havenIA.premiumBadge")}</span>
-              <button
-                className="hm-btn hm-btn-soft hm-btn--compact"
-                style={{ fontSize: 12 }}
-                onClick={() => handleFeatureClick(key)}
-              >
-                {isPremium ? null : <Lock size={12} />} {t("havenIA.viewMore")}
-              </button>
-            </div>
-          </WidgetCard>
-        ))}
+        {FEATURES.map(({ key, icon: Icon, featureFlag }) => {
+          const usage = usageByFeature[featureFlag];
+          return (
+            <WidgetCard key={key} icon={Icon} title={t(`havenIA.features.${key}.title`)}>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.5 }}>
+                {t(`havenIA.features.${key}.description`)}
+              </p>
+              {usage && (
+                <div style={{ marginTop: 2 }}>
+                  <div style={{ fontSize: 11.5, color: "var(--ink-soft)", marginBottom: 4 }}>
+                    {t(USAGE_UNIT_KEY[featureFlag], { used: usage.used, limit: usage.limit_value })}
+                  </div>
+                  <div style={{ height: 4, borderRadius: 999, background: "var(--surface-alt)", overflow: "hidden" }}>
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${Math.min(100, (usage.used / Math.max(usage.limit_value, 1)) * 100)}%`,
+                        background: usage.allowed ? "var(--accent)" : "var(--danger)",
+                        borderRadius: 999,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
+                <span className="hm-badge hm-badge--accent" style={{ fontSize: 10.5 }}>{t("havenIA.premiumBadge")}</span>
+                <button
+                  className="hm-btn hm-btn-soft hm-btn--compact"
+                  style={{ fontSize: 12 }}
+                  onClick={() => handleFeatureClick(key)}
+                >
+                  {isPremium ? null : <Lock size={12} />} {t("havenIA.viewMore")}
+                </button>
+              </div>
+            </WidgetCard>
+          );
+        })}
       </div>
     </div>
   );
