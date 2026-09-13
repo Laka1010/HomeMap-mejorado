@@ -1,3 +1,4 @@
+import OpenAI from "npm:openai";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 // ============================================================================
@@ -197,11 +198,30 @@ function toolByName(name: string): ToolDefinition | undefined {
   return TOOLS.find((t) => t.name === name);
 }
 
+// Las tools se declaran una sola vez arriba con el esquema "tipo Gemini"
+// (mayúsculas: OBJECT/STRING), por ser el primer proveedor implementado.
+// OpenAI (y mañana Claude) sí siguen JSON Schema estándar, así que este
+// helper traduce el esquema al vuelo en vez de mantener dos copias de cada
+// definición de tool.
+function toJsonSchema(schema: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...schema };
+  if (typeof out.type === "string") out.type = (out.type as string).toLowerCase();
+  if (out.properties && typeof out.properties === "object") {
+    const props: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(out.properties as Record<string, unknown>)) {
+      props[key] = toJsonSchema(value as Record<string, unknown>);
+    }
+    out.properties = props;
+  }
+  return out;
+}
+
 // ============================================================================
-// Adaptador de Gemini con tool-calling. Mismo contrato que los adaptadores de
-// vision-proxy (prompt/contexto -> texto), pero aquí es un bucle: el modelo
-// puede pedir una tool, se ejecuta, se le devuelve el resultado, y puede
-// volver a pedir otra hasta que dé una respuesta final en texto.
+// Adaptadores de IA con tool-calling. Mismo contrato de entrada/salida que
+// los adaptadores de vision-proxy (prompt/contexto -> texto), pero aquí es un
+// bucle: el modelo puede pedir una tool, se ejecuta, se le devuelve el
+// resultado, y puede volver a pedir otra hasta que dé una respuesta final en
+// texto. El resto de la función no sabe ni le importa qué proveedor se usó.
 // ============================================================================
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -247,6 +267,29 @@ function extractNavigableObjects(toolName: string, result: unknown): NavigableOb
     .map((p: any) => ({ id: p.id, name: p.name, path: p.path ?? [] }));
 }
 
+// Ejecuta una tool y registra su resumen en toolCalls -- compartido por
+// todos los adaptadores para no duplicar el manejo de errores ni la
+// extracción de objetos navegables.
+async function runTool(
+  name: string,
+  args: Record<string, unknown>,
+  ctx: ToolContext,
+  toolCalls: ToolCallSummary[]
+): Promise<unknown> {
+  const tool = toolByName(name);
+  const result = tool
+    ? await tool.handler(args ?? {}, ctx).catch((error: Error) => ({ error: error.message }))
+    : { error: `Herramienta desconocida: ${name}` };
+
+  toolCalls.push({
+    name,
+    argsSummary: JSON.stringify(args ?? {}).slice(0, 200),
+    objects: extractNavigableObjects(name, result),
+  });
+
+  return result;
+}
+
 async function callGeminiWithTools(
   messages: ChatMessage[],
   ctx: ToolContext,
@@ -290,16 +333,7 @@ async function callGeminiWithTools(
     }
 
     const { name, args } = functionCallPart.functionCall;
-    const tool = toolByName(name);
-    const result = tool
-      ? await tool.handler(args ?? {}, ctx).catch((error: Error) => ({ error: error.message }))
-      : { error: `Herramienta desconocida: ${name}` };
-
-    toolCalls.push({
-      name,
-      argsSummary: JSON.stringify(args ?? {}).slice(0, 200),
-      objects: extractNavigableObjects(name, result),
-    });
+    const result = await runTool(name, args ?? {}, ctx, toolCalls);
 
     // Se reenvían los `parts` TAL CUAL los devolvió el modelo (no
     // reconstruidos a partir de name/args): las versiones recientes de la
@@ -312,6 +346,63 @@ async function callGeminiWithTools(
     // roles válidos y no incluye ninguno específico para tools, así que la
     // respuesta de la tool se manda como un turno "user" más.
     contents.push({ role: "user", parts: [{ functionResponse: { name, response: { result } } }] });
+  }
+
+  return { reply: "He tardado demasiado intentando resolver esto -- ¿puedes reformular la pregunta?", toolCalls };
+}
+
+// Adaptador de OpenAI: mismo bucle que callGeminiWithTools pero con el
+// formato de tool-calling de la Chat Completions API (mensajes con
+// tool_calls, respuestas como turnos role:"tool" referenciando tool_call_id).
+async function callOpenAIWithTools(
+  messages: ChatMessage[],
+  ctx: ToolContext,
+  apiKey: string
+): Promise<{ reply: string; toolCalls: ToolCallSummary[] }> {
+  const model = Deno.env.get("OPENAI_ASSISTANT_MODEL") || "gpt-4.1-mini";
+  const client = new OpenAI({ apiKey });
+  const systemPrompt = buildSystemPrompt(new Date().toISOString());
+  const toolCalls: ToolCallSummary[] = [];
+
+  const chatMessages: any[] = [
+    { role: "system", content: systemPrompt },
+    ...messages.map((m) => ({ role: m.role, content: m.content })),
+  ];
+
+  const openaiTools = TOOLS.map((t) => ({
+    type: "function" as const,
+    function: { name: t.name, description: t.description, parameters: toJsonSchema(t.parameters) },
+  }));
+
+  for (let iteration = 0; iteration < MAX_TOOL_LOOP_ITERATIONS; iteration++) {
+    const completion = await client.chat.completions.create({
+      model,
+      messages: chatMessages,
+      tools: openaiTools,
+    });
+
+    const message = completion.choices?.[0]?.message;
+    const calls = message?.tool_calls;
+
+    if (!calls || calls.length === 0) {
+      const reply = (message?.content ?? "").trim();
+      return { reply: reply || "No he podido generar una respuesta.", toolCalls };
+    }
+
+    // El mensaje del asistente con sus tool_calls se reenvía tal cual lo
+    // devolvió la API -- OpenAI exige verlo de vuelta en el historial antes
+    // de aceptar los turnos "tool" que le responden.
+    chatMessages.push(message);
+
+    for (const call of calls) {
+      const name = call.function.name;
+      let args: Record<string, unknown> = {};
+      try { args = JSON.parse(call.function.arguments || "{}"); } catch { /* argumentos mal formados -> objeto vacío */ }
+
+      const result = await runTool(name, args, ctx, toolCalls);
+
+      chatMessages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
+    }
   }
 
   return { reply: "He tardado demasiado intentando resolver esto -- ¿puedes reformular la pregunta?", toolCalls };
@@ -355,11 +446,17 @@ Deno.serve(async (req) => {
     if (!providerName) {
       return jsonResponse({ error: "No hay ningún proveedor de IA configurado (falta OPENAI_API_KEY, ANTHROPIC_API_KEY o GEMINI_API_KEY)." }, 500);
     }
-    if (providerName !== "gemini") {
-      return jsonResponse({ error: `El asistente todavía solo soporta Gemini (proveedor activo: ${providerName}). Añade GEMINI_API_KEY o fija AI_ASSISTANT_PROVIDER=gemini.` }, 400);
+    if (providerName === "claude") {
+      return jsonResponse({ error: `El asistente todavía no soporta Claude (proveedor activo: ${providerName}). Añade OPENAI_API_KEY o GEMINI_API_KEY, o fija AI_ASSISTANT_PROVIDER a "openai" o "gemini".` }, 400);
     }
-    if (!geminiKey) {
-      return jsonResponse({ error: "GEMINI_API_KEY no configurada en Supabase Edge Function" }, 500);
+    if (providerName !== "openai" && providerName !== "gemini") {
+      return jsonResponse({ error: `Proveedor de IA no soportado: ${providerName}.` }, 400);
+    }
+
+    const apiKey = providerName === "openai" ? openaiKey : geminiKey;
+    if (!apiKey) {
+      const missingVar = providerName === "openai" ? "OPENAI_API_KEY" : "GEMINI_API_KEY";
+      return jsonResponse({ error: `${missingVar} no configurada en Supabase Edge Function` }, 500);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -378,11 +475,10 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { reply, toolCalls } = await callGeminiWithTools(
-      messages as ChatMessage[],
-      { userClient, houseId },
-      geminiKey
-    );
+    const ctx: ToolContext = { userClient, houseId };
+    const { reply, toolCalls } = providerName === "openai"
+      ? await callOpenAIWithTools(messages as ChatMessage[], ctx, apiKey)
+      : await callGeminiWithTools(messages as ChatMessage[], ctx, apiKey);
 
     // El registro de uso nunca debe bloquear una respuesta ya obtenida.
     try {
