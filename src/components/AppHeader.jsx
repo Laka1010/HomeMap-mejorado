@@ -1,8 +1,8 @@
 import { memo } from "react";
-import { Bell, ChevronDown, Search } from "lucide-react";
+import { Bell, ChevronDown, Sparkles } from "lucide-react";
 import { useTranslation } from "../i18n";
 
-export const AppHeader = memo(function AppHeader({ user, profile, currentHome, onOpenHomeSelector, onOpenNotifications, onOpenAccountHub, onOpenSearch, unreadNotifications = 0, showNotifications = true }) {
+export const AppHeader = memo(function AppHeader({ user, profile, currentHome, onOpenHomeSelector, onOpenNotifications, onOpenAccountHub, onOpenAssistant, unreadNotifications = 0, showNotifications = true }) {
   const { t } = useTranslation();
 
   const displayedName = [profile.userName, profile.lastName].filter(Boolean).join(" ") || user?.name || t("common.userFallback");
@@ -75,15 +75,15 @@ export const AppHeader = memo(function AppHeader({ user, profile, currentHome, o
       </div>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", justifySelf: "end" }}>
-        {onOpenSearch && (
+        {onOpenAssistant && (
           <button
             className="hm-btn hm-btn-soft"
-            style={{ width: 44, height: 44, minWidth: 44, minHeight: 44, padding: 0, borderRadius: "50%", justifyContent: "center", border: "1px solid var(--border)", boxShadow: "0 4px 10px rgba(0,0,0,0.05)" }}
-            onClick={onOpenSearch}
-            aria-label={t("search.title")}
-            title={t("search.title")}
+            style={{ width: 44, height: 44, minWidth: 44, minHeight: 44, padding: 0, borderRadius: "50%", justifyContent: "center", border: "1px solid var(--border)", boxShadow: "0 4px 10px rgba(0,0,0,0.05)", color: "var(--accent)" }}
+            onClick={onOpenAssistant}
+            aria-label={t("assistant.title")}
+            title={t("assistant.title")}
           >
-            <Search size={18} />
+            <Sparkles size={18} />
           </button>
         )}
         {showNotifications && (

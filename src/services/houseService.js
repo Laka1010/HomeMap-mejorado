@@ -2,11 +2,14 @@ import { supabase } from "../supabaseClient";
 import { logIfPermissionDenied } from "./securityEventsService";
 
 /**
- * Máximo de casas a las que un usuario puede pertenecer (crear + unirse). El
- * límite real vive en `create_house` y `join_house_by_code` de la base de
- * datos (ver supabase/migrations/20260911_094_one_house_per_user.sql); esta
- * constante solo se usa en el cliente para ocultar los botones de "crear" y
- * "unirse" con antelación, en vez de esperar a que el RPC falle.
+ * Máximo de casas a las que un usuario FREE puede pertenecer (crear +
+ * unirse). Los usuarios Premium/prueba no tienen este tope (ver
+ * `can_use_premium_feature('multiple_homes')` en
+ * supabase/migrations/20260913_102_multiple_homes_premium.sql). El límite
+ * real vive siempre en `create_house`/`join_house_by_code` en la base de
+ * datos; esta constante solo se usa en el cliente para ocultar los botones
+ * de "crear" y "unirse" con antelación cuando el usuario no es premium, en
+ * vez de esperar a que el RPC falle.
  *
  * NO es retroactivo: quien ya está en 2+ casas las conserva; el límite solo
  * bloquea añadir una más.
@@ -24,14 +27,23 @@ export const houseService = {
   /** Crea una casa nueva; el creador queda como admin. */
   async createHouse(name) {
     const { data, error } = await supabase.rpc("create_house", { p_name: name, p_photo: null });
-    if (error) throw error;
+    if (error) {
+      // Free intentando una 2ª+ casa después de que el cliente ya oculta el
+      // botón (canAddHome) es un indicio real de bypass, no un error de
+      // validación normal -- ver 20260913_102_multiple_homes_premium.sql.
+      logIfPermissionDenied(error, "authz_permission_bypass_attempt", { resourceType: "house" });
+      throw error;
+    }
     return data;
   },
 
   /** Se une a una casa existente por código de invitación; entra como 'adult'. */
   async joinHouseByCode(code) {
     const { data, error } = await supabase.rpc("join_house_by_code", { p_code: code });
-    if (error) throw error;
+    if (error) {
+      logIfPermissionDenied(error, "authz_permission_bypass_attempt", { resourceType: "house" });
+      throw error;
+    }
     return data;
   },
 

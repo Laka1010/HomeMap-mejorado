@@ -1,19 +1,18 @@
 import { supabase } from "../supabaseClient";
-import { fileToBase64 } from "./photoUtils.jsx";
+import { fileToBase64, compressImage } from "./photoUtils.jsx";
 import { normalizeText } from "../utils/textMatch";
 import { toLocalDateString } from "../utils/dates";
+import { callVisionProxy } from "./ai/aiService";
 
 /**
  * Servicio de escaneo de tickets con IA.
  *
- * MOCK_MODE=true simula la extracción (sin coste ni necesidad de tener
- * vision-proxy desplegado con OPENAI_API_KEY). Cuando el proyecto tenga la
- * función desplegada en modo "receipt" (ver supabase/functions/vision-proxy),
- * cambia MOCK_MODE a false: extractReceipt ya está preparado para llamar al
- * mismo endpoint que usa detectObjects (visionService.js), solo que con
- * mode: "receipt" en vez de mode: "object_detection".
+ * MOCK_MODE=true simulaba la extracción mientras vision-proxy no tenía
+ * ninguna clave de proveedor configurada. Ahora que hay una clave real
+ * (Gemini) en los secretos de la Edge Function, extractReceipt llama de
+ * verdad al endpoint con mode: "receipt".
  */
-export const MOCK_MODE = true;
+export const MOCK_MODE = false;
 
 export const KNOWN_STORES = [
   "Mercadona", "Lidl", "Carrefour", "Consum", "Aldi",
@@ -124,12 +123,14 @@ export async function extractReceipt(imageFile, { onProgress, isCancelled } = {}
   }
 
   onProgress && onProgress(RECEIPT_SCAN_STEPS[0]);
-  const image = await fileToBase64(imageFile);
-  const { data, error } = await supabase.functions.invoke("vision-proxy", {
-    body: { mode: "receipt", image },
-  });
+  // Una foto de cámara sin comprimir puede pesar varios MB; en base64 dentro
+  // de un JSON eso es una subida lenta que en redes móviles no siempre llega
+  // a completarse. compressImage la reduce a un tamaño manejable sin perder
+  // legibilidad para OCR.
+  const compressed = await compressImage(imageFile);
+  const image = await fileToBase64(compressed);
+  const data = await callVisionProxy("receipt", image);
   if (isCancelled?.()) return null;
-  if (error) throw error;
   onProgress && onProgress(RECEIPT_SCAN_STEPS[RECEIPT_SCAN_STEPS.length - 1]);
 
   const items = itemsWithTotals(data.items || []);

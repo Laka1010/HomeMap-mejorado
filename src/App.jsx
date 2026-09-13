@@ -39,6 +39,8 @@ import { SelectField } from "./components/SelectField";
 import { ObjectDndProvider, useObjectDnd, useDraggableObject, useObjectDropTarget } from "./dnd/objectDnd";
 import { supabase } from "./supabaseClient";
 import { securityEventsService } from "./services/securityEventsService";
+import { premiumService } from "./services/premiumService";
+import { looksLikeConsumable, buildConsumableCandidatesFromReceiptItems } from "./services/ai/consumablesAiService";
 import { houseService, MAX_HOMES_PER_USER } from "./services/houseService";
 import { profileService } from "./services/profileService";
 import { homeContentService } from "./services/homeContentService";
@@ -69,6 +71,10 @@ const TasksModule = lazy(() => import("./modules/tasks/TasksModule").then((m) =>
 const NotesModule = lazy(() => import("./modules/notes/NotesModule").then((m) => ({ default: m.NotesModule })));
 const CalendarModule = lazy(() => import("./modules/calendar/CalendarModule").then((m) => ({ default: m.CalendarModule })));
 const EconomyModule = lazy(() => import("./modules/economy/EconomyModule").then((m) => ({ default: m.EconomyModule })));
+const HavenIAHub = lazy(() => import("./modules/havenia/HavenIAHub").then((m) => ({ default: m.HavenIAHub })));
+const ConsumableScanModal = lazy(() => import("./modules/havenia/consumables/ConsumableScanModal").then((m) => ({ default: m.ConsumableScanModal })));
+const TicketScanModal = lazy(() => import("./modules/havenia/tickets/TicketScanModal").then((m) => ({ default: m.TicketScanModal })));
+const HavenIAssistant = lazy(() => import("./modules/havenia/assistant/HavenIAssistant").then((m) => ({ default: m.HavenIAssistant })));
 import { computeFrequentProducts } from "./modules/shopping/frequentProducts";
 import { uploadReceiptImage } from "./services/receiptService";
 import { useDragToDismiss } from "./hooks/useDragToDismiss";
@@ -2319,6 +2325,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
       <ConsumablesSection
         consumables={consumablesInZone}
         onAdd={() => openModal("addConsumable", { roomId: room.id, zoneId: zone.id })}
+        onScanAi={() => openModal("aiConsumableScan", { roomId: room.id, zoneId: zone.id })}
         onEdit={(c) => openModal("editConsumable", { consumable: c })}
         onAdjust={onAdjustConsumable}
         onDelete={onDeleteConsumable}
@@ -2542,15 +2549,22 @@ function ConsumableRow({ c, onEdit, onAdjust, onDelete }) {
  * activa (Cajas): lista de productos que se gastan y se reponen, con alta
  * rápida. Ver la petición original — no aplica a nivel de habitación suelta.
  */
-function ConsumablesSection({ consumables, onAdd, onEdit, onAdjust, onDelete }) {
+function ConsumablesSection({ consumables, onAdd, onScanAi, onEdit, onAdjust, onDelete }) {
   const { t } = useTranslation();
   return (
     <div style={{ marginTop: 18, marginBottom: 18 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <label className="hm-label" style={{ margin: 0 }}>{t("room.consumablesHeader")}</label>
-        <button className="hm-btn hm-btn-ghost hm-btn--compact" onClick={onAdd}>
-          <Plus size={14} /> {t("consumable.addButton")}
-        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          {onScanAi && (
+            <button className="hm-btn hm-btn-ghost hm-btn--compact" onClick={onScanAi}>
+              <Sparkles size={14} /> {t("consumable.scanAiButton")}
+            </button>
+          )}
+          <button className="hm-btn hm-btn-ghost hm-btn--compact" onClick={onAdd}>
+            <Plus size={14} /> {t("consumable.addButton")}
+          </button>
+        </div>
       </div>
       {consumables.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -2663,6 +2677,7 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateContainer, onDel
         <ConsumablesSection
           consumables={childConsumables}
           onAdd={() => openModal("addConsumable", { roomId: activeContainer.roomId, zoneId: activeContainer.zoneId, containerId: activeContainer.id })}
+          onScanAi={() => openModal("aiConsumableScan", { roomId: activeContainer.roomId, zoneId: activeContainer.zoneId, containerId: activeContainer.id })}
           onEdit={(c) => openModal("editConsumable", { consumable: c })}
           onAdjust={onAdjustConsumable}
           onDelete={onDeleteConsumable}
@@ -2702,7 +2717,7 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateContainer, onDel
 /* -------------------------------------------------------------------- */
 /* COMPRAS                                                               */
 /* -------------------------------------------------------------------- */
-function Compras({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase, onUpdateListCategory, onItemsRemoved }) {
+function Compras({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase, onUpdateListCategory, onItemsRemoved, isPremium, onRequirePremium }) {
   return (
     <ShoppingModule
       state={state}
@@ -2715,6 +2730,8 @@ function Compras({ state, dispatch, openModal, deleteShoppingList, addShopping, 
       onSaveReceiptPurchase={onSaveReceiptPurchase}
       onUpdateListCategory={onUpdateListCategory}
       onItemsRemoved={onItemsRemoved}
+      isPremium={isPremium}
+      onRequirePremium={onRequirePremium}
     />
   );
 }
@@ -2751,6 +2768,7 @@ const NAV = [
   { key: "hogar", label: "Hogar", icon: Building2, oldKeys: ["micasa", "cajas"] },
   { key: "organizacion", label: "Organización", icon: CheckSquare, oldKeys: ["compras", "tareas"] },
   { key: "economia", label: "Economía", icon: TrendingUp, oldKeys: ["facturas"] },
+  { key: "havenia", label: "Haven IA", icon: Sparkles },
 ];
 
 const Sidebar = memo(function Sidebar({ active, onSelect, homeName, darkMode, onToggleDark, onOpenHomeSelector, user, nav = NAV }) {
@@ -3066,6 +3084,28 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     window.addEventListener("focus", onFocus);
     return () => { cancelled = true; window.removeEventListener("focus", onFocus); };
   }, [user?.id, userIsChildSomewhere, currentHomeId, economyVersion]);
+
+  // Estado Premium de Haven IA (ver premiumService.js): por usuario, no por
+  // casa -- se activa a mano desde el hub de Haven IA. 'free' por defecto
+  // hasta que se resuelve el RPC, así que ninguna función premium se muestra
+  // desbloqueada antes de tiempo.
+  const [subscriptionStatus, setSubscriptionStatus] = useState("free");
+  useEffect(() => {
+    if (!user?.id) {
+      setSubscriptionStatus("free");
+      return;
+    }
+    let cancelled = false;
+    premiumService.getMySubscriptionStatus()
+      .then((status) => { if (!cancelled) setSubscriptionStatus(status); })
+      .catch(() => { if (!cancelled) setSubscriptionStatus("free"); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
+  const isPremiumUser = subscriptionStatus === "trial" || subscriptionStatus === "premium";
+  const activatePremiumTrial = async () => {
+    await premiumService.activatePremiumTrial();
+    setSubscriptionStatus(await premiumService.getMySubscriptionStatus());
+  };
 
   /**
    * Recibo animado de "compra completada" (ver PurchaseCompleteAnimation).
@@ -3924,6 +3964,30 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     });
   };
   /**
+   * Crea un producto de lista de la compra sin asignar y lo enlaza al
+   * consumible (linkedShoppingItemId), tanto en estado local como en
+   * servidor. Núcleo compartido por el auto-añadido silencioso (mínimo +
+   * autoAddToShopping) y por el aviso de reposición de Haven IA (sección 3
+   * del pedido) -- ambos caminos llegan al mismo enlace, solo cambia qué los
+   * dispara y si piden confirmación antes.
+   */
+  const linkConsumableToNewShoppingItem = (consumable) => {
+    const newItem = { id: "s-" + uid(), listId: consumable.shoppingListId || null, name: consumable.name, quantity: 1, completed: false };
+    dispatch((s) => ({ ...s, shoppingItems: [...s.shoppingItems, newItem] }));
+    dispatch((s) => ({
+      ...s,
+      consumables: (s.consumables || []).map((c) => (c.id === consumable.id ? { ...c, linkedShoppingItemId: newItem.id } : c)),
+    }));
+    logActivity("activity.shoppingItemAdded", { name: user?.name, item: consumable.name });
+    shoppingService.createItem(currentHome.id, newItem).catch((error) => {
+      console.error("Error adding consumable to shopping list:", error);
+    });
+    consumablesService.updateConsumable(consumable.id, { linkedShoppingItemId: newItem.id }).catch((error) => {
+      console.error("Error linking consumable to shopping item:", error);
+    });
+    return newItem;
+  };
+  /**
    * Si el consumible tiene mínimo definido, auto-add activado, ya está en
    * mínimos y no tiene ya un producto de compra pendiente (linkedShoppingItemId),
    * genera ese producto en la lista sin asignar. Cierra el ciclo inventario ->
@@ -3934,32 +3998,79 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     const qty = Number(consumable.currentQuantity ?? 0);
     const belowMin = min !== null && min !== undefined && min !== "" && qty <= Number(min);
     if (!consumable.autoAddToShopping || !belowMin || consumable.linkedShoppingItemId) return;
-    const newItem = { id: "s-" + uid(), listId: consumable.shoppingListId || null, name: consumable.name, quantity: 1, completed: false };
-    dispatch((s) => ({ ...s, shoppingItems: [...s.shoppingItems, newItem] }));
-    dispatch((s) => ({
-      ...s,
-      consumables: (s.consumables || []).map((c) => (c.id === consumable.id ? { ...c, linkedShoppingItemId: newItem.id } : c)),
-    }));
+    linkConsumableToNewShoppingItem(consumable);
     showNotice(t("toast.consumableAutoAdded", { name: consumable.name }));
-    logActivity("activity.shoppingItemAdded", { name: user?.name, item: consumable.name });
-    shoppingService.createItem(currentHome.id, newItem).catch((error) => {
-      console.error("Error auto-adding consumable to shopping list:", error);
-    });
-    consumablesService.updateConsumable(consumable.id, { linkedShoppingItemId: newItem.id }).catch((error) => {
-      console.error("Error linking consumable to shopping item:", error);
+  };
+  /**
+   * Aviso CON confirmación ("Parece que te queda poco...", sección 3) para
+   * los consumibles que la IA marcó como casi vacíos/a reponer al escanear
+   * una foto -- a diferencia de maybeAutoAddConsumableToShopping, esto no
+   * depende de minQuantity/autoAddToShopping (el usuario no los ha
+   * configurado todavía para algo que acaba de escanear) y SIEMPRE pide
+   * confirmación en vez de añadir en silencio.
+   */
+  const suggestRestockFromAiScan = (persistedConsumables) => {
+    const candidates = persistedConsumables.filter((c) => (c.nearlyEmpty || c.shouldRestock) && !c.linkedShoppingItemId);
+    if (candidates.length === 0) return;
+    setConfirmDialog({
+      title: t("consumableScan.restockPromptTitle"),
+      message: t("consumableScan.restockPromptMessage", { names: candidates.map((c) => c.name).join(", ") }),
+      confirmLabel: t("consumableScan.restockConfirmButton"),
+      onConfirm: () => {
+        setConfirmDialog(null);
+        candidates.forEach((c) => linkConsumableToNewShoppingItem(c));
+        showNotice(t("toast.consumablesAddedToShoppingList", { count: candidates.length }));
+      },
+      onCancel: () => setConfirmDialog(null),
     });
   };
-  const addConsumable = (c) => {
+  /**
+   * Núcleo común de "dar de alta un consumible nuevo", sin efectos de UI
+   * (toast/cierre de modal) para que pueda reutilizarse tanto desde el alta
+   * manual (un consumible, cierra su modal) como desde el escaneo por IA
+   * (varios de golpe, un solo toast al final -- ver addConsumablesFromAiScan).
+   */
+  const persistNewConsumable = (c) => {
     const normalized = normalizeLocation(state, c);
     const nextConsumable = { ...c, ...normalized, linkedShoppingItemId: null };
     dispatch((s) => ({ ...s, consumables: [...(s.consumables || []), nextConsumable] }));
-    showNotice(t("toast.consumableCreated", { name: c.name }));
-    closeModal();
     consumablesService.createConsumable(currentHome.id, nextConsumable).catch((error) => {
       console.error("Error saving consumable:", error);
       showNotice(t("toast.consumableSaveError"));
     });
     maybeAutoAddConsumableToShopping(nextConsumable);
+    return nextConsumable;
+  };
+  const addConsumable = (c) => {
+    persistNewConsumable(c);
+    showNotice(t("toast.consumableCreated", { name: c.name }));
+    closeModal();
+  };
+  /**
+   * onSave del escaneo de consumibles con IA (Haven IA): guarda todos los
+   * candidatos confirmados de golpe y, si alguno venía marcado por la IA
+   * como casi vacío/a reponer, ofrece añadirlo a la lista de la compra
+   * (sección 3 del pedido) una vez cerrado el modal de escaneo.
+   */
+  const addConsumablesFromAiScan = (aiCandidates) => {
+    const persisted = aiCandidates.map((c) => ({
+      ...persistNewConsumable({
+        id: "cs-" + uid(),
+        roomId: c.roomId ?? null,
+        zoneId: c.zoneId ?? null,
+        containerId: c.containerId ?? null,
+        name: c.name,
+        currentQuantity: c.currentQuantity,
+        minQuantity: c.minQuantity,
+        autoAddToShopping: c.autoAddToShopping,
+        shoppingListId: c.shoppingListId,
+      }),
+      nearlyEmpty: c.nearlyEmpty,
+      shouldRestock: c.shouldRestock,
+    }));
+    showNotice(t("toast.consumablesAddedFromScan", { count: aiCandidates.length }));
+    closeModal();
+    suggestRestockFromAiScan(persisted);
   };
   /** onSave del modal de edición: recibe el consumible completo, igual que updateShoppingItem. */
   const updateConsumableItem = (patchedConsumable) => {
@@ -4324,6 +4435,106 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
     } catch (error) {
       console.error("Error guardando la compra escaneada:", error);
       showNotice(t("toast.receiptSaveError"));
+    }
+  };
+
+  /**
+   * Tras guardar un ticket, ofrece añadir a la lista de la compra los
+   * productos que NO se reconocieron como consumibles (sección 6, segundo
+   * aviso). Reutiliza shoppingService.createItem, sin lista asignada -- el
+   * usuario ya los ve en "Sin lista" y decide moverlos.
+   */
+  const maybeSuggestShoppingFromTicketItems = (unmatchedItems) => {
+    if (!unmatchedItems || unmatchedItems.length === 0) return;
+    setConfirmDialog({
+      title: t("ticketScanner.title"),
+      message: t("ticketScanner.addRemainingToShoppingPrompt"),
+      confirmLabel: t("ticketScanner.addAllToShoppingButton"),
+      onConfirm: () => {
+        setConfirmDialog(null);
+        const newItems = unmatchedItems.map((item) => ({ id: "s-" + uid(), listId: null, name: item.name, quantity: item.quantity || 1, completed: false }));
+        dispatch((s) => ({ ...s, shoppingItems: [...s.shoppingItems, ...newItems] }));
+        Promise.all(newItems.map((item) => shoppingService.createItem(currentHome.id, item))).catch((error) => {
+          console.error("Error adding ticket items to shopping list:", error);
+        });
+        showNotice(t("toast.consumablesAddedToShoppingList", { count: newItems.length }));
+      },
+      onCancel: () => setConfirmDialog(null),
+    });
+  };
+  /**
+   * Tras guardar un ticket, ofrece actualizar el inventario con los
+   * productos que Haven reconoce como consumibles habituales (sección 6,
+   * primer aviso) -- reutiliza la misma pantalla de revisión de la Fase 1
+   * (ConsumableScanModal), esta vez precargada desde las líneas del ticket
+   * en vez de desde una foto. El segundo aviso (compras) se ofrece a
+   * continuación en cualquier caso, se acepte o no el primero.
+   */
+  const offerInventoryUpdateFromTicket = (items) => {
+    const matched = items.filter((item) => looksLikeConsumable(item.name));
+    const unmatched = items.filter((item) => !looksLikeConsumable(item.name));
+    if (matched.length === 0) {
+      maybeSuggestShoppingFromTicketItems(unmatched);
+      return;
+    }
+    setConfirmDialog({
+      title: t("ticketScanner.title"),
+      message: t("ticketScanner.updateInventoryPrompt"),
+      confirmLabel: t("common.yes"),
+      onConfirm: () => {
+        setConfirmDialog(null);
+        openModal("aiConsumableScan", { initialCandidates: buildConsumableCandidatesFromReceiptItems(matched) });
+        maybeSuggestShoppingFromTicketItems(unmatched);
+      },
+      onCancel: () => {
+        setConfirmDialog(null);
+        maybeSuggestShoppingFromTicketItems(unmatched);
+      },
+    });
+  };
+  /**
+   * Guarda un ticket escaneado desde el escáner independiente de Haven IA
+   * (secciones 4/5 del pedido): a diferencia de saveScannedPurchase, no está
+   * ligado a ninguna compra de lista en curso (list_id queda null -- la
+   * tabla ya lo admite, ver supabase/migrations/20260728_005) y el usuario
+   * decide explícitamente si además quiere registrar el gasto en Economía.
+   */
+  const saveStandaloneTicket = async ({ store, date, items, category, taxAmount, discountAmount, total, imageFile, saveAsExpense }) => {
+    const snapshot = items.map((item) => ({ name: item.name, quantity: item.quantity, category, price: item.unitPrice }));
+    try {
+      let purchase = await shoppingPurchasesService.createPurchase(currentHome.id, {
+        listId: null,
+        store,
+        amount: total || null,
+        items: snapshot,
+        createdBy: user.id,
+        taxAmount,
+        discountAmount,
+        completedAt: date ? new Date(date).toISOString() : undefined,
+      });
+
+      if (imageFile) {
+        try {
+          const path = await uploadReceiptImage(currentHome.id, purchase.id, imageFile);
+          purchase = await shoppingPurchasesService.updatePurchase(purchase.id, { receiptImagePath: path });
+        } catch (error) {
+          console.error("Error subiendo la foto del ticket:", error);
+          showNotice(t("toast.receiptUploadError"));
+        }
+      }
+
+      dispatch((s) => ({ ...s, shoppingPurchases: [purchase, ...(s.shoppingPurchases || [])] }));
+      closeModal();
+
+      if (saveAsExpense && total > 0) {
+        await registerPurchaseExpense({ store, amount: Number(total), purchaseId: purchase.id, category });
+      } else {
+        showNotice(t("ticketScanner.ticketSavedOnly"));
+      }
+      offerInventoryUpdateFromTicket(items);
+    } catch (error) {
+      console.error("Error guardando el ticket escaneado:", error);
+      showNotice(t("ticketScanner.saveError"));
     }
   };
 
@@ -4829,7 +5040,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onOpenHomeSelector={() => openModal("homeSelector")}
             onOpenNotifications={() => openModal("notifications")}
             onOpenAccountHub={() => openModal("accountHub")}
-            onOpenSearch={() => openModal("globalSearch")}
+            onOpenAssistant={() => openModal("havenAssistant")}
             unreadNotifications={notifications.filter((n) => n.status === "unread").length}
             showNotifications={canSeeEconomy}
           />
@@ -4911,7 +5122,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
               // vez de truncarse.
               <div key={organizationTab} className="hm-fade-in" style={{ minWidth: 0 }}>
                 <Suspense fallback={null}>
-                  {organizationTab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} onUpdateListCategory={updateShoppingListCategory} onItemsRemoved={unlinkConsumablesForShoppingItems} />}
+                  {organizationTab === "compras" && <Compras state={state} dispatch={dispatch} openModal={openModal} deleteShoppingList={deleteShoppingList} addShopping={addShopping} onCompletePurchase={completeShoppingPurchase} onRepeatPurchase={repeatShoppingPurchase} onSaveReceiptPurchase={saveScannedPurchase} onUpdateListCategory={updateShoppingListCategory} onItemsRemoved={unlinkConsumablesForShoppingItems} isPremium={isPremiumUser} onRequirePremium={() => showNotice(t("havenIA.premiumRequired"))} />}
                   {organizationTab === "tareas" && <Tareas state={state} dispatch={dispatch} openModal={openModal} onTaskCompleted={logTaskCompleted} />}
                   {organizationTab === "notas" && <Notas state={state} dispatch={dispatch} openModal={openModal} />}
                   {organizationTab === "calendario" && <Calendario state={state} currentHome={currentHome} canSeeEconomy={canSeeEconomy} openModal={openModal} onDeleteEvent={deleteCalendarEvent} />}
@@ -4927,6 +5138,22 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("economy.restrictedAccessTitle")}</div>
                 <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>{t("economy.adultsOnlyNotice")}</div>
               </div>
+            )}
+
+            {route.tab === "havenia" && (
+              <Suspense fallback={null}>
+                <HavenIAHub
+                  subscriptionStatus={subscriptionStatus}
+                  onActivateTrial={activatePremiumTrial}
+                  showNotice={showNotice}
+                  actions={{
+                    consumables: () => openModal("aiConsumableScan"),
+                    receipts: () => openModal("ticketScanStandalone"),
+                    icons: () => showNotice(t("havenIA.iconsHint")),
+                    assistant: () => openModal("havenAssistant"),
+                  }}
+                />
+              </Suspense>
             )}
 
             {/* Nota: aquí vivía un bloque "BACKWARDS COMPATIBILITY" que
@@ -4975,6 +5202,8 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             openModal={openModal}
             onClose={closeModal}
             version={APP_VERSION}
+            subscriptionStatus={subscriptionStatus}
+            goTo={goTo}
           />
         </Suspense>
       )}
@@ -5050,7 +5279,7 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             onOpenCreate={() => openModal("createHome", null, { returnTo: "homeSelector" })}
             onJoin={joinHome}
             onClose={closeModal}
-            canAddHome={homes.length < MAX_HOMES_PER_USER}
+            canAddHome={isPremiumUser || homes.length < MAX_HOMES_PER_USER}
           />
         </Modal>
       )}
@@ -5111,7 +5340,14 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
             </Modal>
           )}
 
-      {modal?.type === "addRoom" && <AddRoomWizard onClose={closeModal} onSave={addRoom} />}
+      {modal?.type === "addRoom" && (
+        <AddRoomWizard
+          onClose={closeModal}
+          onSave={addRoom}
+          isPremium={isPremiumUser}
+          onRequirePremium={() => showNotice(t("havenIA.premiumRequired"))}
+        />
+      )}
       {modal?.type === "addZone" && <AddZoneModal roomId={modal.payload?.roomId || state.rooms[0]?.id} onClose={closeModal} onSave={addZone} />}
       {modal?.type === "addContainer" && (
         <AddContainerWizard state={state} onClose={closeModal} onSave={addContainer} defaults={modal.payload} />
@@ -5121,6 +5357,40 @@ function HomeMapAppInner({ appLocale, onLocaleChange }) {
       {modal?.type === "editShopping" && <AddShoppingModal item={modal.payload?.item} onClose={closeModal} onSave={updateShoppingItem} /> }
       {modal?.type === "addConsumable" && <AddConsumableModal defaults={modal.payload} shoppingLists={state.shoppingLists} onClose={closeModal} onSave={addConsumable} />}
       {modal?.type === "editConsumable" && <AddConsumableModal consumable={modal.payload?.consumable} shoppingLists={state.shoppingLists} onClose={closeModal} onSave={updateConsumableItem} />}
+      {modal?.type === "aiConsumableScan" && (
+        <Suspense fallback={null}>
+          <ConsumableScanModal
+            onClose={closeModal}
+            onSave={addConsumablesFromAiScan}
+            defaults={modal.payload}
+            initialCandidates={modal.payload?.initialCandidates}
+            isPremium={isPremiumUser}
+            onRequirePremium={() => { closeModal(); showNotice(t("havenIA.premiumRequired")); }}
+          />
+        </Suspense>
+      )}
+      {modal?.type === "ticketScanStandalone" && (
+        <Suspense fallback={null}>
+          <TicketScanModal
+            onClose={closeModal}
+            onSave={saveStandaloneTicket}
+            knownProductNames={(state.consumables || []).map((c) => c.name)}
+            isPremium={isPremiumUser}
+            onRequirePremium={() => { closeModal(); showNotice(t("havenIA.premiumRequired")); }}
+          />
+        </Suspense>
+      )}
+      {modal?.type === "havenAssistant" && (
+        <Suspense fallback={null}>
+          <HavenIAssistant
+            onClose={closeModal}
+            houseId={currentHome?.id}
+            isPremium={isPremiumUser}
+            onRequirePremium={() => { closeModal(); showNotice(t("havenIA.premiumRequired")); }}
+            onOpenObject={(objectId) => { closeModal(); goTo({ tab: "objectDetail", objectId }); }}
+          />
+        </Suspense>
+      )}
 
       {modal?.type === "addCalendarEvent" && (
         <AddCalendarEventModal

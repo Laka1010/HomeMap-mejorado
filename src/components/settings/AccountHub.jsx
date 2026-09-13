@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft, ChevronRight, ExternalLink, User, Lock, Home as HomeIcon, Users, Shield,
+  ArrowLeft, ArrowRight, ChevronRight, ExternalLink, User, Lock, Home as HomeIcon, Users, Shield,
   MessageCircle, Info, Eye, EyeOff, Trash2, LogOut, Share2,
   Languages, Palette, Bell, Calendar, Crown, Sun, Moon, Smartphone, ShieldAlert,
 } from "lucide-react";
@@ -46,6 +46,8 @@ export function AccountHub({
   openModal,
   onClose,
   version,
+  subscriptionStatus,
+  goTo,
 }) {
   const { t } = useTranslation();
   // null | "editProfile" | "homeInfo" | "language" | "appearance"
@@ -131,6 +133,12 @@ export function AccountHub({
                   t={t}
                 />
 
+                <PremiumBanner
+                  subscriptionStatus={subscriptionStatus}
+                  onOpen={() => { onClose(); goTo({ tab: "havenia" }); }}
+                  t={t}
+                />
+
                 {sections.map((section) => (
                   <HubSection key={section.id} icon={section.icon} color={section.color} title={section.title}>
                     {section.rows.map((row, idx) => (
@@ -195,6 +203,35 @@ function ProfileHeader({ avatar, initials, displayName, displayEmail, role, home
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Banner "Plan Free" justo debajo del perfil (solo si el usuario no es ya
+ * Premium/prueba): pulsar "Mejorar" lleva directo a la pantalla completa de
+ * Haven IA (route.tab "havenia" en App.jsx), que ya tiene el detalle de las
+ * 5 ventajas y el botón de activar la prueba -- no se duplica esa lista
+ * aquí, este banner es solo la puerta de entrada.
+ */
+function PremiumBanner({ subscriptionStatus, onOpen, t }) {
+  const isPremium = subscriptionStatus === "trial" || subscriptionStatus === "premium";
+  if (isPremium) return null;
+
+  return (
+    <div className="hm-card" style={{ marginBottom: 28, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)" }}>{t("accountHub.premiumBannerTitle")}</div>
+        <div style={{ fontSize: 13, color: "var(--ink-soft)", marginTop: 3, lineHeight: 1.4 }}>{t("accountHub.premiumBannerSubtitle")}</div>
+      </div>
+      <button
+        type="button"
+        className="hm-btn hm-btn-primary"
+        style={{ borderRadius: 999, padding: "10px 18px", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 700, whiteSpace: "nowrap" }}
+        onClick={onOpen}
+      >
+        {t("accountHub.premiumBannerCta")} <ArrowRight size={15} />
+      </button>
     </div>
   );
 }

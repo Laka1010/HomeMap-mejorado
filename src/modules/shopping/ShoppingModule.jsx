@@ -1,39 +1,18 @@
 import { useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { ArrowLeft, Check, Clock3, Flame, History, Pencil, Plus, Receipt, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
 import { ModuleCard } from "../core/ModuleCard";
 import { shoppingService } from "../../services/shoppingService";
 import { getCategoryIcon, getPriorityMeta, isUrgent } from "./shoppingMeta";
 import { computeFrequentProducts } from "./frequentProducts";
 import { ShoppingCheckoutMode } from "./ShoppingCheckoutMode";
-import { getPortalTarget } from "../../utils/portalTarget";
 import { EmptyState } from "../../components/EmptyState";
 import { CategoryPickerModal } from "../../components/CategoryPickerModal";
 import { useEconomyCategories } from "../economy/EconomyCategoriesContext";
 import { DEFAULT_CATEGORY, categoryLabel, categoryEmoji } from "../economy/economyCategories";
 import { useTranslation } from "../../i18n";
+import { TicketScanModal } from "../havenia/tickets/TicketScanModal";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
-
-/**
- * El escaneo de ticket con IA (ReceiptScanModal) ya está implementado pero
- * aún no se activa de cara al usuario; este aviso ocupa su sitio en los dos
- * puntos de entrada (lista y modo checkout) hasta que se habilite.
- */
-function ScanReceiptComingSoon({ onClose }) {
-  const { t } = useTranslation();
-  return createPortal(
-    <div className="hm-fade-in" style={{ position: "fixed", inset: 0, zIndex: 1300, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div className="hm-card hm-card--p24" style={{ maxWidth: 340, width: "100%", textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
-        <Receipt size={32} style={{ color: "var(--accent)" }} />
-        <div style={{ fontWeight: 700, fontSize: 16 }}>{t("shoppingModule.scanReceiptComingSoonTitle")}</div>
-        <div style={{ color: "var(--ink-soft)", fontSize: 13.5 }}>{t("shoppingModule.scanReceiptComingSoon")}</div>
-        <button className="hm-btn hm-btn-primary hm-btn--full" onClick={onClose}>{t("common.close")}</button>
-      </div>
-    </div>,
-    getPortalTarget()
-  );
-}
 
 function CategoryEmojiIcon({ emoji }) {
   return function CategoryIconCmp({ size = 16, style }) {
@@ -200,7 +179,7 @@ function ListCategoryChip({ category, categories, onChange }) {
   );
 }
 
-export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase, onUpdateListCategory, onItemsRemoved }) {
+export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList, addShopping, onCompletePurchase, onRepeatPurchase, onSaveReceiptPurchase, onUpdateListCategory, onItemsRemoved, isPremium, onRequirePremium }) {
   const { t } = useTranslation();
   const { expense: expenseCategories } = useEconomyCategories();
   const shoppingItems = Array.isArray(state.shoppingItems) ? state.shoppingItems : [];
@@ -314,8 +293,26 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
     deleteShoppingList && deleteShoppingList(listId);
   };
 
+  // Gate aquí (además del defense-in-depth dentro de TicketScanModal) para no
+  // abrir y cerrar la pantalla de escaneo de golpe si el usuario no es Premium.
+  const startScanningReceipt = (payload) => {
+    if (!isPremium) {
+      onRequirePremium?.();
+      return;
+    }
+    setScanningReceipt(payload);
+  };
+
   if (scanningReceipt) {
-    return <ScanReceiptComingSoon onClose={() => setScanningReceipt(null)} />;
+    return (
+      <TicketScanModal
+        onClose={() => setScanningReceipt(null)}
+        onSave={handleSaveReceipt}
+        knownProductNames={knownProductNames}
+        isPremium={isPremium}
+        onRequirePremium={() => { setScanningReceipt(null); onRequirePremium?.(); }}
+      />
+    );
   }
 
   if (activeList && checkoutMode) {
@@ -325,7 +322,7 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
         onToggle={togglePurchased}
         onFinish={handleFinishCheckout}
         onClose={() => setCheckoutMode(false)}
-        onScanReceipt={(completed) => setScanningReceipt({
+        onScanReceipt={(completed) => startScanningReceipt({
           listId: activeList.id,
           purchasedItemIds: completed.map((i) => i.id),
         })}
@@ -340,7 +337,7 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
           <h1 className="hm-display" style={{ fontSize: 26, fontWeight: 600, margin: 0 }}>{t("shopping.title")}</h1>
           <div className="hm-scroll" style={{ display: "flex", gap: 6, flexWrap: "nowrap", overflowX: "auto", maxWidth: "100%" }}>
             <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => openModal("shoppingHistory")}><History size={13} /> {t("shoppingModule.history")}</button>
-            <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => setScanningReceipt({ listId: null, purchasedItemIds: [] })}><Receipt size={13} /> {t("shoppingModule.scanReceipt")}</button>
+            <button className="hm-btn hm-btn-soft hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => startScanningReceipt({ listId: null, purchasedItemIds: [] })}><Receipt size={13} /> {t("shoppingModule.scanReceipt")}</button>
             <button className="hm-btn hm-btn-primary hm-btn--compact" style={{ fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => openModal("addShoppingList")}><Plus size={13} /> {t("shoppingModule.newList")}</button>
           </div>
         </div>

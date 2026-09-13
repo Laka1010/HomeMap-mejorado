@@ -2,6 +2,8 @@ import { useState } from "react";
 import { X, ChevronLeft, ChevronRight, Check, Home, UtensilsCrossed, BedDouble, Bath, Archive, Car, Briefcase } from "lucide-react";
 import { useTranslation } from "../i18n";
 import { useDragToDismiss } from "../hooks/useDragToDismiss";
+import { IconPicker } from "./IconPicker";
+import { ROOM_ICON_OPTIONS_PREMIUM } from "../utils/premiumIcons";
 
 const ROOM_ICON_OPTIONS_BASE = [
   { key: "salon", emoji: "🏠", icon: Home },
@@ -13,10 +15,12 @@ const ROOM_ICON_OPTIONS_BASE = [
   { key: "oficina", emoji: "💼", icon: Briefcase },
 ];
 
-export function AddRoomWizard({ onClose, onSave }) {
+export function AddRoomWizard({ onClose, onSave, isPremium = false, onRequirePremium }) {
   const { t } = useTranslation();
   const { handleRef, handleMouseDown, isSuppressingClick, sheetStyle } = useDragToDismiss(onClose);
   const ROOM_ICON_OPTIONS = ROOM_ICON_OPTIONS_BASE.map((opt) => ({ ...opt, label: t(`roomIcons.${opt.key}`) }));
+  const ROOM_ICON_PREMIUM_OPTIONS = ROOM_ICON_OPTIONS_PREMIUM.map((opt) => ({ ...opt, label: t(`roomIcons.${opt.key}`) }));
+  const ALL_ROOM_ICON_OPTIONS = [...ROOM_ICON_OPTIONS, ...ROOM_ICON_PREMIUM_OPTIONS];
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState("next");
   const [data, setData] = useState({
@@ -87,18 +91,14 @@ export function AddRoomWizard({ onClose, onSave }) {
             {step === 2 && (
               <div className="wizard-step-container">
                 <h2 className="hm-display wizard-title">{t("wizard.addRoomIconTitle")}</h2>
-                <div className="icon-grid">
-                  {ROOM_ICON_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.key}
-                      className={`icon-card hm-tap ${data.icon === opt.key ? "selected" : ""}`}
-                      onClick={() => { setData({ ...data, icon: opt.key }); nextStep(); }}
-                    >
-                      <span className="icon-emoji">{opt.emoji}</span>
-                      <span className="icon-label">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
+                <IconPicker
+                  value={data.icon}
+                  onSelect={(key) => { setData({ ...data, icon: key }); nextStep(); }}
+                  options={ROOM_ICON_OPTIONS}
+                  premiumOptions={ROOM_ICON_PREMIUM_OPTIONS}
+                  canUsePremium={isPremium}
+                  onRequirePremium={onRequirePremium}
+                />
               </div>
             )}
 
@@ -108,7 +108,7 @@ export function AddRoomWizard({ onClose, onSave }) {
                 <div className="summary-card">
                   <div className="summary-room-icon">
                     <span style={{ fontSize: 48 }}>
-                      {ROOM_ICON_OPTIONS.find(o => o.key === data.icon)?.emoji}
+                      {ALL_ROOM_ICON_OPTIONS.find(o => o.key === data.icon)?.emoji}
                     </span>
                   </div>
                   <h3 className="summary-room-name">{data.name}</h3>
@@ -156,13 +156,6 @@ export function AddRoomWizard({ onClose, onSave }) {
         .wizard-title { font-size: 28px; margin-bottom: 32px; font-weight: 700; }
         .wizard-big-input { font-size: 20px !important; padding: 16px 20px !important; border-radius: 16px !important; text-align: center; border: 2px solid var(--border) !important; width: 100%; max-width: 400px; }
         .wizard-footer { padding: 20px 32px 32px; background: var(--surface-alt); display: flex; align-items: center; }
-
-        .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; width: 100%; }
-        .icon-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px 8px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s ease; }
-        .icon-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-        .icon-card.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-        .icon-emoji { font-size: 28px; }
-        .icon-label { font-weight: 600; font-size: 13px; }
 
         .summary-card { background: var(--surface-alt); border-radius: 24px; padding: 32px; width: 100%; display: flex; flex-direction: column; align-items: center; }
         .summary-room-icon { width: 90px; height: 90px; border-radius: 24px; background: var(--surface); display: flex; align-items: center; justify-content: center; margin-bottom: 20px; box-shadow: var(--shadow); }

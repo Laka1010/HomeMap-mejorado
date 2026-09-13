@@ -1,35 +1,48 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { getPortalTarget } from "../../utils/portalTarget";
+import { getPortalTarget } from "../../../utils/portalTarget";
 import { Camera, Image as ImageIcon, X, Check, Plus, Trash2, Calendar, Store as StoreIcon, Receipt } from "lucide-react";
-import { getPhotoError } from "../../services/photoUtils.jsx";
+import { getPhotoError } from "../../../services/photoUtils.jsx";
 import {
   extractReceipt, matchKnownProduct, normalizeStoreName,
   RECEIPT_SCAN_STEPS, KNOWN_STORES,
-} from "../../services/receiptService";
-import { useTranslation } from "../../i18n";
-import { useCurrency } from "../../currency";
-import { toLocalDateString } from "../../utils/dates";
+} from "../../../services/ai/receiptService";
+import { CategoryField } from "../../economy/CategoryField";
+import { useEconomyCategories } from "../../economy/EconomyCategoriesContext";
+import { DEFAULT_CATEGORY } from "../../economy/economyCategories";
+import { useTranslation } from "../../../i18n";
+import { useCurrency } from "../../../currency";
+import { toLocalDateString } from "../../../utils/dates";
 
 function round2(n) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-function computeTotal(items, taxAmount, discountAmount) {
+// El IVA en un ticket español ya va incluido en el precio de cada línea (no
+// se añade aparte como un sales tax americano) -- taxAmount es solo la cuota
+// informativa que el ticket desglosa, así que NUNCA se suma al total. Sumarlo
+// duplicaba el impuesto (ver bug: ticket de 14,11 € calculado como 15,56 €).
+function computeTotal(items, discountAmount) {
   const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0);
-  return round2(subtotal - (Number(discountAmount) || 0) + (Number(taxAmount) || 0));
+  return round2(subtotal - (Number(discountAmount) || 0));
 }
 
 /**
- * Escaneo de ticket con IA: capturar -> analizar (con checklist animado y
- * cancelación) -> revisar/editar -> guardar. Nunca guarda nada sin que el
- * usuario confirme la pantalla de revisión. onSave recibe los datos ya
- * corregidos por el usuario; el padre (ShoppingModule/App.jsx) se encarga
- * de subir la imagen y persistir — este componente no toca Supabase.
+ * Escáner de tickets STANDALONE de Haven IA (secciones 4/5 del pedido):
+ * mismo esqueleto capturar -> analizar -> revisar que ReceiptScanModal.jsx,
+ * pero sin depender de una compra de lista de la compra en curso -- se
+ * puede abrir desde el hub de Haven IA en cualquier momento. Añade un
+ * selector de categoría (ReceiptScanModal no lo tiene, porque allí la
+ * categoría viene de la lista) y dos acciones explícitas de guardado en vez
+ * de una sola: "Guardar como gasto" registra el ticket en Economía además
+ * de guardarlo; "Solo guardar como ticket" no toca Economía. onSave recibe
+ * `saveAsExpense` para que el padre (App.jsx) decida cuál de las dos rutas
+ * seguir -- este componente no toca Supabase.
  */
-export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
+export function TicketScanModal({ onClose, onSave, knownProductNames = [], isPremium, onRequirePremium }) {
   const { t } = useTranslation();
   const { format: formatCurrency } = useCurrency();
+  const { expense: expenseCategories } = useEconomyCategories();
   const STEP_LABELS = {
     store: t("receiptScan.stepStore"),
     items: t("receiptScan.stepItems"),
@@ -47,6 +60,7 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
   const [store, setStore] = useState("");
   const [date, setDate] = useState("");
   const [items, setItems] = useState([]);
+  const [category, setCategory] = useState(DEFAULT_CATEGORY);
   const [taxAmount, setTaxAmount] = useState("");
   const [discountAmount, setDiscountAmount] = useState("");
   const [totalOverride, setTotalOverride] = useState(null);
@@ -54,7 +68,13 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
 
-  const total = totalOverride ?? computeTotal(items, taxAmount, discountAmount);
+  const total = totalOverride ?? computeTotal(items, discountAmount);
+
+  // Defensa en profundidad, mismo motivo que ConsumableScanModal: el hub ya
+  // filtra antes de abrir, pero el gate real vive aquí.
+  useEffect(() => {
+    if (!isPremium) onRequirePremium();
+  }, [isPremium, onRequirePremium]);
 
   const startAnalysis = async (file) => {
     const photoError = getPhotoError(file);
@@ -86,7 +106,7 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
     } catch (err) {
       if (cancelledRef.current) return;
       console.error("Error analizando el ticket:", err);
-      setError(t("receiptScan.analyzeError"));
+      setError(err?.message ? `${t("receiptScan.analyzeError")} (${err.message})` : t("receiptScan.analyzeError"));
       setStage("capture");
     }
   };
@@ -114,7 +134,7 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
     setItems((prev) => [...prev, { id: Math.random().toString(36).slice(2, 9), name: "", quantity: 1, unitPrice: 0 }]);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (saveAsExpense) => {
     setSaving(true);
     try {
       await onSave({
@@ -123,15 +143,19 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
         items: items
           .filter((item) => item.name.trim())
           .map(({ id, ...rest }) => ({ ...rest, totalPrice: round2((Number(rest.quantity) || 0) * (Number(rest.unitPrice) || 0)) })),
+        category,
         taxAmount: taxAmount === "" ? null : Number(taxAmount),
         discountAmount: discountAmount === "" ? null : Number(discountAmount),
         total,
         imageFile,
+        saveAsExpense,
       });
     } finally {
       setSaving(false);
     }
   };
+
+  if (!isPremium) return null;
 
   return createPortal(
     <div className="hm-fade-in" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1300, background: "var(--bg)", display: "flex", flexDirection: "column" }}>
@@ -139,7 +163,7 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
         <button className="hm-btn hm-btn-soft hm-btn--icon" onClick={onClose} aria-label={t("receiptScan.closeAria")}><X size={18} /></button>
         <div style={{ flex: 1 }}>
           <div className="hm-display" style={{ fontSize: 20, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-            <Receipt size={18} style={{ color: "var(--accent)" }} /> {t("receiptScan.title")}
+            <Receipt size={18} style={{ color: "var(--accent)" }} /> {t("ticketScanner.title")}
           </div>
         </div>
       </div>
@@ -205,8 +229,8 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 160 }}>
                 <label className="hm-label"><StoreIcon size={12} style={{ verticalAlign: -1 }} /> {t("receiptScan.storeLabel")}</label>
-                <input className="hm-input" list="known-stores" value={store} onChange={(e) => setStore(e.target.value)} placeholder={t("receiptScan.storePlaceholder")} />
-                <datalist id="known-stores">
+                <input className="hm-input" list="known-stores-ticket" value={store} onChange={(e) => setStore(e.target.value)} placeholder={t("receiptScan.storePlaceholder")} />
+                <datalist id="known-stores-ticket">
                   {KNOWN_STORES.map((s) => <option key={s} value={s} />)}
                 </datalist>
               </div>
@@ -214,6 +238,11 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
                 <label className="hm-label"><Calendar size={12} style={{ verticalAlign: -1 }} /> {t("receiptScan.dateLabel")}</label>
                 <input className="hm-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               </div>
+            </div>
+
+            <div>
+              <label className="hm-label">{t("ticketScanner.categoryLabel")}</label>
+              <CategoryField categories={expenseCategories} value={category} onChange={setCategory} title={t("ticketScanner.categoryLabel")} />
             </div>
 
             <div>
@@ -265,14 +294,6 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 140 }}>
-                <label className="hm-label">{t("receiptScan.taxLabel")}</label>
-                <input className="hm-input" type="number" step="0.01" value={taxAmount} onChange={(e) => { setTaxAmount(e.target.value); setTotalOverride(null); }} />
-              </div>
-              <div style={{ flex: 1, minWidth: 140 }}>
-                <label className="hm-label">{t("receiptScan.discountLabel")}</label>
-                <input className="hm-input" type="number" step="0.01" value={discountAmount} onChange={(e) => { setDiscountAmount(e.target.value); setTotalOverride(null); }} />
-              </div>
-              <div style={{ flex: 1, minWidth: 140 }}>
                 <label className="hm-label">{t("receiptScan.totalLabel")}</label>
                 <input className="hm-input" type="number" step="0.01" value={total} onChange={(e) => setTotalOverride(e.target.value === "" ? 0 : Number(e.target.value))} style={{ fontWeight: 700 }} />
               </div>
@@ -282,11 +303,16 @@ export function ReceiptScanModal({ onClose, onSave, knownProductNames = [] }) {
       </div>
 
       {stage === "review" && (
-        <div style={{ padding: 16, borderTop: "1px solid var(--border)", display: "flex", gap: 10 }}>
-          <button className="hm-btn hm-btn-soft hm-btn--full" style={{ flex: 1 }} onClick={onClose} disabled={saving}>{t("receiptScan.cancel")}</button>
-          <button className="hm-btn hm-btn-primary hm-btn--full" style={{ flex: 2 }} onClick={handleSave} disabled={saving || !store.trim()}>
-            {saving ? t("receiptScan.saving") : t("receiptScan.save")}
+        <div style={{ padding: 16, borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
+          <button className="hm-btn hm-btn-primary hm-btn--full" onClick={() => handleSave(true)} disabled={saving || !store.trim()}>
+            {saving ? t("receiptScan.saving") : t("ticketScanner.saveAsExpense")}
           </button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button className="hm-btn hm-btn-soft hm-btn--full" style={{ flex: 1 }} onClick={onClose} disabled={saving}>{t("receiptScan.cancel")}</button>
+            <button className="hm-btn hm-btn-soft hm-btn--full" style={{ flex: 1 }} onClick={() => handleSave(false)} disabled={saving || !store.trim()}>
+              {t("ticketScanner.saveAsTicketOnly")}
+            </button>
+          </div>
         </div>
       )}
     </div>,

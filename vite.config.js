@@ -15,6 +15,14 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    server: {
+      // Permite probar el servidor de desarrollo desde el móvil vía un túnel
+      // (p.ej. cloudflared trycloudflare.com) cuando no está en la misma
+      // wifi que el ordenador -- Vite bloquea por defecto cualquier Host
+      // que no sea localhost/IP local. Solo afecta a `npm run dev`, nunca
+      // a `npm run build`.
+      allowedHosts: [".trycloudflare.com"],
+    },
     build: {
       rollupOptions: {
         input: isCapacitorBuild

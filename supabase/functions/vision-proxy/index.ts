@@ -29,6 +29,52 @@ Responde ÚNICAMENTE con un JSON, sin texto adicional, con este formato exacto:
 Si no reconoces ningún objeto, responde { "objects": [] }.
 `.trim();
 
+// Modo "consumables": identifica uno o varios productos domésticos en la
+// misma foto (Haven IA, inventario inteligente). Mismo esquema de "envolver
+// en un objeto con clave nombrada" que OBJECT_DETECTION_PROMPT, por el mismo
+// motivo (response_format: json_object exige un objeto en la raíz).
+const CONSUMABLES_SCAN_PROMPT = `
+Analiza esta fotografía de uno o varios productos domésticos (por ejemplo:
+detergente, papel higiénico, agua, leche, pasta, productos de limpieza,
+champú, gel, pasta de dientes, comida, bebidas u otros productos de higiene
+o del hogar). Identifica CADA producto individual visible, aunque haya
+varios en la misma foto. Responde ÚNICAMENTE con un JSON, sin texto
+adicional, con este formato exacto:
+{
+  "products": [
+    {
+      "name": "Nombre del producto",
+      "brand": "Marca visible, o null si no se distingue",
+      "category": "Una categoría breve (limpieza, higiene, alimentación...)",
+      "isConsumable": true,
+      "estimatedQuantity": 0,
+      "unit": "percent",
+      "visibleText": "Texto legible en el envase, o null",
+      "sizeOrFormat": "Tamaño o formato si es legible, o null",
+      "condition": "Estado aproximado (nuevo, usado, deteriorado...)",
+      "nearlyEmpty": false,
+      "shouldRestock": false
+    }
+  ]
+}
+
+Reglas importantes:
+- "estimatedQuantity" es una estimación aproximada de cuánto queda: si el
+  producto se mide por nivel de llenado (detergente, champú, gel...) usa
+  "unit": "percent" con un número de 0 a 100; si se cuenta por unidades
+  (rollos de papel, botellas, paquetes...) usa "unit": "units" con el
+  número de unidades visibles.
+- "isConsumable" es false para objetos que no se consumen (un bote vacío
+  decorativo, un utensilio reutilizable...).
+- "nearlyEmpty" es true solo cuando el producto está visiblemente casi
+  agotado (por debajo de ~15% o quedan muy pocas unidades).
+- "shouldRestock" es true cuando, además de estar casi vacío, es un
+  producto de uso habitual que normalmente se repone.
+- Si no puedes determinar un dato con certeza, usa null en ese campo en vez
+  de inventarlo.
+- Si no reconoces ningún producto, responde { "products": [] }.
+`.trim();
+
 const KNOWN_STORES = [
   "Mercadona", "Lidl", "Carrefour", "Consum", "Aldi",
   "Dia", "Bonpreu", "Esclat", "Caprabo", "Alcampo",
@@ -98,6 +144,12 @@ function estimateBase64DecodedBytes(dataUrl: string): number {
   return Math.floor((base64Part.length * 3) / 4) - padding;
 }
 
+/** "data:image/jpeg;base64,AAAA..." -> { mimeType: "image/jpeg", base64Data: "AAAA..." } */
+function splitDataUrl(dataUrl: string): { mimeType: string; base64Data: string } {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/s);
+  return match ? { mimeType: match[1], base64Data: match[2] } : { mimeType: "image/jpeg", base64Data: dataUrl };
+}
+
 // El gateway de Supabase ya verificó la firma del JWT antes de invocar esta
 // función (verify_jwt = true), así que confiar en el "sub" del payload aquí
 // es seguro -- solo lo usamos para poder llevar la cuota por usuario.
@@ -152,6 +204,99 @@ async function isIpBlocked(
   }
 }
 
+async function callOpenAI(prompt: string, systemMessage: string, image: string, apiKey: string): Promise<string> {
+  const client = new OpenAI({ apiKey });
+  const completion = await client.chat.completions.create({
+    model: Deno.env.get("OPENAI_VISION_MODEL") || "gpt-4.1-mini",
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: systemMessage },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: image } },
+        ],
+      },
+    ],
+  });
+  return completion.choices?.[0]?.message?.content ?? "{}";
+}
+
+// Sección 12 del pedido ("no acoplar Haven a un único proveedor de IA"):
+// mismo contrato de entrada/salida que callOpenAI (prompt + imagen -> texto
+// JSON crudo), así que el resto de la función no sabe ni le importa cuál de
+// los dos se usó. El modelo es configurable por env var porque los nombres
+// de modelo de Gemini cambian con más frecuencia que los de OpenAI; si el
+// que viene por defecto deja de existir, basta con fijar GEMINI_VISION_MODEL
+// en los secretos de la función, sin tocar código.
+async function callGemini(prompt: string, systemMessage: string, image: string, apiKey: string): Promise<string> {
+  const model = Deno.env.get("GEMINI_VISION_MODEL") || "gemini-3.6-flash";
+  const { mimeType, base64Data } = splitDataUrl(image);
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: `${systemMessage}\n\n${prompt}` },
+              { inline_data: { mime_type: mimeType, data: base64Data } },
+            ],
+          },
+        ],
+        generationConfig: { responseMimeType: "application/json" },
+      }),
+    }
+  );
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Gemini respondió ${response.status}: ${detail.slice(0, 300)}`);
+  }
+  const data = await response.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+}
+
+// Mismo contrato que callOpenAI/callGemini. Claude no tiene un "modo JSON"
+// forzado como OpenAI o Gemini, así que se apoya por completo en el propio
+// prompt (que ya pide "ÚNICAMENTE JSON") + parseJsonLoosely como red de
+// seguridad si el modelo añadiera algo de texto alrededor.
+async function callClaude(prompt: string, systemMessage: string, image: string, apiKey: string): Promise<string> {
+  const model = Deno.env.get("CLAUDE_VISION_MODEL") || "claude-haiku-4-5-20251001";
+  const { mimeType, base64Data } = splitDataUrl(image);
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 2048,
+      system: systemMessage,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image", source: { type: "base64", media_type: mimeType, data: base64Data } },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Claude respondió ${response.status}: ${detail.slice(0, 300)}`);
+  }
+  const data = await response.json();
+  return data?.content?.[0]?.text ?? "{}";
+}
+
 function parseJsonLoosely(rawText: string, fallback: unknown) {
   try {
     return JSON.parse(rawText);
@@ -179,7 +324,7 @@ Deno.serve(async (req) => {
 
   try {
     const { provider, image, mode } = await req.json();
-    const providerName = String(provider || "openai").toLowerCase();
+    const requestedProvider = provider ? String(provider).toLowerCase() : null;
     const scanMode = String(mode || "object_detection");
 
     if (!image || typeof image !== "string") {
@@ -190,13 +335,33 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "La imagen supera el tamaño máximo permitido (5MB)" }, 413);
     }
 
-    if (providerName !== "openai") {
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    const claudeKey = Deno.env.get("ANTHROPIC_API_KEY");
+
+    // Sección 12 del pedido: sin proveedor explícito en la petición, se elige
+    // automáticamente el que tenga clave configurada -- así el cliente
+    // (aiService.callVisionProxy) no necesita saber ni decidir nunca cuál está
+    // activo. El orden (openai > claude > gemini) solo mantiene el
+    // comportamiento que ya había antes de añadir cada proveedor nuevo.
+    let providerName = requestedProvider;
+    if (!providerName) {
+      if (openaiKey) providerName = "openai";
+      else if (claudeKey) providerName = "claude";
+      else if (geminiKey) providerName = "gemini";
+    }
+
+    if (!providerName) {
+      return jsonResponse({ error: "No hay ningún proveedor de IA configurado (falta OPENAI_API_KEY, ANTHROPIC_API_KEY o GEMINI_API_KEY)." }, 500);
+    }
+    if (providerName !== "openai" && providerName !== "gemini" && providerName !== "claude") {
       return jsonResponse({ error: `Proveedor no soportado todavía en esta Edge Function: ${providerName}` }, 400);
     }
 
-    const apiKey = Deno.env.get("OPENAI_API_KEY");
+    const apiKey = providerName === "openai" ? openaiKey : providerName === "claude" ? claudeKey : geminiKey;
     if (!apiKey) {
-      return jsonResponse({ error: "OPENAI_API_KEY no configurada en Supabase Edge Function" }, 500);
+      const missingVar = providerName === "openai" ? "OPENAI_API_KEY" : providerName === "claude" ? "ANTHROPIC_API_KEY" : "GEMINI_API_KEY";
+      return jsonResponse({ error: `${missingVar} no configurada en Supabase Edge Function` }, 500);
     }
 
     // verify_jwt=true garantiza que req trae un JWT válido, pero por si acaso
@@ -227,32 +392,33 @@ Deno.serve(async (req) => {
     }
 
     const isReceiptMode = scanMode === "receipt";
-    const prompt = isReceiptMode ? RECEIPT_SCAN_PROMPT : OBJECT_DETECTION_PROMPT;
+    const isConsumablesMode = scanMode === "consumables";
+    const prompt = isReceiptMode
+      ? RECEIPT_SCAN_PROMPT
+      : isConsumablesMode
+      ? CONSUMABLES_SCAN_PROMPT
+      : OBJECT_DETECTION_PROMPT;
     const systemMessage = isReceiptMode
       ? "Devuelve solo un JSON válido con un objeto, sin texto adicional."
+      : isConsumablesMode
+      ? "Devuelve solo un JSON válido con un objeto que tenga la clave \"products\", sin texto adicional."
       : "Devuelve solo un JSON válido con un objeto que tenga la clave \"objects\", sin texto adicional.";
 
-    const client = new OpenAI({ apiKey });
-    const completion = await client.chat.completions.create({
-      model: "gpt-4.1-mini",
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemMessage },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: image } },
-          ],
-        },
-      ],
-    });
-
-    const rawText = completion.choices?.[0]?.message?.content ?? "{}";
+    const rawText = providerName === "openai"
+      ? await callOpenAI(prompt, systemMessage, image, apiKey)
+      : providerName === "claude"
+      ? await callClaude(prompt, systemMessage, image, apiKey)
+      : await callGemini(prompt, systemMessage, image, apiKey);
 
     if (isReceiptMode) {
       const parsed = parseJsonLoosely(rawText, {});
       return jsonResponse(parsed);
+    }
+
+    if (isConsumablesMode) {
+      const parsed = parseJsonLoosely(rawText, {});
+      const products = Array.isArray(parsed) ? parsed : parsed?.products ?? [];
+      return jsonResponse({ products: Array.isArray(products) ? products : [] });
     }
 
     // Se sigue aceptando un array suelto: es lo que devolvían las respuestas
@@ -262,6 +428,7 @@ Deno.serve(async (req) => {
     return jsonResponse(Array.isArray(objects) ? objects : []);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
+    console.error("vision-proxy error:", message);
     return jsonResponse({ error: message }, 500);
   }
 });
