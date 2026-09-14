@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Capacitor } from "@capacitor/core";
-import { X, Sparkles, Check } from "lucide-react";
+import { X, Sparkles, Check, Info } from "lucide-react";
 import { getPortalTarget } from "../../utils/portalTarget";
 import { useTranslation } from "../../i18n";
 import { revenuecatService } from "../../services/revenuecatService";
@@ -35,6 +35,7 @@ export function PremiumPaywall({ onClose, onActivateInternalTrial, onSubscriptio
   const [purchasingId, setPurchasingId] = useState(null);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState("");
+  const [consentChecked, setConsentChecked] = useState(false);
 
   useEffect(() => {
     if (!isNative) return;
@@ -63,6 +64,7 @@ export function PremiumPaywall({ onClose, onActivateInternalTrial, onSubscriptio
   };
 
   const handlePurchase = async (pkg) => {
+    if (!consentChecked) return;
     setError("");
     setPurchasingId(pkg.identifier);
     try {
@@ -112,6 +114,14 @@ export function PremiumPaywall({ onClose, onActivateInternalTrial, onSubscriptio
       <div className="hm-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 20 }}>
         <p style={{ margin: "0 0 20px", fontSize: 13.5, color: "var(--ink-soft)", textAlign: "center" }}>{t("paywall.subtitle")}</p>
 
+        <div className="hm-card hm-card--p20" style={{ maxWidth: 440, margin: "0 auto 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
+            <Info size={14} style={{ color: "var(--accent)" }} /> {t("paywall.infoTitle")}
+          </div>
+          <p style={{ margin: "0 0 6px", fontSize: 12.5, color: "var(--ink-soft)", lineHeight: 1.4 }}>{t("paywall.infoLimitsLine")}</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-soft)", lineHeight: 1.4 }}>{t("paywall.infoRenewalLine")}</p>
+        </div>
+
         {!isNative && (
           <div className="hm-card hm-card--p20" style={{ textAlign: "center", marginBottom: 16 }}>
             <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-soft)" }}>{t("paywall.webOnlyNotice")}</p>
@@ -130,6 +140,24 @@ export function PremiumPaywall({ onClose, onActivateInternalTrial, onSubscriptio
 
         {error ? <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 16, textAlign: "center" }}>{error}</div> : null}
 
+        {isNative && !loadingOfferings && packages.length > 0 && (
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 8, maxWidth: 440, margin: "0 auto 16px", fontSize: 12.5, color: "var(--ink-soft)", lineHeight: 1.4, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={consentChecked}
+              onChange={(e) => setConsentChecked(e.target.checked)}
+              style={{ marginTop: 2, flexShrink: 0 }}
+            />
+            <span>
+              {t("paywall.consentPart1")}
+              <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>{t("ajustes.terms")}</a>
+              {t("paywall.consentPart2")}
+              <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>{t("ajustes.privacyPolicy")}</a>
+              {t("paywall.consentPart3")}
+            </span>
+          </label>
+        )}
+
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 440, margin: "0 auto" }}>
           {packages.map((pkg) => (
             <div key={pkg.identifier} className="hm-card hm-card--p20" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -140,7 +168,7 @@ export function PremiumPaywall({ onClose, onActivateInternalTrial, onSubscriptio
               <button
                 className="hm-btn hm-btn-primary hm-btn--compact"
                 onClick={() => handlePurchase(pkg)}
-                disabled={purchasingId != null || restoring}
+                disabled={purchasingId != null || restoring || !consentChecked}
               >
                 {purchasingId === pkg.identifier ? t("paywall.purchasing") : t("paywall.purchaseButton")}
               </button>
