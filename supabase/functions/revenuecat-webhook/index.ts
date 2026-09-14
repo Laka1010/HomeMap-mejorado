@@ -62,8 +62,13 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Webhook no configurado" }, 500);
   }
 
+  // RevenueCat deja escribir libremente el valor de la cabecera Authorization
+  // en su propio dashboard -- no añade "Bearer " por su cuenta. Se acepta
+  // tanto "Bearer <secreto>" como el secreto en crudo para no depender de
+  // que el usuario haya tecleado el prefijo exacto en la configuración.
   const receivedAuth = req.headers.get("Authorization") || "";
-  if (!timingSafeEqual(receivedAuth, `Bearer ${secret}`)) {
+  const authorized = timingSafeEqual(receivedAuth, `Bearer ${secret}`) || timingSafeEqual(receivedAuth, secret);
+  if (!authorized) {
     return jsonResponse({ error: "No autorizado" }, 401);
   }
 
