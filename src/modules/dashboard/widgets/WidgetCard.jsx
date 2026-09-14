@@ -11,9 +11,9 @@
  * contenido arriba; aquí evita que el título quede centrado más abajo en
  * widgets con menos contenido que sus vecinos de fila.
  */
-export function WidgetCard({ icon: Icon, title, action, children }) {
+export function WidgetCard({ icon: Icon, title, action, children, style }) {
   return (
-    <div className="hm-card hm-fade-in" style={{ padding: 20, display: "grid", gap: 14, alignContent: "start", minWidth: 0 }}>
+    <div className="hm-card hm-fade-in" style={{ padding: 20, display: "grid", gap: 14, alignContent: "start", minWidth: 0, ...style }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           {Icon ? <Icon size={16} style={{ color: "var(--ink-soft)", flexShrink: 0 }} /> : null}

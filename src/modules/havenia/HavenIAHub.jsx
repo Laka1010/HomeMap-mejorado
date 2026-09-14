@@ -93,8 +93,22 @@ export function HavenIAHub({ subscriptionStatus, onOpenPaywall, showNotice, acti
         {FEATURES.map(({ key, icon: Icon, featureFlag }) => {
           const usage = usageByFeature[featureFlag];
           return (
-            <WidgetCard key={key} icon={Icon} title={t(`havenIA.features.${key}.title`)}>
-              <p style={{ margin: 0, fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.5 }}>
+            <WidgetCard
+              key={key}
+              icon={Icon}
+              title={t(`havenIA.features.${key}.title`)}
+              style={{ display: "flex", flexDirection: "column", height: 260, overflow: "hidden" }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  color: "var(--ink-soft)",
+                  lineHeight: 1.5,
+                  maxHeight: "3em",
+                  overflow: "hidden",
+                }}
+              >
                 {t(`havenIA.features.${key}.description`)}
               </p>
               {usage && (
@@ -114,10 +128,19 @@ export function HavenIAHub({ subscriptionStatus, onOpenPaywall, showNotice, acti
                   </div>
                 </div>
               )}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 10,
+                  marginTop: "auto",
+                  paddingTop: 14,
+                }}
+              >
                 <span className="hm-badge hm-badge--accent" style={{ fontSize: 10.5 }}>{t("havenIA.premiumBadge")}</span>
                 <button
-                  className="hm-btn hm-btn-soft hm-btn--compact"
+                  className="hm-btn hm-btn-soft hm-btn--compact hm-btn--full"
                   style={{ fontSize: 12 }}
                   onClick={() => handleFeatureClick(key)}
                 >
