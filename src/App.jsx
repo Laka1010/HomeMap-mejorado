@@ -315,12 +315,20 @@ const GlobalStyle = () => (
     .hm-sidebar-item:hover { background: var(--surface-alt); color: var(--ink); }
     .hm-sidebar-item.active { color: var(--accent); font-weight: 700; }
 
-    .hm-bottomnav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ink-soft); font-size: 11px; font-weight: 600; flex: 1; padding: 8px 0; cursor: pointer; transition: filter .12s ease, color .12s ease; -webkit-tap-highlight-color: transparent; border-radius: 16px; }
+    .hm-bottomnav-item { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ink-soft); font-size: 11px; font-weight: 600; flex: 1; padding: 8px 0; cursor: pointer; transition: filter .12s ease, color .12s ease; -webkit-tap-highlight-color: transparent; border-radius: 16px; }
     /* filter en vez de background: un color sólido de "hover" tenía que
        acertar a la vez en claro y oscuro; brightness() siempre aclara un
        poco el tono que ya tenga la barra, sin más colores que mantener. */
     .hm-bottomnav-item:hover { filter: brightness(1.35); }
     .hm-bottomnav-item.active { color: var(--accent); }
+
+    /* Indicador deslizante detrás de la pestaña activa: un div absoluto,
+       hermano de los items (no padre), que se desplaza con transform en vez
+       de animar left/width — así el navegador puede componerlo en su propio
+       layer sin recalcular layout en cada frame. Los items ya son flex:1
+       (mismo ancho entre sí), así que translateX(activeIndex * 100%) cae
+       siempre exactamente bajo el item activo sin medir el DOM. */
+    .hm-nav-pill { position: absolute; top: 4px; bottom: 4px; left: 8px; border-radius: 16px; background: var(--accent-soft); transition: transform .32s cubic-bezier(.22,1,.36,1); z-index: 0; pointer-events: none; }
 
     /* Route breadcrumb */
     .hm-route { display: flex; align-items: center; flex-wrap: wrap; gap: 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
@@ -395,7 +403,7 @@ const GlobalStyle = () => (
     .hm-modal-close { position: absolute; left: 10px; top: -2px; background: var(--surface-alt); border: none; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-soft); font-size: 18px; line-height: 1; -webkit-tap-highlight-color: transparent; }
     @media (prefers-reduced-motion: reduce) { .hm-modal { animation: none !important; } }
 
-    @media (prefers-reduced-motion: reduce) { .hm-fade-in, .hm-pop { animation: none !important; } .hm-tap { transition: none !important; } }
+    @media (prefers-reduced-motion: reduce) { .hm-fade-in, .hm-pop { animation: none !important; } .hm-tap, .hm-nav-pill { transition: none !important; } }
 
     /* Toasts */
     .hm-toast { position: fixed; right: var(--space-4); bottom: 92px; z-index: 1200; }
@@ -2100,7 +2108,7 @@ function MiCasa({ state, dispatch, view, setView, openModal, goTo, onUpdateCateg
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))", gap: 10 }}>
             {state.rooms.map((r) => (
-              <div key={r.id} className="hm-card hm-tap hm-card--p14" onClick={() => setView({ roomId: r.id, peek: true })}>
+              <div key={r.id} className="hm-card hm-tap hm-card--p14 hm-pop" onClick={() => setView({ roomId: r.id, peek: true })}>
                 <RoomIcon iconKey={r.icon} size={26} style={{ color: "var(--accent)" }} />
                 <div className="hm-display" style={{ fontWeight: 600, fontSize: 15, marginTop: 10 }}>{r.name}</div>
                 <div style={{ fontSize: 12, color: "var(--ink-soft)", margin: "3px 0 10px" }}>{t("common.objectsCount", { count: roomObjectCount(state, r.id) })}</div>
@@ -2661,7 +2669,7 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateContainer, onDel
             <label className="hm-label">{t("room.containersInside")}</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {childContainers.map((c) => (
-                <span key={c.id} className="hm-card-flat hm-tap" style={{ padding: "8px 14px", cursor: "pointer" }} onClick={() => setView({ containerId: c.id })}>{c.name}</span>
+                <span key={c.id} className="hm-card-flat hm-tap hm-pop" style={{ padding: "8px 14px", cursor: "pointer" }} onClick={() => setView({ containerId: c.id })}>{c.name}</span>
               ))}
             </div>
           </div>
@@ -2701,7 +2709,7 @@ function Cajas({ state, view, setView, openModal, goTo, onUpdateContainer, onDel
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 14 }}>
           {topLevel.map((c) => (
-            <div key={c.id} className="hm-card hm-tap hm-card--p16" onClick={() => setView({ containerId: c.id })}>
+            <div key={c.id} className="hm-card hm-tap hm-card--p16 hm-pop" onClick={() => setView({ containerId: c.id })}>
               <span style={{ width: 30, height: 30, borderRadius: 10, background: c.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <BoxIcon size={15} color="#fff" />
               </span>
@@ -2816,6 +2824,7 @@ const Sidebar = memo(function Sidebar({ active, onSelect, homeName, darkMode, on
 
 const BottomNav = memo(function BottomNav({ active, onSelect, nav = NAV }) {
   const { t } = useTranslation();
+  const activeIndex = Math.max(0, nav.findIndex((n) => n.key === active));
   return (
     <nav role="navigation" aria-label="Main" style={{ display: "flex", justifyContent: "center" }}>
       {/* Pill flotante con margen y esquinas redondeadas, como el diseño
@@ -2829,7 +2838,20 @@ const BottomNav = memo(function BottomNav({ active, onSelect, nav = NAV }) {
         background: "var(--bg)",
         border: "1px solid rgba(var(--border-rgb), 0.4)",
         boxShadow: "0 4px 16px rgba(10,10,10,0.18)",
-      }}>        {nav.map((n) => (
+      }}>
+        {/* Indicador de pestaña activa: los items son flex:1 (mismo ancho),
+            así que basta con desplazar este div por índice — sin medir el
+            DOM ni depender de cuántas pestañas haya (economía se oculta
+            para el rol "child", ver visibleNav en App). */}
+        <div
+          aria-hidden="true"
+          className="hm-nav-pill"
+          style={{
+            width: `calc((100% - 16px) / ${nav.length})`,
+            transform: `translateX(${activeIndex * 100}%)`,
+          }}
+        />
+        {nav.map((n) => (
           <div
             key={n.key}
             role="tab"

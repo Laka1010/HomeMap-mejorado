@@ -1,8 +1,18 @@
 
-export function ModuleCard({ icon: Icon, title, subtitle, badge, children, onClick, accent = false }) {
+/**
+ * `pop` (por defecto true) reproduce la animación de entrada `hm-pop` al
+ * montar la tarjeta. Por defecto asume que cada montaje es una tarjeta
+ * nueva de verdad — cierto en Tareas (lista plana, se reordena in-place).
+ * Compras, en cambio, separa los artículos en secciones distintas (hoy/
+ * más tarde/comprados) que son subárboles de React diferentes: marcar un
+ * artículo como comprado lo mueve de una sección a otra, lo que remonta
+ * su tarjeta aunque no sea nueva. Ahí hay que pasar `pop={false}` (o solo
+ * true para ids realmente nuevos) para no repetir el "pop" en cada toggle.
+ */
+export function ModuleCard({ icon: Icon, title, subtitle, badge, children, onClick, accent = false, pop = true }) {
   return (
     <div
-      className="hm-card hm-tap"
+      className={"hm-card hm-tap" + (pop ? " hm-pop" : "")}
       style={{
         padding: 16,
         cursor: onClick ? "pointer" : "default",

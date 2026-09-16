@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Clock3, Flame, History, Pencil, Plus, Receipt, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
 import { ModuleCard } from "../core/ModuleCard";
 import { shoppingService } from "../../services/shoppingService";
@@ -31,7 +31,7 @@ function PriorityBadge({ priority }) {
   );
 }
 
-function ShoppingItemCard({ item, onToggle, onDelete, onEdit }) {
+function ShoppingItemCard({ item, onToggle, onDelete, onEdit, pop }) {
   const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const compactBtn = { fontSize: 12, height: "auto", minHeight: 0, padding: "5px 10px", gap: 5 };
@@ -45,6 +45,7 @@ function ShoppingItemCard({ item, onToggle, onDelete, onEdit }) {
       title={item.name}
       badge={<PriorityBadge priority={item.priority} />}
       accent={item.completed}
+      pop={pop}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
         {item.notes ? <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{item.notes}</div> : null}
@@ -87,7 +88,7 @@ function ShoppingItemCard({ item, onToggle, onDelete, onEdit }) {
   );
 }
 
-function ItemSection({ icon: Icon, title, items, onToggle, onDelete, onEdit, muted, action }) {
+function ItemSection({ icon: Icon, title, items, onToggle, onDelete, onEdit, muted, action, newIds }) {
   if (items.length === 0) return null;
   return (
     <div style={muted ? { opacity: 0.7 } : undefined}>
@@ -97,7 +98,9 @@ function ItemSection({ icon: Icon, title, items, onToggle, onDelete, onEdit, mut
         {action ? <span style={{ marginLeft: "auto" }}>{action}</span> : null}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-        {items.map((item) => <ShoppingItemCard key={item.id} item={item} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} />)}
+        {items.map((item) => (
+          <ShoppingItemCard key={item.id} item={item} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} pop={newIds ? newIds.has(item.id) : false} />
+        ))}
       </div>
     </div>
   );
@@ -207,6 +210,27 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
   const completedItems = listItems.filter((item) => item.completed);
   const todayItems = pendingItems.filter((item) => isUrgent(item.priority));
   const laterItems = pendingItems.filter((item) => !isUrgent(item.priority));
+
+  /**
+   * Ids realmente nuevos desde el último render committeado — no basta con
+   * "acaba de montarse": marcar un artículo como comprado (o cambiarle la
+   * prioridad) lo mueve de una <ItemSection> a otra, que son subárboles de
+   * React distintos, así que su tarjeta se remonta aunque no sea nueva. Sin
+   * esto, `hm-pop` (la animación de "recién añadido") se repetía en cada
+   * toggle. Se compara contra la foto del render anterior (guardada en el
+   * efecto de abajo, no mutada aquí) para que el propio cálculo siga siendo
+   * puro.
+   */
+  const prevItemIdsRef = useRef(new Set());
+  const newItemIds = useMemo(() => {
+    const prevIds = prevItemIdsRef.current;
+    const next = new Set();
+    for (const item of listItems) if (!prevIds.has(item.id)) next.add(item.id);
+    return next;
+  }, [listItems]);
+  useEffect(() => {
+    prevItemIdsRef.current = new Set(listItems.map((item) => item.id));
+  }, [listItems]);
 
   const frequentSuggestions = useMemo(() => {
     const purchases = Array.isArray(state.shoppingPurchases) ? state.shoppingPurchases : [];
@@ -420,8 +444,8 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-          <ItemSection icon={Flame} title={t("shoppingModule.todaySection")} items={todayItems} onToggle={togglePurchased} onDelete={deleteItem} onEdit={editItem} />
-          <ItemSection icon={Clock3} title={t("shoppingModule.laterSection")} items={laterItems} onToggle={togglePurchased} onDelete={deleteItem} onEdit={editItem} />
+          <ItemSection icon={Flame} title={t("shoppingModule.todaySection")} items={todayItems} onToggle={togglePurchased} onDelete={deleteItem} onEdit={editItem} newIds={newItemIds} />
+          <ItemSection icon={Clock3} title={t("shoppingModule.laterSection")} items={laterItems} onToggle={togglePurchased} onDelete={deleteItem} onEdit={editItem} newIds={newItemIds} />
           <FrequentSuggestions suggestions={frequentSuggestions} onAdd={addFrequentSuggestion} />
           <ItemSection
             icon={Check}
@@ -430,6 +454,7 @@ export function ShoppingModule({ state, dispatch, openModal, deleteShoppingList,
             onToggle={togglePurchased}
             onDelete={deleteItem}
             onEdit={editItem}
+            newIds={newItemIds}
             muted
             action={confirmingClearPurchased ? (
               <span style={{ display: "inline-flex", gap: 4 }}>
