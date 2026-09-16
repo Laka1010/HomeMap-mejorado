@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 .env.local
+supabase/.temp/
 
 # Android release signing — nunca subir el keystore ni sus contraseñas.
 # (android/.gitignore ya lo cubre dentro de android/; esto lo cubre en todo el repo)

@@ -6,6 +6,7 @@ import { transfersService } from "./services/transfersService";
 import { TransferModal } from "./TransferModal";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
+import { formatCurrencyValue } from "../../utils/currencyUtils";
 import { defaultCategoryFor, categoryLabel, categoryEmoji } from "./economyCategories";
 import { useEconomyCategories } from "./EconomyCategoriesContext";
 import { CategoryField } from "./CategoryField";
@@ -31,8 +32,8 @@ import { AmountHero, FieldGroup, FieldRow, FieldTextRow, ToggleCard } from "../.
  * disponible desde los dos sitios donde tiene sentido buscarla.
  */
 export default function MovementsSection({ currentHome, spaceId, spaces = [], user, initialType = "expenses", readOnly = false, onLogPaymentToCalendar }) {
-  const { t } = useTranslation();
-  const { format: formatCurrency } = useCurrency();
+  const { t, locale } = useTranslation();
+  const { code: primaryCurrency } = useCurrency();
   const { expense: expenseCategories, income: incomeCategories } = useEconomyCategories();
   const [type, setType] = useState(initialType);
   const [period, setPeriod] = useState("thisMonth"); // thisMonth | lastMonth | all
@@ -43,6 +44,9 @@ export default function MovementsSection({ currentHome, spaceId, spaces = [], us
   // las activas de `accounts`: se usan para saber si una transferencia entra
   // o sale de este Space, y una cuenta archivada sigue teniendo histórico.
   const [spaceAccountIds, setSpaceAccountIds] = useState(() => new Set());
+  // Incluye cuentas archivadas (igual que spaceAccountIds): un movimiento
+  // viejo de una cuenta ya archivada debe seguir mostrándose en SU divisa.
+  const [accountCurrencyById, setAccountCurrencyById] = useState(() => new Map());
   const [showAdd, setShowAdd] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -67,6 +71,7 @@ export default function MovementsSection({ currentHome, spaceId, spaces = [], us
     accountsService.listAccounts(spaceId).then((list) => {
       setAccounts(list.filter((a) => a.status === "active"));
       setSpaceAccountIds(new Set(list.map((a) => a.id)));
+      setAccountCurrencyById(new Map(list.map((a) => [a.id, a.currency_code])));
     }).catch(() => {});
   }, [spaceId]);
 
@@ -300,6 +305,12 @@ export default function MovementsSection({ currentHome, spaceId, spaces = [], us
               const subtitle = isTransfer
                 ? `${transferDirection} · ${item.date}`
                 : `${categoryEmoji(item.category || "Otros")} ${categoryLabel(item.category || "Otros", t)} · ${item.date}`;
+              // Cada movimiento se muestra en SU propia divisa (la de la
+              // cuenta que lo registró), nunca convertido a la principal —
+              // igual que AccountsSection con los saldos.
+              const itemCurrency = isTransfer
+                ? accountCurrencyById.get(outgoing || internal ? item.from_account_id : item.to_account_id)
+                : accountCurrencyById.get(item.account_id);
               return (
                 <div
                   key={item.id}
@@ -338,7 +349,7 @@ export default function MovementsSection({ currentHome, spaceId, spaces = [], us
                     <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{subtitle}</div>
                   </div>
                   <div style={{ fontSize: 14.5, fontWeight: 700, color: rowAccent, whiteSpace: "nowrap" }}>
-                    {isTransfer ? (internal ? "" : outgoing ? "-" : "+") : type === "expenses" ? "-" : "+"}{formatCurrency(item.amount)}
+                    {isTransfer ? (internal ? "" : outgoing ? "-" : "+") : type === "expenses" ? "-" : "+"}{formatCurrencyValue(item.amount, itemCurrency || primaryCurrency, locale)}
                   </div>
                 </div>
               );
@@ -362,7 +373,7 @@ export default function MovementsSection({ currentHome, spaceId, spaces = [], us
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ fontSize: 14, color: "var(--ink-soft)" }}>{categoryEmoji(selected.category || "Otros")} {categoryLabel(selected.category || "Otros", t)}</div>
-                    <div style={{ fontWeight: 700, color: accent }}>{formatCurrency(selected.amount)}</div>
+                    <div style={{ fontWeight: 700, color: accent }}>{formatCurrencyValue(selected.amount, accountCurrencyById.get(selected.account_id) || primaryCurrency, locale)}</div>
                   </div>
                   <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>{t("movements.dateLabel")} <strong>{selected.date}</strong></div>
                   {selected.shopping_purchase_id ? (
