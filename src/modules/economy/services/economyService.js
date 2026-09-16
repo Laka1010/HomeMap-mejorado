@@ -11,55 +11,63 @@ export const economyService = {
   /**
    * Obtiene el balance total del mes actual
    * @param {string} houseId - ID de la casa
+   * @param {(amount:number, currencyCode:string)=>number} [convert] - ver getMonthIncome
    * @returns {Promise<number>}
    */
-  async getMonthBalance(houseId) {
-    const income = await this.getMonthIncome(houseId);
-    const expenses = await this.getMonthExpenses(houseId);
+  async getMonthBalance(houseId, convert) {
+    const income = await this.getMonthIncome(houseId, convert);
+    const expenses = await this.getMonthExpenses(houseId, 0, convert);
     return income - expenses;
   },
 
   /**
-   * Obtiene ingresos totales del mes actual
+   * Obtiene ingresos totales del mes actual, convertidos a la divisa
+   * principal (este total es house-wide, potencialmente varias cuentas de
+   * varias divisas distintas).
    * @param {string} houseId
+   * @param {(amount:number, currencyCode:string)=>number} [convert] - por
+   *   defecto no convierte (identidad), para no romper hogares de una sola
+   *   divisa ni llamadas que aún no pasan `convert`.
    * @returns {Promise<number>}
    */
-  async getMonthIncome(houseId) {
+  async getMonthIncome(houseId, convert = (amount) => amount) {
     const today = new Date();
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
     const { data, error } = await supabase
       .from("economy_income")
-      .select("amount")
+      .select("amount, financial_accounts(currency_code)")
       .eq("house_id", houseId)
       .gte("date", toLocalDateString(monthStart))
       .lte("date", toLocalDateString(monthEnd));
 
     if (error) console.error("Error fetching income:", error);
-    return data?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
+    return data?.reduce((sum, item) => sum + convert(parseFloat(item.amount || 0), item.financial_accounts?.currency_code), 0) || 0;
   },
 
   /**
-   * Obtiene gastos totales de un mes (el actual por defecto)
+   * Obtiene gastos totales de un mes (el actual por defecto), convertidos a
+   * la divisa principal — ver getMonthIncome.
    * @param {string} houseId
    * @param {number} monthOffset - 0 = mes actual, -1 = mes anterior, etc.
+   * @param {(amount:number, currencyCode:string)=>number} [convert]
    * @returns {Promise<number>}
    */
-  async getMonthExpenses(houseId, monthOffset = 0) {
+  async getMonthExpenses(houseId, monthOffset = 0, convert = (amount) => amount) {
     const today = new Date();
     const monthStart = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + monthOffset + 1, 0);
 
     const { data, error } = await supabase
       .from("economy_expenses")
-      .select("amount")
+      .select("amount, financial_accounts(currency_code)")
       .eq("house_id", houseId)
       .gte("date", toLocalDateString(monthStart))
       .lte("date", toLocalDateString(monthEnd));
 
     if (error) console.error("Error fetching expenses:", error);
-    return data?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
+    return data?.reduce((sum, item) => sum + convert(parseFloat(item.amount || 0), item.financial_accounts?.currency_code), 0) || 0;
   },
 
   /**

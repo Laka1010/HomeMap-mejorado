@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PiggyBank, TrendingDown, Receipt, CheckCircle2, Clock, AlertTriangle, OctagonAlert, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { economyService } from "./services/economyService";
 import { accountsService } from "./services/accountsService";
@@ -28,14 +28,13 @@ function lastNMonths(n, locale) {
 
 export default function StatisticsSection({ spaceId }) {
   const { t, locale } = useTranslation();
-  const { formatRounded: formatCurrency } = useCurrency();
+  const { formatRounded: formatCurrency, convert } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
   const [income, setIncome] = useState([]);
   const [bills, setBills] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [transfers, setTransfers] = useState([]);
-  const [contributions, setContributions] = useState({ received: 0, sent: 0 });
   const [netWorthRange, setNetWorthRange] = useState("month");
 
   // Siempre filtrado por el Space activo (nunca por house_id directamente)
@@ -62,31 +61,45 @@ export default function StatisticsSection({ spaceId }) {
         // repartido en el tiempo", una cuenta archivada ya no cuenta.
         setAccounts((accountsData || []).filter((a) => a.status === "active"));
         setTransfers(transfersData || []);
-
-        // Las contribuciones nunca se suman a ingresos/gastos (evita
-        // contarlas dos veces: ya viven en su propio ledger) — se muestran
-        // como una cifra aparte, separando lo que este Space ha recibido de
-        // otros Spaces de lo que ha aportado a otros.
-        const ownAccountIds = new Set((accountsData || []).map((a) => a.id));
-        const contributionRows = (transfersData || []).filter((tr) => tr.kind === "contribution");
-        setContributions({
-          received: contributionRows.filter((tr) => ownAccountIds.has(tr.to_account_id)).reduce((sum, tr) => sum + parseFloat(tr.amount || 0), 0),
-          sent: contributionRows.filter((tr) => ownAccountIds.has(tr.from_account_id)).reduce((sum, tr) => sum + parseFloat(tr.amount || 0), 0),
-        });
       })
       .catch((err) => console.error("Error loading statistics:", err))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [spaceId]);
 
+  // Cada ingreso/gasto está en la divisa de su propia cuenta (account_id) —
+  // hace falta este mapa para convertir a la divisa principal antes de
+  // combinarlos en cualquier total de esta pantalla.
+  const accountCurrencyById = useMemo(() => new Map(accounts.map((a) => [a.id, a.currency_code])), [accounts]);
+  const currencyOf = useCallback((row) => accountCurrencyById.get(row.account_id), [accountCurrencyById]);
+
+  // Las contribuciones nunca se suman a ingresos/gastos (evita contarlas dos
+  // veces: ya viven en su propio ledger) — se muestran como una cifra aparte,
+  // separando lo que este Space ha recibido de otros Spaces de lo que ha
+  // aportado a otros. El importe de cada transferencia está en la divisa de
+  // la cuenta que realmente se mueve (destino al recibir, origen al enviar)
+  // — no hay conversión en la transferencia en sí, solo al combinarlas aquí.
+  const contributions = useMemo(() => {
+    const ownAccountIds = new Set(accounts.map((a) => a.id));
+    const contributionRows = transfers.filter((tr) => tr.kind === "contribution");
+    return {
+      received: contributionRows
+        .filter((tr) => ownAccountIds.has(tr.to_account_id))
+        .reduce((sum, tr) => sum + convert(parseFloat(tr.amount || 0), accountCurrencyById.get(tr.to_account_id)), 0),
+      sent: contributionRows
+        .filter((tr) => ownAccountIds.has(tr.from_account_id))
+        .reduce((sum, tr) => sum + convert(parseFloat(tr.amount || 0), accountCurrencyById.get(tr.from_account_id)), 0),
+    };
+  }, [transfers, accounts, accountCurrencyById, convert]);
+
   const months = useMemo(() => lastNMonths(6, locale), [locale]);
   const currentMonthKey = months[months.length - 1]?.key;
 
   const monthly = useMemo(() => months.map((m) => {
-    const inc = income.filter((i) => monthKeyOf(i.date) === m.key).reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
-    const exp = expenses.filter((e) => monthKeyOf(e.date) === m.key).reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    const inc = income.filter((i) => monthKeyOf(i.date) === m.key).reduce((sum, i) => sum + convert(parseFloat(i.amount || 0), currencyOf(i)), 0);
+    const exp = expenses.filter((e) => monthKeyOf(e.date) === m.key).reduce((sum, e) => sum + convert(parseFloat(e.amount || 0), currencyOf(e)), 0);
     return { ...m, income: inc, expenses: exp };
-  }), [months, income, expenses]);
+  }), [months, income, expenses, currencyOf, convert]);
 
   const maxMonthly = Math.max(1, ...monthly.flatMap((m) => [m.income, m.expenses]));
 
@@ -101,21 +114,21 @@ export default function StatisticsSection({ spaceId }) {
     [netWorthRange, netWorthEarliest],
   );
   const netWorthSeries = useMemo(
-    () => computeNetWorthSeries(accounts, income, expenses, transfers, netWorthDates),
-    [accounts, income, expenses, transfers, netWorthDates],
+    () => computeNetWorthSeries(accounts, income, expenses, transfers, netWorthDates, convert),
+    [accounts, income, expenses, transfers, netWorthDates, convert],
   );
 
   const topCategories = useMemo(() => {
     const map = {};
     expenses.filter((e) => monthKeyOf(e.date) === currentMonthKey).forEach((e) => {
       const cat = e.category || "Otros";
-      map[cat] = (map[cat] || 0) + parseFloat(e.amount || 0);
+      map[cat] = (map[cat] || 0) + convert(parseFloat(e.amount || 0), currencyOf(e));
     });
     return Object.entries(map)
       .map(([name, amount]) => ({ name, amount }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
-  }, [expenses, currentMonthKey]);
+  }, [expenses, currentMonthKey, currencyOf, convert]);
 
   const maxCategory = Math.max(1, ...topCategories.map((c) => c.amount));
 
@@ -123,10 +136,15 @@ export default function StatisticsSection({ spaceId }) {
   const savingsRate = thisMonth && thisMonth.income > 0 ? ((thisMonth.income - thisMonth.expenses) / thisMonth.income) * 100 : null;
   const avgMonthlyExpense = monthly.reduce((sum, m) => sum + m.expenses, 0) / (monthly.length || 1);
 
+  // Comparado y mostrado en la divisa principal (convertido) — es una
+  // tarjeta de estadística combinada, igual que "Ahorro" y "Gasto medio",
+  // no el detalle de un movimiento suelto.
   const biggestExpense = useMemo(() => {
     const thisMonthExpenses = expenses.filter((e) => monthKeyOf(e.date) === currentMonthKey);
-    return thisMonthExpenses.sort((a, b) => parseFloat(b.amount || 0) - parseFloat(a.amount || 0))[0] || null;
-  }, [expenses, currentMonthKey]);
+    return thisMonthExpenses
+      .map((e) => ({ ...e, amount: convert(parseFloat(e.amount || 0), currencyOf(e)) }))
+      .sort((a, b) => b.amount - a.amount)[0] || null;
+  }, [expenses, currentMonthKey, currencyOf, convert]);
 
   const billStats = useMemo(() => {
     const today = new Date();

@@ -3,6 +3,7 @@ import { ChevronRight, Gift, Sparkles, Tag, Calendar, ArrowLeftRight } from "luc
 import { supabase } from "../../supabaseClient";
 import { useTranslation } from "../../i18n";
 import { useCurrency } from "../../currency";
+import { formatCurrencyValue } from "../../utils/currencyUtils";
 import { normalizeText } from "../../utils/textMatch";
 import { toLocalDateString } from "../../utils/dates";
 import { BudgetSection } from "./BudgetSection";
@@ -19,8 +20,8 @@ const ENTRY_ICONS = {
 };
 
 export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToPage, activity, user }) {
-  const { t } = useTranslation();
-  const { format: formatCurrency } = useCurrency();
+  const { t, locale } = useTranslation();
+  const { format: formatCurrency, code: primaryCurrency, convert } = useCurrency();
   const isHousehold = spaces?.find((s) => s.id === spaceId)?.type === "household";
   const [economics, setEconomics] = useState({
     balance: 0,
@@ -35,7 +36,10 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
 
   useEffect(() => {
     loadEconomicsData();
-  }, [spaceId]);
+    // `convert` cambia de identidad una vez, cuando terminan de cargar los
+    // tipos de cambio (ver CurrencyProvider) — hace falta recalcular con los
+    // datos ya en la divisa correcta, así que se relee al completo.
+  }, [spaceId, convert]);
 
   const loadEconomicsData = async () => {
     setLoading(true);
@@ -49,16 +53,19 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
       const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
+      // `financial_accounts(currency_code)` viene del FK account_id -> es la
+      // divisa ORIGINAL de ese movimiento, necesaria para convertir antes de
+      // sumar en cualquier total combinado (ver más abajo).
       const { data: incomeData } = await supabase
         .from("economy_income")
-        .select("amount, name, category, date")
+        .select("amount, name, category, date, account_id, financial_accounts(currency_code)")
         .eq("financial_space_id", spaceId)
         .gte("date", toLocalDateString(monthStart))
         .lte("date", toLocalDateString(monthEnd));
 
       const { data: expensesData } = await supabase
         .from("economy_expenses")
-        .select("amount, name, category, date")
+        .select("amount, name, category, date, account_id, financial_accounts(currency_code)")
         .eq("financial_space_id", spaceId)
         .gte("date", toLocalDateString(monthStart))
         .lte("date", toLocalDateString(monthEnd));
@@ -74,9 +81,12 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
         .order("due_date", { ascending: true });
 
       const accounts = await accountsService.listAccounts(spaceId);
+      const accountCurrencyById = new Map(accounts.map((a) => [a.id, a.currency_code]));
+      // Patrimonio combinado del Space: cada cuenta suma en SU divisa
+      // original, convertida a la principal solo aquí, al combinarlas.
       const totalBalance = accounts
         .filter((a) => a.status === "active")
-        .reduce((sum, a) => sum + parseFloat(a.balance || 0), 0);
+        .reduce((sum, a) => sum + convert(parseFloat(a.balance || 0), a.currency_code), 0);
       setAccountsBalance(totalBalance);
 
       // Transferencias del mes: cada movimiento entre cuentas cuenta como
@@ -99,12 +109,18 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
           const amt = parseFloat(tr.amount || 0);
           const fromHere = spaceAccountIds.has(tr.from_account_id);
           const toHere = spaceAccountIds.has(tr.to_account_id);
-          if (toHere) transfersIn += amt;
-          if (fromHere) transfersOut += amt;
+          // El importe en sí no se convierte (no hay conversión en la
+          // transferencia) — pero al sumarlo al neto del mes sí hace falta
+          // convertirlo desde la divisa de la cuenta que efectivamente lo
+          // mueve, igual que con accountsBalance.
+          if (toHere) transfersIn += convert(amt, accountCurrencyById.get(tr.to_account_id));
+          if (fromHere) transfersOut += convert(amt, accountCurrencyById.get(tr.from_account_id));
+          const direction = fromHere && toHere ? "internal" : fromHere ? "out" : "in";
           transferEntries.push({
             kind: "transfer",
-            direction: fromHere && toHere ? "internal" : fromHere ? "out" : "in",
+            direction,
             amount: amt,
+            currencyCode: accountCurrencyById.get(direction === "in" ? tr.to_account_id : tr.from_account_id) || primaryCurrency,
             date: d,
             name: tr.note || (tr.kind === "contribution" ? t("movements.transferContribution") : t("movements.transferTitle")),
           });
@@ -113,16 +129,20 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
         // Sin transferencias legibles el resumen sigue con ingresos/gastos.
       }
 
-      const totalIngresos = (incomeData?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0) + transfersIn;
-      const totalGastos = (expensesData?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0) + transfersOut;
+      const convertRow = (item) => convert(parseFloat(item.amount || 0), item.financial_accounts?.currency_code || accountCurrencyById.get(item.account_id));
+      const totalIngresos = (incomeData?.reduce((sum, item) => sum + convertRow(item), 0) || 0) + transfersIn;
+      const totalGastos = (expensesData?.reduce((sum, item) => sum + convertRow(item), 0) || 0) + transfersOut;
       const balance = totalIngresos - totalGastos;
 
       const proximoVencimiento = billsData?.[0] || null;
       const totalPendiente = billsData?.reduce((sum, bill) => sum + parseFloat(bill.amount || 0), 0) || 0;
 
+      // Los movimientos individuales de la lista siguen mostrándose en su
+      // divisa original (nunca convertida) — solo los totales de arriba
+      // combinan divisas.
       const entries = [
-        ...(incomeData || []).map((i) => ({ ...i, kind: "income" })),
-        ...(expensesData || []).map((e) => ({ ...e, kind: "expense" })),
+        ...(incomeData || []).map((i) => ({ ...i, kind: "income", currencyCode: i.financial_accounts?.currency_code || primaryCurrency })),
+        ...(expensesData || []).map((e) => ({ ...e, kind: "expense", currencyCode: e.financial_accounts?.currency_code || primaryCurrency })),
         ...transferEntries,
       ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -159,10 +179,12 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
 
   const { ingresos, gastos, balance, entries = [], upcomingBills = [], pendingBills = [] } = economics;
   const isSaving = balance >= 0;
+  // Convertido a la divisa principal: se compara contra economy_goals.target_amount,
+  // que no tiene divisa propia (se asume siempre la principal).
   const expenseCategoryTotals = {};
   entries.filter((e) => e.kind === "expense").forEach((e) => {
     const cat = normalizeText(e.category || "Otros");
-    expenseCategoryTotals[cat] = (expenseCategoryTotals[cat] || 0) + parseFloat(e.amount || 0);
+    expenseCategoryTotals[cat] = (expenseCategoryTotals[cat] || 0) + convert(parseFloat(e.amount || 0), e.currencyCode);
   });
   const maxScale = Math.max(ingresos, gastos, 1);
   const incomeBarPct = Math.min(100, (ingresos / maxScale) * 100);
@@ -267,7 +289,7 @@ export function EconomyOverview({ currentHome, spaceId, spaces, openModal, goToP
                     <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 1 }}>{subtitle}</div>
                   </div>
                   <div style={{ fontSize: 14.5, fontWeight: 700, color: amountColor, whiteSpace: "nowrap" }}>
-                    {sign}{formatCurrency(entry.amount)}
+                    {sign}{formatCurrencyValue(entry.amount, entry.currencyCode || primaryCurrency, locale)}
                   </div>
                 </div>
               );

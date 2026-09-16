@@ -51,6 +51,14 @@ export function TransferModal({ spaceId, spaces, accounts, initialToSpaceId, onC
     const a = (accounts || []).find((x) => x.id === id);
     return a ? `${a.icon} ${a.name}` : "";
   };
+
+  // Las transferencias no convierten divisas (fuera de alcance, ver
+  // TransferModal en el plan de multi-divisa): el importe se mueve tal cual
+  // de una cuenta a otra. Sin este aviso, elegir cuentas de divisa distinta
+  // sería una trampa silenciosa.
+  const fromCurrency = (accounts || []).find((a) => a.id === fromAccountId)?.currency_code;
+  const toCurrency = (accounts || []).find((a) => a.id === toAccountId)?.currency_code;
+  const currencyMismatch = mode === "transfer" && fromCurrency && toCurrency && fromCurrency !== toCurrency;
   const spaceLabel = (id) => {
     const s = otherSpaces.find((x) => x.id === id);
     return s ? `${s.icon} ${s.name}` : "";
@@ -160,6 +168,7 @@ export function TransferModal({ spaceId, spaces, accounts, initialToSpaceId, onC
                 <FieldTextRow icon={StickyNote} value={note} onChange={setNote} placeholder={t("transfers.notePlaceholder")} />
               </FieldGroup>
 
+              {currencyMismatch && <p style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{t("transfers.currencyMismatchWarning")}</p>}
               {error && <p className="hm-money-error">{error}</p>}
 
               <div className="hm-money-actions">

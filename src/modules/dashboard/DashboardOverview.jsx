@@ -1,4 +1,5 @@
 import { useTranslation } from "../../i18n";
+import { useCurrency } from "../../currency";
 import { getGreetingKey, formatLongDate } from "../../utils/greeting";
 import { useDashboardEconomy } from "./useDashboardEconomy";
 import { HomeStatusHero } from "./widgets/HomeStatusHero";
@@ -11,12 +12,13 @@ import { DASHBOARD_WIDGETS } from "./widgetRegistry";
  */
 export function DashboardOverview({ state, goTo, openModal, canSeeEconomy = true, currentHome, houseMembers = [], notifications = [] }) {
   const { t, locale } = useTranslation();
+  const { convert } = useCurrency();
   const tasks = Array.isArray(state.tasks) ? state.tasks : [];
   const shoppingItems = Array.isArray(state.shoppingItems) ? state.shoppingItems : [];
   const shoppingLists = Array.isArray(state.shoppingLists) ? state.shoppingLists : [];
   const activity = Array.isArray(state.activity) ? state.activity : [];
 
-  const { bills, monthIncome, monthExpenses, prevMonthExpenses, loaded } = useDashboardEconomy(currentHome?.id, canSeeEconomy);
+  const { bills, monthIncome, monthExpenses, prevMonthExpenses, loaded } = useDashboardEconomy(currentHome?.id, canSeeEconomy, convert);
 
   const greeting = t("header.greeting", { greeting: t(getGreetingKey()), name: state.profile.userName });
   const dateAndHome = formatLongDate(locale);

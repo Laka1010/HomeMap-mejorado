@@ -72,9 +72,14 @@ function accountLedger(accountId, income, expenses, transfers) {
  * @param {Array<{account_id:string, amount:number|string, date:string}>} expenses
  * @param {Array<{from_account_id:string, to_account_id:string, amount:number|string, created_at:string}>} transfers
  * @param {Date[]} sampleDates - ascendente
+ * @param {(amount:number, currencyCode:string)=>number} [convert] - convierte
+ *   el saldo de cada cuenta (en su propia divisa) a la divisa principal antes
+ *   de sumarlo con el resto — necesario en cuanto dos cuentas del Space usan
+ *   divisas distintas. Por defecto no convierte (identidad), para no romper
+ *   Spaces de una sola divisa ni los tests existentes.
  * @returns {{date:Date, value:number}[]}
  */
-export function computeNetWorthSeries(accounts, income, expenses, transfers, sampleDates) {
+export function computeNetWorthSeries(accounts, income, expenses, transfers, sampleDates, convert = (amount) => amount) {
   if (!sampleDates || sampleDates.length === 0) return [];
   const datesDesc = [...sampleDates].sort((a, b) => b - a);
   const totals = new Map(datesDesc.map((d) => [d.getTime(), 0]));
@@ -94,7 +99,7 @@ export function computeNetWorthSeries(accounts, income, expenses, transfers, sam
       // (su initial_balance, al no venir de un movimiento del ledger, ya
       // queda reflejado sin más al llegar `running` al momento de creación).
       const existed = !createdAt || createdAt <= d;
-      if (existed) totals.set(d.getTime(), totals.get(d.getTime()) + running);
+      if (existed) totals.set(d.getTime(), totals.get(d.getTime()) + convert(running, acc.currency_code));
     }
   });
 

@@ -35,6 +35,15 @@ verify_jwt = false
 # (nunca datos de economía ni de otros hogares) y solo responde a GET/HEAD.
 verify_jwt = false
 
+[functions.refresh-exchange-rates]
+# Deliberadamente false: la llama el cron de Postgres (pg_cron ->
+# _run_exchange_rates_refresh -> net.http_post), no un usuario, así que no hay
+# JWT que verificar. La autorización es el secreto compartido de la cabecera
+# x-exchange-rates-trigger-secret, comprobado en tiempo constante contra
+# EXCHANGE_RATES_TRIGGER_SECRET. La función solo lee una API pública de tipos
+# de cambio y escribe exchange_rates (datos no sensibles) con el service_role.
+verify_jwt = false
+
 [functions.export-security-to-sheet]
 # Deliberadamente false: la llama el cron de Postgres (pg_cron ->
 # _run_security_sheet_export -> net.http_post), no un usuario, así que no hay
